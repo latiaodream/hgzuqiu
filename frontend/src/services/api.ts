@@ -1,0 +1,375 @@
+import axios from 'axios';
+import type { AxiosInstance, AxiosResponse } from 'axios';
+import type {
+  User,
+  LoginRequest,
+  RegisterRequest,
+  AuthResponse,
+  Group,
+  GroupCreateRequest,
+  CrownAccount,
+  CrownAccountCreateRequest,
+  Match,
+  Bet,
+  BetCreateRequest,
+  CoinTransaction,
+  ApiResponse,
+  BetStats,
+  CoinStats,
+  AccountSelectionResponse,
+  StaffCreateRequest,
+  StaffUpdateRequest,
+} from '../types';
+
+// 创建axios实例
+const resolveBaseURL = (): string => {
+  if (import.meta.env.VITE_API_URL && String(import.meta.env.VITE_API_URL).trim().length > 0) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // 本地开发时默认走同源代理，避免直接命中前端 dev server 返回 404
+  if (import.meta.env.DEV) {
+    return '/api';
+  }
+
+  return 'http://localhost:3001/api';
+};
+
+const baseURL = resolveBaseURL();
+
+if (import.meta.env.DEV) {
+  console.info('[API] Using base URL:', baseURL);
+}
+
+const apiClient: AxiosInstance = axios.create({
+  baseURL,
+  timeout: 60000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+
+// 请求拦截器 - 添加token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// 响应拦截器 - 处理错误
+apiClient.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// 认证API
+export const authApi = {
+  // 用户注册
+  register: (data: RegisterRequest): Promise<AuthResponse> =>
+    apiClient.post('/auth/register', data).then(res => {
+      const { success, message, error, data: payload } = res.data;
+      return {
+        success,
+        message,
+        error,
+        token: payload?.token,
+        user: payload?.user,
+      } as AuthResponse;
+    }),
+
+  // 用户登录
+  login: (data: LoginRequest): Promise<AuthResponse> =>
+    apiClient.post('/auth/login', data).then(res => {
+      const { success, message, error, data: payload } = res.data;
+      return {
+        success,
+        message,
+        error,
+        token: payload?.token,
+        user: payload?.user,
+      } as AuthResponse;
+    }),
+
+  // 获取当前用户信息
+  getCurrentUser: (): Promise<ApiResponse<User>> =>
+    apiClient.get('/auth/me').then(res => res.data),
+
+  // 修改密码
+  changePassword: (data: { oldPassword: string; newPassword: string }): Promise<ApiResponse> =>
+    apiClient.post('/auth/change-password', data).then(res => res.data),
+};
+
+// 代理管理API（超级管理员使用）
+export const agentApi = {
+  // 获取代理列表
+  getAgentList: (): Promise<ApiResponse<User[]>> =>
+    apiClient.get('/agents').then(res => res.data),
+
+  // 获取单个代理信息
+  getAgent: (userId: number): Promise<ApiResponse<User>> =>
+    apiClient.get(`/agents/${userId}`).then(res => res.data),
+
+  // 创建代理账号
+  createAgent: (data: StaffCreateRequest): Promise<ApiResponse<User>> =>
+    apiClient.post('/agents', data).then(res => res.data),
+
+  // 更新代理信息
+  updateAgent: (userId: number, data: StaffUpdateRequest): Promise<ApiResponse<User>> =>
+    apiClient.put(`/agents/${userId}`, data).then(res => res.data),
+
+  // 删除代理账号
+  deleteAgent: (userId: number): Promise<ApiResponse> =>
+    apiClient.delete(`/agents/${userId}`).then(res => res.data),
+};
+
+// 员工管理API（代理使用）
+export const staffApi = {
+  // 获取员工列表
+  getStaffList: (): Promise<ApiResponse<User[]>> =>
+    apiClient.get('/staff').then(res => res.data),
+
+  // 获取单个员工信息
+  getStaff: (userId: number): Promise<ApiResponse<User>> =>
+    apiClient.get(`/staff/${userId}`).then(res => res.data),
+
+  // 创建员工账号
+  createStaff: (data: StaffCreateRequest): Promise<ApiResponse<User>> =>
+    apiClient.post('/staff', data).then(res => res.data),
+
+  // 更新员工信息
+  updateStaff: (userId: number, data: StaffUpdateRequest): Promise<ApiResponse<User>> =>
+    apiClient.put(`/staff/${userId}`, data).then(res => res.data),
+
+  // 删除员工账号
+  deleteStaff: (userId: number): Promise<ApiResponse> =>
+    apiClient.delete(`/staff/${userId}`).then(res => res.data),
+};
+
+// 分组API
+export const groupApi = {
+  // 获取分组列表
+  getGroups: (): Promise<ApiResponse<Group[]>> =>
+    apiClient.get('/groups').then(res => res.data),
+
+  // 创建分组
+  createGroup: (data: GroupCreateRequest): Promise<ApiResponse<Group>> =>
+    apiClient.post('/groups', data).then(res => res.data),
+
+  // 更新分组
+  updateGroup: (id: number, data: GroupCreateRequest): Promise<ApiResponse<Group>> =>
+    apiClient.put(`/groups/${id}`, data).then(res => res.data),
+
+  // 删除分组
+  deleteGroup: (id: number): Promise<ApiResponse> =>
+    apiClient.delete(`/groups/${id}`).then(res => res.data),
+};
+
+// 账号API
+export const accountApi = {
+  // 获取账号列表
+  getAccounts: (groupId?: number): Promise<ApiResponse<CrownAccount[]>> =>
+    apiClient.get('/accounts', { params: { group_id: groupId } }).then(res => res.data),
+
+  // 创建账号
+  createAccount: (data: CrownAccountCreateRequest): Promise<ApiResponse<CrownAccount>> =>
+    apiClient.post('/accounts', data).then(res => res.data),
+
+  // 更新账号
+  updateAccount: (id: number, data: Partial<CrownAccountCreateRequest & { is_enabled?: boolean }>): Promise<ApiResponse<CrownAccount>> =>
+    apiClient.put(`/accounts/${id}`, data).then(res => res.data),
+
+  // 删除账号
+  deleteAccount: (id: number): Promise<ApiResponse> =>
+    apiClient.delete(`/accounts/${id}`).then(res => res.data),
+
+  // 批量更新账号状态
+  batchUpdateStatus: (accountIds: number[], isEnabled: boolean): Promise<ApiResponse> =>
+    apiClient.post('/accounts/batch-update-status', {
+      account_ids: accountIds,
+      is_enabled: isEnabled
+    }).then(res => res.data),
+
+  // 账号优选
+  autoSelect: (params?: { match_id?: number; limit?: number }): Promise<ApiResponse<AccountSelectionResponse>> =>
+    apiClient.get('/accounts/auto-select', { params }).then(res => res.data),
+};
+
+// 比赛API
+export const matchApi = {
+  // 获取比赛列表
+  getMatches: (params?: { status?: string; league?: string; limit?: number; offset?: number }): Promise<ApiResponse<Match[]>> =>
+    apiClient.get('/matches', { params }).then(res => res.data),
+
+  // 获取比赛详情
+  getMatch: (id: number): Promise<ApiResponse<Match>> =>
+    apiClient.get(`/matches/${id}`).then(res => res.data),
+
+  // 获取热门比赛
+  getHotMatches: (): Promise<ApiResponse<Match[]>> =>
+    apiClient.get('/matches/hot/list').then(res => res.data),
+
+  // 搜索比赛
+  searchMatches: (keyword: string, limit?: number): Promise<ApiResponse<Match[]>> =>
+    apiClient.get(`/matches/search/${keyword}`, { params: { limit } }).then(res => res.data),
+};
+
+// 下注API
+export const betApi = {
+  // 获取下注记录
+  getBets: (params?: {
+    status?: string;
+    date?: string;
+    account_id?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<{ bets: Bet[]; stats: BetStats }>> =>
+    apiClient.get('/bets', { params }).then(res => res.data),
+
+  // 获取下注统计
+  getStats: (params?: {
+    start_date?: string;
+    end_date?: string;
+    user_id?: number;
+    account_id?: string;
+  }): Promise<ApiResponse<any>> =>
+    apiClient.get('/bets/stats', { params }).then(res => res.data),
+
+  // 创建下注
+  createBet: (data: BetCreateRequest): Promise<ApiResponse<Bet[]>> =>
+    apiClient.post('/bets', data).then(res => res.data),
+
+  // 更新下注状态
+  updateBetStatus: (id: number, data: {
+    status: string;
+    result?: string;
+    payout?: number;
+    official_bet_id?: string;
+  }): Promise<ApiResponse<Bet>> =>
+    apiClient.put(`/bets/${id}/status`, data).then(res => res.data),
+
+  // 同步下注结算结果
+  syncSettlements: (accountIds?: number[]): Promise<ApiResponse<any>> =>
+    apiClient
+      .post('/bets/sync-settlements', accountIds && accountIds.length ? { account_ids: accountIds } : {})
+      .then(res => res.data),
+};
+
+// 金币API
+export const coinApi = {
+  // 获取金币流水
+  getTransactions: (params?: {
+    type?: string;
+    start_date?: string;
+    end_date?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<{ transactions: CoinTransaction[]; stats: CoinStats }>> =>
+    apiClient.get('/coins', { params }).then(res => res.data),
+
+  // 创建金币交易
+  createTransaction: (data: {
+    transaction_type: string;
+    amount: number;
+    description: string;
+    account_id?: number;
+  }): Promise<ApiResponse<CoinTransaction>> =>
+    apiClient.post('/coins', data).then(res => res.data),
+
+  // 获取余额
+  getBalance: (): Promise<ApiResponse<{ balance: number; currency: string }>> =>
+    apiClient.get('/coins/balance').then(res => res.data),
+
+  // 获取分析数据
+  getAnalytics: (period?: string): Promise<ApiResponse<{
+    period: string;
+    daily_stats: any[];
+    summary: any;
+  }>> =>
+    apiClient.get('/coins/analytics', { params: { period } }).then(res => res.data),
+};
+
+// 皇冠自动化API
+export const crownApi = {
+  // 登录账号
+  loginAccount: (accountId: number): Promise<ApiResponse> =>
+    apiClient.post(`/crown-automation/login/${accountId}`, undefined, { timeout: 120000 }).then(res => res.data),
+
+  // 登出账号
+  logoutAccount: (accountId: number): Promise<ApiResponse> =>
+    apiClient.post(`/crown-automation/logout/${accountId}`, undefined, { timeout: 20000 }).then(res => res.data),
+
+  // 执行自动下注
+  placeBet: (accountId: number, data: {
+    betType: string;
+    betOption: string;
+    amount: number;
+    odds: number;
+    matchId: number;
+  }): Promise<ApiResponse> =>
+    apiClient.post(`/crown-automation/bet/${accountId}`, data, { timeout: 60000 }).then(res => res.data),
+
+  // 获取账号余额
+  getAccountBalance: (accountId: number): Promise<ApiResponse> =>
+    apiClient.get(`/crown-automation/balance/${accountId}`, { timeout: 60000 }).then(res => res.data),
+
+  // 检查出口IP（用于验证代理）
+  getProxyIP: (accountId: number): Promise<ApiResponse<{ ip: string }>> =>
+    apiClient.get(`/crown-automation/proxy-ip/${accountId}`).then(res => res.data),
+
+  // 获取自动化状态
+  getStatus: (): Promise<ApiResponse> =>
+    apiClient.get('/crown-automation/status', { timeout: 15000 }).then(res => res.data),
+
+  // 首次登录改密
+  initializeAccount: (accountId: number, data: { username: string; password: string }): Promise<ApiResponse> =>
+    apiClient.post(`/crown-automation/initialize/${accountId}`, data, { timeout: 180000 }).then(res => res.data),
+
+  // 批量登录账号
+  batchLogin: (accountIds: number[]): Promise<ApiResponse> =>
+    apiClient.post('/crown-automation/batch-login', { accountIds }, { timeout: 180000 }).then(res => res.data),
+
+  // 批量登出账号
+  batchLogout: (accountIds: number[]): Promise<ApiResponse> =>
+    apiClient.post('/crown-automation/batch-logout', { accountIds }, { timeout: 30000 }).then(res => res.data),
+
+  // 抓取赛事列表
+  getMatches: (
+    accountId: number,
+    params?: { gtype?: string; showtype?: string; rtype?: string; ltype?: string; sorttype?: string }
+  ): Promise<ApiResponse<{ matches: any[]; meta: any; raw?: string }>> =>
+    apiClient.get(`/crown-automation/matches/${accountId}`, { params, timeout: 120000 }).then(res => res.data),
+
+  // 抓取赛事（系统默认账号）
+  getMatchesSystem: (
+    params?: { gtype?: string; showtype?: string; rtype?: string; ltype?: string; sorttype?: string }
+  ): Promise<ApiResponse<{ matches: any[]; meta: any; raw?: string }>> =>
+    apiClient.get(`/crown-automation/matches-system`, { params, timeout: 120000 }).then(res => res.data),
+
+  // 设置账号是否用于赛事抓取
+  setFetchConfig: (accountId: number, useForFetch: boolean): Promise<ApiResponse> =>
+    apiClient.patch(`/crown-automation/account/${accountId}/fetch-config`, { useForFetch }).then(res => res.data),
+
+  // 同步赛事到本地
+  syncMatches: (
+    accountId: number,
+    params?: { gtype?: string; showtype?: string; rtype?: string; ltype?: string; sorttype?: string }
+  ): Promise<ApiResponse> =>
+    apiClient.post(`/crown-automation/matches/sync/${accountId}`, undefined, { params, timeout: 120000 }).then(res => res.data),
+};
+
+export default apiClient;

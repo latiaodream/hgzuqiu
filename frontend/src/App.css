@@ -1,0 +1,1290 @@
+/* CSS Variables for Blue Theme */
+:root {
+  --primary-blue: #1677FF;
+  --primary-blue-hover: #4096FF;
+  --primary-blue-light: #69B7FF;
+  --primary-blue-lighter: #91CAFF;
+  --background-blue: #F0F8FF;
+  --background-light-blue: #E6F7FF;
+  --card-background: #FFFFFF;
+  --text-primary: #1c1c1c;
+  --text-secondary: #666666;
+  --border-light: #e8f4fd;
+  --shadow-blue: rgba(22, 119, 255, 0.1);
+}
+
+#root {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.App {
+  text-align: center;
+}
+
+/* 全局样式重置 */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(135deg, var(--background-blue), var(--background-light-blue));
+  min-height: 100vh;
+}
+
+/* 赛事页面样式 - 紧凑表格版本 */
+.matches-page {
+  padding: 8px;
+  background: #f8f9fa;
+}
+
+.matches-filter-card {
+  margin-bottom: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(22, 119, 255, 0.15);
+  box-shadow: 0 10px 25px rgba(22, 119, 255, 0.08);
+  background: linear-gradient(145deg, #ffffff 0%, #f4f8ff 100%);
+}
+
+.matches-filter-card .ant-card-body {
+  padding: 14px 18px !important;
+}
+
+.filter-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.filter-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-group .ant-select,
+.filter-group .ant-segmented {
+  min-width: 120px;
+}
+
+.filter-group .ant-select-selector {
+  border-radius: 10px !important;
+  border-color: rgba(22, 119, 255, 0.25) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  padding: 0 8px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
+}
+
+.filter-group .ant-select-selector:hover,
+.filter-group .ant-select-open .ant-select-selector {
+  border-color: #1677ff !important;
+}
+
+.filter-segmented {
+  background: rgba(22, 119, 255, 0.08);
+  border-radius: 18px;
+  padding: 3px;
+}
+
+.filter-segmented .ant-segmented-item {
+  font-size: 12px;
+  padding: 2px 16px;
+  border-radius: 14px;
+  color: #406080;
+}
+
+.filter-segmented .ant-segmented-item-selected {
+  background: #1677ff;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.35);
+}
+
+.filter-actions {
+  margin-left: auto;
+  gap: 10px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.filter-actions .ant-input,
+.filter-actions .ant-input-affix-wrapper {
+  min-width: 200px;
+  border-radius: 12px;
+  border-color: rgba(22, 119, 255, 0.2);
+  background: linear-gradient(180deg, #ffffff 0%, #f6f9ff 100%);
+}
+
+.filter-actions .ant-input:hover,
+.filter-actions .ant-input:focus,
+.filter-actions .ant-input-affix-wrapper-focused {
+  border-color: #1677ff !important;
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.12);
+}
+
+.filter-actions .ant-btn {
+  min-width: 90px;
+  border-radius: 12px;
+  border-color: rgba(22, 119, 255, 0.4);
+  background: linear-gradient(180deg, #ffffff 0%, #e7f1ff 100%);
+  color: #0f4db8;
+  font-weight: 600;
+}
+
+.filter-actions .ant-btn:hover {
+  border-color: #1677ff;
+  background: linear-gradient(180deg, #f0f8ff 0%, #d8e9ff 100%);
+  color: #0b3e90;
+}
+
+.matches-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f4db8;
+  background: rgba(22, 119, 255, 0.12);
+  border: 1px solid rgba(22, 119, 255, 0.25);
+  border-radius: 999px;
+  padding: 4px 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+@media (max-width: 960px) {
+  .filter-grid {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .filter-actions {
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .filter-actions .ant-input,
+  .filter-actions .ant-input-affix-wrapper {
+    width: 100%;
+  }
+}
+
+/* 下注弹窗紧凑样式 */
+.bet-modal .ant-modal-body {
+  background: #f5f7ff;
+  padding: 16px 20px 20px;
+}
+
+.bet-modal.compact .ant-modal-body {
+  padding: 12px 16px 16px;
+  background: #ffffff;
+}
+
+.bet-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bet-modal-body.compact {
+  gap: 12px;
+}
+
+.bet-section {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid rgba(22, 119, 255, 0.08);
+  padding: 14px 16px;
+  box-shadow: 0 8px 20px rgba(22, 119, 255, 0.08);
+}
+
+.bet-modal.compact .bet-section {
+  border-radius: 8px;
+  padding: 10px 12px;
+  border-color: #d9d9d9;
+  box-shadow: none;
+}
+
+.bet-match-section {
+  background: linear-gradient(135deg, #f3f8ff 0%, #edf4ff 100%);
+  border: 1px solid rgba(22, 119, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bet-match-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bet-match-league {
+  font-size: 12px;
+  color: #3b5785;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.bet-match-teams {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #14213d;
+}
+
+.bet-match-teams .vs {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  background: rgba(22, 119, 255, 0.15);
+  color: #1677ff;
+  letter-spacing: 1px;
+}
+
+.bet-match-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: #4e5d7a;
+}
+
+.bet-match-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bet-match-score {
+  color: #ff4d4f;
+  font-weight: 600;
+}
+
+.bet-selection-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #0f4db8;
+  background: rgba(22, 119, 255, 0.12);
+  border-radius: 8px;
+  padding: 4px 10px;
+  width: fit-content;
+}
+
+.bet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bet-quick-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bet-section-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a2c4b;
+  margin-bottom: 10px;
+}
+
+.bet-modal.compact .bet-section-header {
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.bet-form .ant-form-item {
+  margin-bottom: 12px;
+}
+
+.bet-form .ant-form-item-label > label {
+  font-size: 12px;
+  color: #4c5e7d;
+}
+
+.bet-quick-form .ant-form-item {
+  margin-bottom: 8px;
+}
+
+.bet-modal.compact .ant-form-item-label > label {
+  font-size: 11px;
+}
+
+.bet-quick-row .ant-form-item {
+  margin-bottom: 0;
+}
+
+.bet-account-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.bet-account-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 6px;
+}
+
+.bet-account-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(22, 119, 255, 0.18);
+  background: #fcfdff;
+  box-shadow: 0 4px 14px rgba(22, 119, 255, 0.06);
+  transition: all 0.2s ease;
+}
+
+.bet-account-card.compact {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  gap: 4px;
+  padding-left: 36px;
+}
+
+.bet-account-card.compact .sub {
+  font-size: 11px;
+  color: #9ba3b1;
+}
+
+.bet-account-card:hover {
+  border-color: #1677ff;
+  box-shadow: 0 6px 18px rgba(22, 119, 255, 0.15);
+}
+
+.bet-account-card.active {
+  border-color: #1677ff;
+  background: rgba(22, 119, 255, 0.12);
+}
+
+.bet-account-card.offline {
+  border-color: #d9d9d9;
+  background: #f6f6f6;
+  color: #9ba3b1;
+}
+
+.bet-account-card.offline .name {
+  color: #8c8c8c;
+}
+
+.bet-account-card .bet-account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bet-account-checkbox {
+  position: relative;
+  display: block;
+}
+
+.bet-account-checkbox .ant-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+}
+
+.bet-account-checkbox .ant-checkbox + span {
+  display: block;
+  width: 100%;
+  padding-left: 0;
+}
+
+.bet-account-card .bet-account-info .name {
+  font-weight: 600;
+  color: #14213d;
+}
+
+.bet-account-card .bet-account-info .sub {
+  font-size: 12px;
+  color: #61708d;
+}
+
+.bet-account-card .bet-account-info .tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(22, 119, 255, 0.15);
+  color: #0f4db8;
+  font-size: 11px;
+  width: fit-content;
+}
+
+.bet-account-card .stats {
+  font-size: 11px;
+  color: #647491;
+}
+
+.bet-account-card .status {
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.bet-account-card .status.status-online {
+  color: #1d9f6e;
+}
+
+.bet-account-card .status.status-offline {
+  color: #b0b0b0;
+}
+
+.bet-info-chip {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #0f4db8;
+  background: rgba(22, 119, 255, 0.1);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
+.bet-modal.compact .bet-info-chip {
+  font-size: 11px;
+  padding: 3px 10px;
+}
+
+.bet-number-input {
+  width: 100%;
+  border-radius: 10px !important;
+}
+
+.bet-modal.compact .bet-number-input {
+  border-radius: 8px !important;
+}
+
+.bet-number-input .ant-input-number-input {
+  height: 32px;
+}
+
+.bet-summary {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, #f6faff 0%, #eef5ff 100%);
+}
+
+.bet-summary-item {
+  flex: 1;
+  min-width: 160px;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid rgba(22, 119, 255, 0.1);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 6px 16px rgba(22, 119, 255, 0.08);
+}
+
+.bet-summary-item .label {
+  font-size: 12px;
+  color: #5a6a8f;
+}
+
+.bet-summary-item .value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #14213d;
+}
+
+.bet-summary-item .value.danger {
+  color: #ff4d4f;
+}
+
+.bet-summary-item .value.success {
+  color: #30a46c;
+}
+
+@media (max-width: 768px) {
+  .bet-modal .ant-modal-body {
+    padding: 14px;
+  }
+
+  .bet-section {
+    padding: 12px;
+  }
+
+  .bet-account-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .bet-summary-item {
+    min-width: 140px;
+  }
+}
+
+.bet-quick-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bet-quick-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  color: #1d1d1f;
+}
+
+.bet-quick-title .score {
+  font-size: 13px;
+  color: #ff4d4f;
+}
+
+.bet-quick-sub {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: #5a5a5a;
+}
+
+.bet-quick-selection {
+  background: #f1f3f8;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.bet-modal.compact .bet-quick-selection {
+  padding: 6px 8px;
+}
+
+.bet-quick-row {
+  margin-bottom: 4px;
+}
+
+.bet-quick-item .ant-input,
+.bet-quick-item .ant-input-number,
+.bet-quick-item .ant-select-selector {
+  border-radius: 6px !important;
+  height: 36px;
+}
+
+.bet-modal.compact .bet-quick-item .ant-input,
+.bet-modal.compact .bet-quick-item .ant-input-number,
+.bet-modal.compact .bet-quick-item .ant-select-selector {
+  height: 32px;
+}
+
+.bet-quick-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bet-quick-mode .label {
+  font-size: 11px;
+  color: #606060;
+}
+
+.bet-quick-mode .mode-buttons {
+  display: inline-flex;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.bet-quick-mode .mode-buttons button {
+  width: 50%;
+  padding: 6px 0;
+  border: none;
+  background: #f5f5f5;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.bet-quick-mode .mode-buttons button.active {
+  background: #0f4db8;
+  color: #ffffff;
+}
+
+.bet-quick-mode .mode-buttons button:not(.active):hover {
+  background: #e6e6e6;
+}
+
+/* 紧凑表格样式 */
+.compact-matches-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.compact-table-header {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(96px, 1fr));
+  background: #e0e0e0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  padding: 6px 10px;
+  border: 1px solid #d4d4d4;
+  border-radius: 6px;
+}
+
+.header-cell {
+  text-align: center;
+}
+
+.compact-match-card {
+  border: 1px solid #d5d5d5;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f2f2f2;
+}
+
+.compact-match-card.even {
+  background: #f6f6f6;
+}
+
+.compact-match-card:hover {
+  border-color: #a3a3a3;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.match-header-box {
+  background: #dedede;
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.match-league {
+  font-size: 12px;
+  font-weight: 600;
+  color: #3f3f3f;
+}
+
+.match-score-box {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.match-team {
+  font-size: 14px;
+  font-weight: 600;
+  color: #353535;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.match-team.home {
+  text-align: right;
+}
+
+.match-team.away {
+  text-align: left;
+}
+
+.match-score-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.score-main {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+  letter-spacing: 0.5px;
+}
+
+.score-sub {
+  font-size: 11px;
+  color: #555;
+}
+
+.odds-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(96px, 1fr));
+  background: #fafafa;
+  border-top: 1px solid #d5d5d5;
+}
+
+.odds-col {
+  padding: 6px 4px;
+  border-left: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  background: #ffffff;
+}
+
+.odds-col:first-child {
+  border-left: none;
+}
+
+.odds-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.odds-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  color: #1a2533;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, #f5f9ff 100%);
+  border: 1px solid rgba(22, 119, 255, 0.16);
+  min-height: 38px;
+}
+
+.odds-item:hover {
+  background: linear-gradient(180deg, #1677ff 0%, #4096ff 100%);
+  color: white;
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 6px 18px rgba(22, 119, 255, 0.24);
+  border-color: transparent;
+}
+
+.odds-item .odds-line {
+  font-size: 9px;
+  color: #6b7280;
+  font-weight: 500;
+  text-align: center;
+}
+
+.odds-item:hover .odds-line {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.odds-item .odds-value {
+  font-weight: 700;
+  font-size: 13px;
+  color: #0f4db8;
+}
+
+.odds-item:hover .odds-value {
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Ant Design 样式覆盖 - Blue Theme */
+.ant-layout {
+  background: transparent;
+}
+
+.ant-layout-header {
+  height: 64px;
+  line-height: 64px;
+  background: var(--card-background);
+  border-bottom: 1px solid var(--border-light);
+  box-shadow: 0 2px 8px var(--shadow-blue);
+}
+
+.ant-layout-sider {
+  position: fixed !important;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  background: var(--primary-blue) !important;
+  box-shadow: 2px 0 12px rgba(22, 119, 255, 0.25);
+}
+
+.ant-menu-dark.ant-menu-inline .ant-menu-item {
+  margin: 4px 8px;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.ant-menu-dark.ant-menu-inline .ant-menu-item-selected {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.ant-menu-dark.ant-menu-inline .ant-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff;
+}
+
+.ant-menu-dark {
+  background: transparent !important;
+}
+
+/* 卡片阴影效果 - Blue Theme */
+.ant-card {
+  background: var(--card-background);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px var(--shadow-blue);
+}
+
+.ant-card:hover {
+  box-shadow: 0 6px 20px rgba(22, 119, 255, 0.15);
+  border-color: var(--primary-blue-light);
+  transition: all 0.3s ease;
+  transform: translateY(-2px);
+}
+
+/* 统计卡片样式 */
+.ant-statistic-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.ant-statistic-content {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* 表格样式 */
+.ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: #f5f7fa;
+}
+
+/* 按钮样式 - Blue Theme */
+.ant-btn-primary {
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+  box-shadow: 0 2px 8px var(--shadow-blue);
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.ant-btn-primary:hover,
+.ant-btn-primary:focus {
+  background: var(--primary-blue-hover);
+  border-color: var(--primary-blue-hover);
+  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.ant-btn {
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.ant-btn:hover {
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+/* 表单样式 */
+.ant-form-item-label > label {
+  font-weight: 500;
+}
+
+.ant-input,
+.ant-input-password {
+  border-radius: 6px;
+}
+
+.ant-input:focus,
+.ant-input-password:focus,
+.ant-input-focused {
+  border-color: #40a9ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* 标签样式 */
+.ant-tag {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* 分页样式 - Blue Theme */
+.ant-pagination-item-active {
+  background: var(--primary-blue);
+  border-color: var(--primary-blue);
+}
+
+.ant-pagination-item-active a {
+  color: #fff;
+}
+
+.ant-pagination-item:hover {
+  border-color: var(--primary-blue-light);
+}
+
+.ant-pagination-item a:hover {
+  color: var(--primary-blue);
+}
+
+/* 模态框样式 */
+.ant-modal-header {
+  border-bottom: 1px solid #f0f0f0;
+  border-radius: 6px 6px 0 0;
+}
+
+.ant-modal-footer {
+  border-top: 1px solid #f0f0f0;
+  border-radius: 0 0 6px 6px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    position: fixed !important;
+    z-index: 999;
+    height: 100vh;
+  }
+
+  .ant-layout-content {
+    margin-left: 0 !important;
+  }
+}
+
+/* 加载动画 */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+/* 空状态样式 */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.empty-state .ant-empty-description {
+  color: #999;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-blue-light);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-blue);
+}
+
+/* Account Card Layout Styles */
+.account-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.account-card {
+  background: var(--card-background);
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  font-size: 12px;
+}
+
+.account-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.15);
+  border-color: var(--primary-blue-light);
+}
+
+/* 头部区域样式 */
+.account-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.account-card-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-card-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f0f8ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-card-user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.account-card-username {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.account-card-user-id {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.account-card-status-switch {
+  display: flex;
+  align-items: center;
+}
+
+/* 详细信息区域样式 */
+.account-card-details {
+  margin-bottom: 12px;
+}
+
+.account-card-detail-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr auto 1fr;
+  gap: 8px 16px;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.account-card-detail-row .ant-typography {
+  font-size: 12px;
+  margin: 0;
+}
+
+.account-card-detail-row .ant-typography-strong {
+  color: var(--text-secondary);
+  font-weight: normal;
+}
+
+.account-card-limits {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f5f5f5;
+}
+
+.account-card-limit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.account-card-limit-row .ant-typography {
+  font-size: 12px;
+  margin: 0;
+}
+
+.account-card-limit-row .ant-typography-strong {
+  color: var(--text-secondary);
+  font-weight: normal;
+  min-width: 30px;
+}
+
+/* 底部操作区域样式 */
+.account-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.account-card-actions-left {
+  display: flex;
+  align-items: center;
+}
+
+.account-card-actions-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.account-card-actions .ant-btn {
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+}
+
+.account-card-actions .ant-btn:hover {
+  color: var(--primary-blue);
+  background: rgba(22, 119, 255, 0.05);
+}
+
+.account-card-actions .ant-btn.ant-btn-dangerous {
+  color: #ff4d4f;
+}
+
+.account-card-actions .ant-btn.ant-btn-dangerous:hover {
+  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.05);
+}
+
+/* Responsive breakpoints for account cards */
+@media (max-width: 576px) {
+  .account-card-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px 0;
+  }
+
+  .account-card {
+    padding: 12px;
+    margin: 0;
+  }
+
+  .account-card-detail-row {
+    grid-template-columns: auto 1fr;
+    gap: 4px 8px;
+  }
+
+  .account-card-detail-row > *:nth-child(3),
+  .account-card-detail-row > *:nth-child(4),
+  .account-card-detail-row > *:nth-child(5),
+  .account-card-detail-row > *:nth-child(6) {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 8px;
+  }
+
+  .account-card-actions .ant-btn {
+    height: 24px;
+    padding: 0 6px;
+    font-size: 11px;
+  }
+
+  .account-card-username {
+    font-size: 14px;
+  }
+
+  .account-card-avatar {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (max-width: 768px) and (min-width: 577px) {
+  .account-card-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .account-card {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  .account-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .account-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 18px;
+  }
+}
+
+/* 固定导航栏的内容区域适配 */
+.ant-layout-content {
+  margin-left: 200px !important;
+  transition: margin-left 0.2s ease;
+}
+
+.ant-layout-sider-collapsed + .ant-layout .ant-layout-content {
+  margin-left: 80px !important;
+}
+
+/* 响应式设计 - 固定导航栏 */
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    position: fixed !important;
+    z-index: 1001 !important;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .ant-layout-sider:not(.ant-layout-sider-collapsed) {
+    transform: translateX(0);
+  }
+
+  .ant-layout-content {
+    margin-left: 0 !important;
+  }
+
+  .matches-meta {
+    font-size: 16px;
+    padding: 10px 12px;
+  }
+}

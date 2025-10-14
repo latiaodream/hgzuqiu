@@ -1,0 +1,254 @@
+import React, { useState } from 'react';
+import { Layout, Menu, Avatar, Dropdown, Space, Button, theme } from 'antd';
+import {
+  UserOutlined,
+  TeamOutlined,
+  DollarOutlined,
+  DashboardOutlined,
+  SettingOutlined,
+  LogoutOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  CalendarOutlined,
+  FileTextOutlined,
+} from '@ant-design/icons';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+
+const { Header, Sider, Content } = Layout;
+
+const MainLayout: React.FC = () => {
+  const [collapsed, setCollapsed] = useState(false);
+  const { user, logout, isAdmin, isAgent, isStaff } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const {
+    token: { colorBgContainer, borderRadiusLG },
+  } = theme.useToken();
+
+  // 根据角色配置菜单项
+  const getMenuItems = () => {
+    const baseItems = [
+      {
+        key: '/dashboard',
+        icon: <DashboardOutlined />,
+        label: '数据看板',
+      },
+    ];
+
+    // 超级管理员菜单（显示所有功能）
+    if (isAdmin) {
+      baseItems.push(
+        {
+          key: '/agents',
+          icon: <TeamOutlined />,
+          label: '代理管理',
+        },
+        {
+          key: '/staff',
+          icon: <TeamOutlined />,
+          label: '员工管理',
+        },
+        {
+          key: '/fetch-accounts',
+          icon: <TeamOutlined />,
+          label: '抓取账号',
+        },
+        {
+          key: '/accounts',
+          icon: <UserOutlined />,
+          label: '账号管理',
+        },
+        {
+          key: '/betting',
+          icon: <FileTextOutlined />,
+          label: '下注记录',
+        },
+        {
+          key: '/matches',
+          icon: <CalendarOutlined />,
+          label: '赛事管理',
+        },
+        {
+          key: '/coins',
+          icon: <DollarOutlined />,
+          label: '金币流水',
+        }
+      );
+    }
+
+    // 代理菜单（不包括管理员）
+    if (isAgent && !isAdmin) {
+      baseItems.push(
+        {
+          key: '/staff',
+          icon: <TeamOutlined />,
+          label: '员工管理',
+        },
+        {
+          key: '/accounts',
+          icon: <UserOutlined />,
+          label: '账号管理',
+        },
+        {
+          key: '/betting',
+          icon: <FileTextOutlined />,
+          label: '下注记录',
+        },
+        {
+          key: '/coins',
+          icon: <DollarOutlined />,
+          label: '金币流水',
+        }
+      );
+    }
+
+    // 员工业务功能菜单（只有角色为staff的员工才能看到）
+    if (user?.role === 'staff') {
+      baseItems.push(
+        {
+          key: '/accounts',
+          icon: <UserOutlined />,
+          label: '账号管理',
+        },
+        {
+          key: '/betting',
+          icon: <FileTextOutlined />,
+          label: '下注记录',
+        },
+        {
+          key: '/matches',
+          icon: <CalendarOutlined />,
+          label: '赛事管理',
+        },
+        {
+          key: '/coins',
+          icon: <DollarOutlined />,
+          label: '金币流水',
+        }
+      );
+    }
+
+    // 设置菜单（所有人都有）
+    baseItems.push({
+      key: '/settings',
+      icon: <SettingOutlined />,
+      label: '个人中心',
+    });
+
+    return baseItems;
+  };
+
+  const menuItems = getMenuItems();
+
+  // 用户下拉菜单
+  const userMenuItems = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: '个人信息',
+      onClick: () => navigate('/profile'),
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: '账户设置',
+      onClick: () => navigate('/settings'),
+    },
+    {
+      type: 'divider' as const,
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '退出登录',
+      onClick: logout,
+    },
+  ];
+
+  const handleMenuClick = ({ key }: { key: string }) => {
+    navigate(key);
+  };
+
+  return (
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider
+        trigger={null}
+        collapsible
+        collapsed={collapsed}
+        className="fixed-sider"
+      >
+        <div style={{
+          height: 64,
+          margin: 16,
+          background: 'rgba(255, 255, 255, 0.15)',
+          borderRadius: 8,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontSize: collapsed ? 16 : 18,
+          fontWeight: 'bold',
+        }}>
+          {collapsed ? '智投' : '智投系统'}
+        </div>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems}
+          onClick={handleMenuClick}
+          style={{
+            background: 'transparent',
+            border: 'none'
+          }}
+        />
+      </Sider>
+      <Layout>
+        <Header
+          style={{
+            padding: '0 16px',
+            background: colorBgContainer,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #f0f0f0',
+          }}
+        >
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+            style={{
+              fontSize: '16px',
+              width: 64,
+              height: 64,
+            }}
+          />
+
+          <Space>
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+              <Space style={{ cursor: 'pointer' }}>
+                <Avatar icon={<UserOutlined />} />
+                <span>{user?.username}</span>
+              </Space>
+            </Dropdown>
+          </Space>
+        </Header>
+        <Content
+          style={{
+            margin: '16px',
+            padding: 24,
+            minHeight: 280,
+            background: colorBgContainer,
+            borderRadius: borderRadiusLG,
+          }}
+        >
+          <Outlet />
+        </Content>
+      </Layout>
+    </Layout>
+  );
+};
+
+export default MainLayout;

@@ -1,0 +1,604 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Modal,
+  Form,
+  Input,
+  Select,
+  Switch,
+  InputNumber,
+  Row,
+  Col,
+  Tabs,
+  Card,
+  Space,
+  message,
+  Divider,
+  Button,
+  Tooltip,
+} from 'antd';
+import type { CrownAccount, Group, CrownAccountCreateRequest } from '../../types';
+import { accountApi, groupApi } from '../../services/api';
+import { ReloadOutlined } from '@ant-design/icons';
+import { generateAccountPassword, generateAccountUsername } from '../../utils/credentials';
+
+const { Option } = Select;
+
+const DEVICE_OPTIONS = [
+  'iPhone 17',
+  'iPhone 16',
+  'iPhone 15',
+  'iPhone 14',
+  'iPhone 13',
+  'iPhone 12',
+  'iPhone 11',
+  'iPhone Xs',
+  'iPhone X',
+  'iPhone 8',
+  'iPhone 7',
+  'iPhone 6s',
+  'iPhone 6',
+  'Android',
+  'Desktop',
+];
+
+interface AccountFormModalProps {
+  visible: boolean;
+  account: CrownAccount | null;
+  groups: Group[];
+  onCancel: () => void;
+  onSubmit: () => void;
+  onGroupCreated?: (group: Group) => void;
+}
+
+const AccountFormModal: React.FC<AccountFormModalProps> = ({
+  visible,
+  account,
+  groups,
+  onCancel,
+  onSubmit,
+  onGroupCreated,
+}) => {
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [proxyEnabled, setProxyEnabled] = useState(false);
+  const [localGroups, setLocalGroups] = useState<Group[]>(groups);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
+
+  const regenerateCredential = useCallback((field: 'username' | 'password') => {
+    const value = field === 'username' ? generateAccountUsername() : generateAccountPassword();
+    form.setFieldsValue({ [field]: value });
+  }, [form]);
+
+  useEffect(() => {
+    setLocalGroups(groups);
+  }, [groups]);
+
+  useEffect(() => {
+    if (visible) {
+      if (account) {
+        // 编辑模式
+        form.setFieldsValue({
+          ...account,
+          stop_profit_limit: account.stop_profit_limit ?? 0,
+        });
+        setProxyEnabled(account.proxy_enabled);
+      } else {
+        // 新增模式
+        form.resetFields();
+        setProxyEnabled(false);
+        // 设置默认值
+        form.setFieldsValue({
+          username: generateAccountUsername(),
+          password: generateAccountPassword(),
+          game_type: '足球',
+          source: '自有',
+          currency: 'CNY',
+          discount: 1.0,
+          note: '高',
+          stop_profit_limit: 0,
+          device_type: 'iPhone 14',
+          proxy_enabled: false,
+          football_prematch_limit: 100000,
+          football_live_limit: 100000,
+          basketball_prematch_limit: 100000,
+          basketball_live_limit: 100000,
+        });
+      }
+    }
+  }, [visible, account, form]);
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      setLoading(true);
+
+      const requestData: CrownAccountCreateRequest = {
+        ...values,
+        proxy_enabled: proxyEnabled,
+      };
+
+      // 如果未启用代理，清空代理相关字段
+      if (!proxyEnabled) {
+        requestData.proxy_type = undefined;
+        requestData.proxy_host = undefined;
+        requestData.proxy_port = undefined;
+        requestData.proxy_username = undefined;
+        requestData.proxy_password = undefined;
+      }
+
+      let response;
+      if (account) {
+        // 编辑模式
+        response = await accountApi.updateAccount(account.id, requestData);
+      } else {
+        // 新增模式
+        response = await accountApi.createAccount(requestData);
+      }
+
+      if (response.success) {
+        message.success(account ? '账号更新成功' : '账号创建成功');
+        onSubmit();
+      }
+    } catch (error) {
+      console.error('Failed to save account:', error);
+      message.error('保存账号失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    form.resetFields();
+    setProxyEnabled(false);
+    onCancel();
+  };
+
+  const handleCreateGroup = async () => {
+    const name = newGroupName.trim();
+    if (!name) {
+      message.warning('请输入分组名称');
+      return;
+    }
+
+    try {
+      setCreatingGroup(true);
+      const response = await groupApi.createGroup({ name });
+      if (response.success && response.data) {
+        const createdGroup = response.data;
+        setLocalGroups(prev => (
+          prev.some(group => group.id === createdGroup.id)
+            ? prev
+            : [...prev, createdGroup]
+        ));
+        form.setFieldsValue({ group_id: createdGroup.id });
+        onGroupCreated?.(createdGroup);
+        setNewGroupName('');
+        message.success('分组创建成功');
+      } else {
+        message.error(response.error || '创建分组失败');
+      }
+    } catch (error) {
+      console.error('Failed to create group:', error);
+      message.error('创建分组失败');
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  return (
+    <Modal
+      title={account ? '编辑账号' : '新增账号'}
+      open={visible}
+      onOk={handleSubmit}
+      onCancel={handleCancel}
+      confirmLoading={loading}
+      width={800}
+      maskClosable={false}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onValuesChange={(_, allValues) => {
+          if ('proxy_enabled' in allValues) {
+            setProxyEnabled(allValues.proxy_enabled);
+          }
+        }}
+      >
+        <Tabs
+          defaultActiveKey="basic"
+          items={[
+            {
+              key: 'basic',
+              label: '基本信息',
+              children: (
+                <>
+                  <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                      <Form.Item
+                        name="group_id"
+                        label="所属分组"
+                        rules={[{ required: true, message: '请选择分组' }]}
+                      >
+                        <Select
+                          placeholder="选择分组"
+                          dropdownRender={(menu) => (
+                            <>
+                              {menu}
+                              <Divider style={{ margin: '8px 0' }} />
+                              <Space style={{ padding: '0 8px 4px' }}>
+                                <Input
+                                  placeholder="新分组名称"
+                                  value={newGroupName}
+                                  onChange={(e) => setNewGroupName(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleCreateGroup();
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  type="link"
+                                  onClick={handleCreateGroup}
+                                  loading={creatingGroup}
+                                >
+                                  新增分组
+                                </Button>
+                              </Space>
+                            </>
+                          )}
+                        >
+                          {localGroups.map(group => (
+                            <Option key={group.id} value={group.id}>
+                              {group.name}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Form.Item
+                        name="username"
+                        label="账号"
+                        rules={[
+                          { required: true, message: '请输入账号' },
+                          { min: 3, message: '账号至少3个字符' },
+                        ]}
+                      >
+                        <Input
+                          placeholder="请输入皇冠账号"
+                          suffix={(
+                            <Tooltip title="重新生成">
+                              <ReloadOutlined
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  regenerateCredential('username');
+                                }}
+                                style={{ cursor: 'pointer', color: '#1677FF' }}
+                              />
+                            </Tooltip>
+                          )}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                      <Form.Item
+                        name="password"
+                        label="密码"
+                        rules={[{ required: true, message: '请输入密码' }]}
+                      >
+                        <Input
+                          placeholder="请输入密码"
+                          type="password"
+                          autoComplete="new-password"
+                          suffix={(
+                            <Tooltip title="重新生成">
+                              <ReloadOutlined
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  regenerateCredential('password');
+                                }}
+                                style={{ cursor: 'pointer', color: '#1677FF' }}
+                              />
+                            </Tooltip>
+                          )}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Form.Item
+                        name="display_name"
+                        label="显示名称"
+                      >
+                        <Input placeholder="可选，用于显示的名称" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={16}>
+                    <Col xs={24} sm={8}>
+                      <Form.Item
+                        name="game_type"
+                        label="游戏类型"
+                      >
+                        <Select>
+                          <Option value="足球">足球</Option>
+                          <Option value="篮球">篮球</Option>
+                          <Option value="综合">综合</Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                      <Form.Item
+                        name="source"
+                        label="来源"
+                      >
+                        <Select>
+                          <Option value="自有">自有</Option>
+                          <Option value="代理">代理</Option>
+                          <Option value="合作">合作</Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                      <Form.Item
+                        name="currency"
+                        label="货币"
+                      >
+                        <Select>
+                          <Option value="CNY">CNY</Option>
+                          <Option value="USD">USD</Option>
+                          <Option value="EUR">EUR</Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={16}>
+                    <Col xs={24} sm={8}>
+                      <Form.Item
+                        name="discount"
+                        label="折扣 (0-1)"
+                        rules={[{
+                          required: true,
+                          message: '请输入折扣，例如 0.85',
+                        }, {
+                          validator: (_, value) => {
+                            if (value === undefined || value === null) {
+                              return Promise.resolve();
+                            }
+                            const numeric = Number(value);
+                            if (Number.isNaN(numeric) || numeric <= 0 || numeric > 1) {
+                              return Promise.reject(new Error('折扣需大于 0 且小于等于 1'));
+                            }
+                            return Promise.resolve();
+                          },
+                        }]}
+                        extra="皇冠下注金额 = 平台下注金额 ÷ 折扣。例如折扣 0.80，平台 100 → 皇冠 125"
+                      >
+                        <InputNumber
+                          min={0.01}
+                          max={1}
+                          step={0.01}
+                          precision={2}
+                          placeholder="0.80"
+                          style={{ width: '100%' }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                      <Form.Item
+                        name="note"
+                        label="备注"
+                      >
+                        <Select>
+                          <Option value="高">高</Option>
+                          <Option value="中">中</Option>
+                          <Option value="低">低</Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                      <Form.Item
+                        name="device_type"
+                        label="设备类型"
+                      >
+                        <Select placeholder="选择设备类型">
+                          {DEVICE_OPTIONS.map(device => (
+                            <Option key={device} value={device}>
+                              {device}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </>
+              ),
+            },
+            {
+              key: 'proxy',
+              label: '代理设置',
+              children: (
+                <>
+                  <Form.Item name="proxy_enabled" label="启用代理" valuePropName="checked">
+                    <Switch />
+                  </Form.Item>
+
+                  {proxyEnabled && (
+                    <>
+                      <Row gutter={16}>
+                        <Col xs={24} sm={8}>
+                          <Form.Item
+                            name="proxy_type"
+                            label="代理类型"
+                            rules={[{ required: true, message: '请选择代理类型' }]}
+                          >
+                            <Select>
+                              <Option value="HTTP">HTTP</Option>
+                              <Option value="HTTPS">HTTPS</Option>
+                              <Option value="SOCKS5">SOCKS5</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={8}>
+                          <Form.Item
+                            name="proxy_host"
+                            label="代理地址"
+                            rules={[{ required: true, message: '请输入代理地址' }]}
+                          >
+                            <Input placeholder="127.0.0.1" />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={8}>
+                          <Form.Item
+                            name="proxy_port"
+                            label="代理端口"
+                            rules={[{ required: true, message: '请输入代理端口' }]}
+                          >
+                            <InputNumber
+                              min={1}
+                              max={65535}
+                              placeholder="8080"
+                              style={{ width: '100%' }}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="proxy_username"
+                            label="代理用户名"
+                          >
+                            <Input placeholder="可选" />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="proxy_password"
+                            label="代理密码"
+                          >
+                            <Input.Password placeholder="可选" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </>
+                  )}
+                </>
+              ),
+            },
+            {
+              key: 'limits',
+              label: '限额设置',
+              children: (
+                <>
+                  <Card title="风控设置" size="small" style={{ marginBottom: 16 }}>
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="stop_profit_limit"
+                          label="止盈金额"
+                          rules={[
+                            { required: true, message: '请输入止盈金额' },
+                            {
+                              validator: async (_, value) => {
+                                if (value === undefined || value === null) {
+                                  return;
+                                }
+                                if (Number(value) < 0) {
+                                  throw new Error('止盈金额不能为负数');
+                                }
+                              },
+                            },
+                          ]}
+                          extra="达到该金额后系统会停止自动下注"
+                        >
+                          <InputNumber
+                            min={0}
+                            step={100}
+                            precision={2}
+                            placeholder="0"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Card>
+
+                  <Card title="足球限额" size="small" style={{ marginBottom: 16 }}>
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="football_prematch_limit"
+                          label="赛前限额"
+                        >
+                          <InputNumber
+                            min={0}
+                            placeholder="100000"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="football_live_limit"
+                          label="滚球限额"
+                        >
+                          <InputNumber
+                            min={0}
+                            placeholder="100000"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Card>
+
+                  <Card title="篮球限额" size="small">
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="basketball_prematch_limit"
+                          label="赛前限额"
+                        >
+                          <InputNumber
+                            min={0}
+                            placeholder="100000"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="basketball_live_limit"
+                          label="滚球限额"
+                        >
+                          <InputNumber
+                            min={0}
+                            placeholder="100000"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Card>
+                </>
+              ),
+            },
+          ]}
+        />
+      </Form>
+    </Modal>
+  );
+};
+
+export default AccountFormModal;

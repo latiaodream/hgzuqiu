@@ -1,0 +1,48 @@
+# Node.js
+node_modules/
+.npm/
+
+# Build outputs
+dist/
+frontend/dist/
+backend/dist/
+
+# Env & secrets
+backend/.env
+backend/.env.local
+backend/.env.*
+.env
+database/*.sqlite
+
+# Logs
+*.log
+logs/
+backend/*-debug.log
+
+# PID / runtime
+*.pid
+backend/tmp/
+
+# Playwright/automation artifacts
+passcodeCtx-*
+debug-*
+bet-error-*
+init-*-raw.log
+siweima*.html
+view-source_*
+创建账号界面.htm
+修改密码页面.htm
+四位.md
+下注元素*.md
+余额.md
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Misc
+*.bak
+*.tmp
+*.swp
