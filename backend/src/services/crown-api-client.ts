@@ -2099,7 +2099,7 @@ export class CrownApiClient {
         }
       );
 
-      const responseText = response.data;
+      const responseText = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
       console.log(`📥 [API] 修改密码响应:`, responseText.substring(0, 500));
 
       // 检查响应是否为错误消息
