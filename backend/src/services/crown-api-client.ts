@@ -1996,7 +1996,7 @@ export class CrownApiClient {
     success: boolean;
     message: string;
   }> {
-    if (!this.uid) {
+    if (!this.uid || !this.username) {
       return {
         success: false,
         message: '未登录，无法修改账号',
