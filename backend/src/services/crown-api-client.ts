@@ -2005,9 +2005,10 @@ export class CrownApiClient {
 
     try {
       const params = new URLSearchParams({
-        p: 'chg_username',
+        p: 'chg_passwd_safe',
         ver: this.version,
-        username: newUsername,
+        username: this.username,
+        chk_name: newUsername,
         uid: this.uid,
         langx: 'zh-cn',
       });
