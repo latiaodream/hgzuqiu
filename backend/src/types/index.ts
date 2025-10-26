@@ -94,6 +94,30 @@ export interface CrownAccount {
     error_message?: string;
     created_at: string;
     updated_at: string;
+    // 共享相关字段
+    shared_from_user_id?: number;      // 如果是共享账号，记录来自哪个用户
+    shared_from_username?: string;     // 共享来源用户名
+}
+
+// 账号共享相关类型
+export interface AccountShare {
+    id: number;
+    account_id: number;
+    owner_user_id: number;
+    shared_to_user_id: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface AccountShareRequest {
+    account_id: number;
+    shared_to_user_ids: number[];
+}
+
+export interface AccountShareResponse {
+    success: boolean;
+    message: string;
+    shares?: AccountShare[];
 }
 
 export interface CrownAccountCreateRequest {
@@ -198,6 +222,8 @@ export interface Bet {
     bet_option: string;
     bet_amount: number;
     odds: number;
+    min_odds?: number;
+    official_odds?: number;
     single_limit?: number;
     interval_seconds: number;
     quantity: number;
@@ -205,6 +231,10 @@ export interface Bet {
     result?: 'win' | 'lose' | 'draw' | 'cancelled';
     payout: number;
     profit_loss: number;
+    virtual_bet_amount?: number;
+    virtual_profit_loss?: number;
+    result_score?: string;
+    result_text?: string;
     official_bet_id?: string;
     confirmed_at?: string;
     settled_at?: string;
@@ -219,6 +249,7 @@ export interface BetCreateRequest {
     bet_option: string;
     bet_amount: number;
     odds: number;
+    min_odds?: number;
     single_limit?: number;
     interval_seconds?: number;
     quantity?: number;

@@ -1,0 +1,119 @@
+curl 'https://hga050.com/transform.php?ver=2025-10-16-fix342_120' \
+-H 'Accept: */*' \
+-H 'Accept-Language: en,en-US;q=0.9,zh-HK;q=0.8,zh;q=0.7,zh-CN;q=0.6' \
+-H 'Cache-Control: no-cache' \
+-H 'Connection: keep-alive' \
+-H 'Content-type: application/x-www-form-urlencoded' \
+-b 'box4pwd_notshow_38893554=Mzg4OTM1NTRfTg==; box4pwd_notshow_39097382=MzkwOTczODJfWQ==; box4pwd_notshow_39199386=MzkxOTkzODZfWQ==; CookieChk=WQ; protocolstr=aHR0cHM=; test=aW5pdA; box4pwd_notshow_39199455=MzkxOTk0NTVfWQ==; iorChgSw=WQ==; myGameVer_39199455=XzIxMTIyOA==; ft_myGame_39199455=e30=; cu=WQ==; cuipv6=Tg==; ipv6=Tg==; es_myGame_39199455=e30=; login_39199455=MTc2MDk5NjM1Mg' \
+-H 'Origin: https://hga050.com' \
+-H 'Pragma: no-cache' \
+-H 'Sec-Fetch-Dest: empty' \
+-H 'Sec-Fetch-Mode: cors' \
+-H 'Sec-Fetch-Site: same-origin' \
+-H 'User-Agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36' \
+-H 'sec-ch-ua: "Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"' \
+-H 'sec-ch-ua-mobile: ?1' \
+-H 'sec-ch-ua-platform: "Android"' \
+--data-raw 'p=FT_bet&uid=qf821vr52zm39199455l126653b0&ver=2025-10-16-fix342_120&langx=zh-cn&odd_f_type=H&golds=50&gid=8241311&gtype=FT&wtype=RM&rtype=RMN&chose_team=N&ioratio=5.3&con=0&ratio=3550&autoOdd=Y&timestamp=1760996366981&timestamp2=&isRB=Y&imp=N&ptype=&isYesterday=N&f=1R' ;
+curl 'https://hga050.com/transform.php?ver=2025-10-16-fix342_120' \
+-H 'Accept: */*' \
+-H 'Accept-Language: en,en-US;q=0.9,zh-HK;q=0.8,zh;q=0.7,zh-CN;q=0.6' \
+-H 'Cache-Control: no-cache' \
+-H 'Connection: keep-alive' \
+-H 'Content-type: application/x-www-form-urlencoded' \
+-b 'box4pwd_notshow_38893554=Mzg4OTM1NTRfTg==; box4pwd_notshow_39097382=MzkwOTczODJfWQ==; box4pwd_notshow_39199386=MzkxOTkzODZfWQ==; CookieChk=WQ; protocolstr=aHR0cHM=; test=aW5pdA; box4pwd_notshow_39199455=MzkxOTk0NTVfWQ==; iorChgSw=WQ==; myGameVer_39199455=XzIxMTIyOA==; ft_myGame_39199455=e30=; cu=WQ==; cuipv6=Tg==; ipv6=Tg==; es_myGame_39199455=e30=; login_39199455=MTc2MDk5NjM1Mg' \
+-H 'Origin: https://hga050.com' \
+-H 'Pragma: no-cache' \
+-H 'Sec-Fetch-Dest: empty' \
+-H 'Sec-Fetch-Mode: cors' \
+-H 'Sec-Fetch-Site: same-origin' \
+-H 'User-Agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36' \
+-H 'sec-ch-ua: "Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"' \
+-H 'sec-ch-ua-mobile: ?1' \
+-H 'sec-ch-ua-platform: "Android"' \
+--data-raw 'p=get_today_wagers&uid=qf821vr52zm39199455l126653b0&langx=zh-cn&LS=g&selGtype=ALL&chk_cw=N&ts=1760995747960&format=json&db_slow=N' ;
+curl 'https://hga050.com/transform.php?ver=2025-10-16-fix342_120' \
+-H 'Accept: */*' \
+-H 'Accept-Language: en,en-US;q=0.9,zh-HK;q=0.8,zh;q=0.7,zh-CN;q=0.6' \
+-H 'Cache-Control: no-cache' \
+-H 'Connection: keep-alive' \
+-H 'Content-type: application/x-www-form-urlencoded' \
+-b 'box4pwd_notshow_38893554=Mzg4OTM1NTRfTg==; box4pwd_notshow_39097382=MzkwOTczODJfWQ==; box4pwd_notshow_39199386=MzkxOTkzODZfWQ==; CookieChk=WQ; protocolstr=aHR0cHM=; test=aW5pdA; box4pwd_notshow_39199455=MzkxOTk0NTVfWQ==; iorChgSw=WQ==; myGameVer_39199455=XzIxMTIyOA==; ft_myGame_39199455=e30=; cu=WQ==; cuipv6=Tg==; ipv6=Tg==; es_myGame_39199455=e30=; login_39199455=MTc2MDk5NjM1Mg' \
+-H 'Origin: https://hga050.com' \
+-H 'Pragma: no-cache' \
+-H 'Sec-Fetch-Dest: empty' \
+-H 'Sec-Fetch-Mode: cors' \
+-H 'Sec-Fetch-Site: same-origin' \
+-H 'User-Agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36' \
+-H 'sec-ch-ua: "Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"' \
+-H 'sec-ch-ua-mobile: ?1' \
+-H 'sec-ch-ua-platform: "Android"' \
+--data-raw 'p=service_mainget&ver=2025-10-16-fix342_120&&langx=zh-cn&uid=qf821vr52zm39199455l126653b0&login=Y' ;
+curl 'https://hga050.com/transform.php?ver=2025-10-16-fix342_120' \
+-H 'Accept: */*' \
+-H 'Accept-Language: en,en-US;q=0.9,zh-HK;q=0.8,zh;q=0.7,zh-CN;q=0.6' \
+-H 'Cache-Control: no-cache' \
+-H 'Connection: keep-alive' \
+-H 'Content-type: application/x-www-form-urlencoded' \
+-b 'box4pwd_notshow_38893554=Mzg4OTM1NTRfTg==; box4pwd_notshow_39097382=MzkwOTczODJfWQ==; box4pwd_notshow_39199386=MzkxOTkzODZfWQ==; CookieChk=WQ; protocolstr=aHR0cHM=; test=aW5pdA; box4pwd_notshow_39199455=MzkxOTk0NTVfWQ==; iorChgSw=WQ==; myGameVer_39199455=XzIxMTIyOA==; ft_myGame_39199455=e30=; cu=WQ==; cuipv6=Tg==; ipv6=Tg==; es_myGame_39199455=e30=; login_39199455=MTc2MDk5NjM1Mg' \
+-H 'Origin: https://hga050.com' \
+-H 'Pragma: no-cache' \
+-H 'Sec-Fetch-Dest: empty' \
+-H 'Sec-Fetch-Mode: cors' \
+-H 'Sec-Fetch-Site: same-origin' \
+-H 'User-Agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36' \
+-H 'sec-ch-ua: "Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"' \
+-H 'sec-ch-ua-mobile: ?1' \
+-H 'sec-ch-ua-platform: "Android"' \
+--data-raw 'p=get_page_count&uid=qf821vr52zm39199455l126653b0&ver=2025-10-16-fix342_120&langx=zh-cn&gtype=ft&showtype=live&filter=&ltype=3&team_id=&specialClick=&p3type=&sorttype=L&date=&from=game_list' ;
+curl 'https://hga050.com/transform.php?ver=2025-10-16-fix342_120' \
+-H 'Accept: */*' \
+-H 'Accept-Language: en,en-US;q=0.9,zh-HK;q=0.8,zh;q=0.7,zh-CN;q=0.6' \
+-H 'Cache-Control: no-cache' \
+-H 'Connection: keep-alive' \
+-H 'Content-type: application/x-www-form-urlencoded' \
+-b 'box4pwd_notshow_38893554=Mzg4OTM1NTRfTg==; box4pwd_notshow_39097382=MzkwOTczODJfWQ==; box4pwd_notshow_39199386=MzkxOTkzODZfWQ==; CookieChk=WQ; protocolstr=aHR0cHM=; test=aW5pdA; box4pwd_notshow_39199455=MzkxOTk0NTVfWQ==; iorChgSw=WQ==; myGameVer_39199455=XzIxMTIyOA==; ft_myGame_39199455=e30=; cu=WQ==; cuipv6=Tg==; ipv6=Tg==; es_myGame_39199455=e30=; login_39199455=MTc2MDk5NjM1Mg' \
+-H 'Origin: https://hga050.com' \
+-H 'Pragma: no-cache' \
+-H 'Sec-Fetch-Dest: empty' \
+-H 'Sec-Fetch-Mode: cors' \
+-H 'Sec-Fetch-Site: same-origin' \
+-H 'User-Agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36' \
+-H 'sec-ch-ua: "Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"' \
+-H 'sec-ch-ua-mobile: ?1' \
+-H 'sec-ch-ua-platform: "Android"' \
+--data-raw 'uid=qf821vr52zm39199455l126653b0&ver=2025-10-16-fix342_120&langx=zh-cn&p=get_game_list&p3type=&date=&gtype=ft&showtype=live&rtype=rb&ltype=3&filter=&cupFantasy=N&sorttype=L&specialClick=&isFantasy=N&ts=1760995747960' ;
+curl 'https://hga050.com/transform.php?ver=2025-10-16-fix342_120' \
+-H 'Accept: */*' \
+-H 'Accept-Language: en,en-US;q=0.9,zh-HK;q=0.8,zh;q=0.7,zh-CN;q=0.6' \
+-H 'Cache-Control: no-cache' \
+-H 'Connection: keep-alive' \
+-H 'Content-type: application/x-www-form-urlencoded' \
+-b 'box4pwd_notshow_38893554=Mzg4OTM1NTRfTg==; box4pwd_notshow_39097382=MzkwOTczODJfWQ==; box4pwd_notshow_39199386=MzkxOTkzODZfWQ==; CookieChk=WQ; protocolstr=aHR0cHM=; test=aW5pdA; box4pwd_notshow_39199455=MzkxOTk0NTVfWQ==; iorChgSw=WQ==; myGameVer_39199455=XzIxMTIyOA==; ft_myGame_39199455=e30=; cu=WQ==; cuipv6=Tg==; ipv6=Tg==; es_myGame_39199455=e30=; login_39199455=MTc2MDk5NjM1Mg' \
+-H 'Origin: https://hga050.com' \
+-H 'Pragma: no-cache' \
+-H 'Sec-Fetch-Dest: empty' \
+-H 'Sec-Fetch-Mode: cors' \
+-H 'Sec-Fetch-Site: same-origin' \
+-H 'User-Agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36' \
+-H 'sec-ch-ua: "Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"' \
+-H 'sec-ch-ua-mobile: ?1' \
+-H 'sec-ch-ua-platform: "Android"' \
+--data-raw 'p=get_page_count&uid=qf821vr52zm39199455l126653b0&ver=2025-10-16-fix342_120&langx=zh-cn&gtype=ft&showtype=live&filter=&ltype=3&team_id=&specialClick=&p3type=&sorttype=L&date=&from=game_list' ;
+curl 'https://hga050.com/transform.php?ver=2025-10-16-fix342_120' \
+-H 'Accept: */*' \
+-H 'Accept-Language: en,en-US;q=0.9,zh-HK;q=0.8,zh;q=0.7,zh-CN;q=0.6' \
+-H 'Cache-Control: no-cache' \
+-H 'Connection: keep-alive' \
+-H 'Content-type: application/x-www-form-urlencoded' \
+-b 'box4pwd_notshow_38893554=Mzg4OTM1NTRfTg==; box4pwd_notshow_39097382=MzkwOTczODJfWQ==; box4pwd_notshow_39199386=MzkxOTkzODZfWQ==; CookieChk=WQ; protocolstr=aHR0cHM=; test=aW5pdA; box4pwd_notshow_39199455=MzkxOTk0NTVfWQ==; iorChgSw=WQ==; myGameVer_39199455=XzIxMTIyOA==; ft_myGame_39199455=e30=; cu=WQ==; cuipv6=Tg==; ipv6=Tg==; es_myGame_39199455=e30=; login_39199455=MTc2MDk5NjM1Mg' \
+-H 'Origin: https://hga050.com' \
+-H 'Pragma: no-cache' \
+-H 'Sec-Fetch-Dest: empty' \
+-H 'Sec-Fetch-Mode: cors' \
+-H 'Sec-Fetch-Site: same-origin' \
+-H 'User-Agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36' \
+-H 'sec-ch-ua: "Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"' \
+-H 'sec-ch-ua-mobile: ?1' \
+-H 'sec-ch-ua-platform: "Android"' \
+--data-raw 'uid=qf821vr52zm39199455l126653b0&ver=2025-10-16-fix342_120&langx=zh-cn&p=get_game_list&p3type=&date=&gtype=ft&showtype=live&rtype=rb&ltype=3&filter=&cupFantasy=N&sorttype=L&specialClick=&isFantasy=N&ts=1760995747960'

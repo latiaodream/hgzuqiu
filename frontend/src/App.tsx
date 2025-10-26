@@ -15,6 +15,7 @@ import FetchAccountsPage from './pages/FetchAccountsPage';
 import StaffPage from './pages/StaffPage';
 import AgentsPage from './pages/AgentsPage';
 import SettingsPage from './pages/SettingsPage';
+import CrownSitesPage from './pages/CrownSitesPage';
 import './App.css';
 
 const App: React.FC = () => {
@@ -63,6 +64,7 @@ const App: React.FC = () => {
         <Route path="betting" element={<BettingPage />} />
         <Route path="matches" element={<MatchesPage />} />
         <Route path="coins" element={<CoinsPage />} />
+        <Route path="crown-sites" element={<CrownSitesPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>

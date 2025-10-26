@@ -13,6 +13,7 @@ import {
   Modal,
   Form,
   Tag,
+  InputNumber,
 } from 'antd';
 import {
   PlusOutlined,
@@ -21,10 +22,11 @@ import {
   ReloadOutlined,
   UserOutlined,
   TeamOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { User, StaffCreateRequest, StaffUpdateRequest, TablePagination } from '../types';
-import { staffApi, accountApi } from '../services/api';
+import { staffApi, accountApi, coinApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import dayjs from 'dayjs';
 
@@ -33,10 +35,11 @@ const { Search } = Input;
 
 interface StaffWithStats extends User {
   account_count: number;
+  coin_balance?: number;
 }
 
 const StaffPage: React.FC = () => {
-  const { isAgent } = useAuth();
+  const { isAgent, isAdmin } = useAuth();
   const [staffList, setStaffList] = useState<StaffWithStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -51,6 +54,11 @@ const StaffPage: React.FC = () => {
   const [editingStaff, setEditingStaff] = useState<User | null>(null);
   const [form] = Form.useForm();
 
+  // 充值模态框状态
+  const [rechargeModalVisible, setRechargeModalVisible] = useState(false);
+  const [rechargeTarget, setRechargeTarget] = useState<User | null>(null);
+  const [rechargeForm] = Form.useForm();
+
   useEffect(() => {
     loadStaffList();
   }, []);
@@ -59,7 +67,7 @@ const StaffPage: React.FC = () => {
     try {
       setLoading(true);
 
-      // 获取员工列表
+      // 获取员工列表（后端已经包含 credit_limit 和 coin_balance）
       const staffResponse = await staffApi.getStaffList();
       if (staffResponse.success && staffResponse.data) {
         // 获取账号列表来统计每个员工的账号数量
@@ -67,11 +75,13 @@ const StaffPage: React.FC = () => {
         const accounts = accountsResponse.success ? accountsResponse.data || [] : [];
 
         // 计算每个员工的账号数量
-        const staffWithStats = staffResponse.data.map(staff => {
+        const staffWithStats = staffResponse.data.map((staff: any) => {
           const accountCount = accounts.filter(acc => acc.user_id === staff.id).length;
+
           return {
             ...staff,
             account_count: accountCount,
+            // credit_limit 和 coin_balance 已经从后端返回
           };
         });
 
@@ -174,6 +184,42 @@ const StaffPage: React.FC = () => {
     }
   };
 
+  const handleRecharge = (staff: User) => {
+    setRechargeTarget(staff);
+    rechargeForm.resetFields();
+    setRechargeModalVisible(true);
+  };
+
+  const handleRechargeSubmit = async () => {
+    if (!rechargeTarget) return;
+
+    try {
+      const values = await rechargeForm.validateFields();
+      setLoading(true);
+
+      const response = await coinApi.recharge({
+        target_user_id: rechargeTarget.id,
+        amount: values.amount,
+        description: values.description || `充值 ${values.amount} 金币给员工 ${rechargeTarget.username}`,
+      });
+
+      if (response.success) {
+        message.success(`充值成功！对方新余额：¥${response.data?.new_balance || 0}`);
+        setRechargeModalVisible(false);
+        loadStaffList();
+      }
+    } catch (error: any) {
+      console.error('充值失败:', error);
+      if (error.errorFields) {
+        message.error('请检查表单填写');
+      } else {
+        message.error(error.response?.data?.error || '充值失败');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 表格列定义
   const columns: ColumnsType<StaffWithStats> = [
     {
@@ -215,11 +261,23 @@ const StaffPage: React.FC = () => {
       ),
     },
     {
-      title: '信用额度',
+      title: '皇冠额度',
       dataIndex: 'credit_limit',
       key: 'credit_limit',
       render: (credit_limit: number) => (
-        <span>{credit_limit ? credit_limit.toLocaleString() : '0'}</span>
+        <span style={{ fontWeight: 500 }}>
+          {credit_limit ? Number(credit_limit).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+        </span>
+      ),
+    },
+    {
+      title: '金币余额',
+      dataIndex: 'coin_balance',
+      key: 'coin_balance',
+      render: (balance: number) => (
+        <Tag color="gold" icon={<DollarOutlined />}>
+          ¥{balance ? Number(balance).toFixed(2) : '0.00'}
+        </Tag>
       ),
     },
     {
@@ -232,9 +290,17 @@ const StaffPage: React.FC = () => {
       title: '操作',
       key: 'action',
       fixed: 'right',
-      width: 180,
+      width: 240,
       render: (_, record) => (
         <Space size="small">
+          <Button
+            type="primary"
+            size="small"
+            icon={<DollarOutlined />}
+            onClick={() => handleRecharge(record)}
+          >
+            充值
+          </Button>
           <Button
             type="link"
             size="small"
@@ -378,6 +444,52 @@ const StaffPage: React.FC = () => {
             ]}
           >
             <Input.Password placeholder={editingStaff ? '留空则不修改密码' : '请输入密码'} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 充值模态框 */}
+      <Modal
+        title={`充值金币 - ${rechargeTarget?.username || ''}`}
+        open={rechargeModalVisible}
+        onOk={handleRechargeSubmit}
+        onCancel={() => {
+          setRechargeModalVisible(false);
+          rechargeForm.resetFields();
+        }}
+        confirmLoading={loading}
+        width={500}
+      >
+        <Form
+          form={rechargeForm}
+          layout="vertical"
+          autoComplete="off"
+        >
+          <Form.Item
+            label="充值金额"
+            name="amount"
+            rules={[
+              { required: true, message: '请输入充值金额' },
+              { type: 'number', min: 0.01, message: '充值金额必须大于0' },
+            ]}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              placeholder="请输入充值金额"
+              min={0.01}
+              precision={2}
+              addonBefore="¥"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="备注"
+            name="description"
+          >
+            <Input.TextArea
+              placeholder="选填，例如：月度充值、活动奖励等"
+              rows={3}
+            />
           </Form.Item>
         </Form>
       </Modal>

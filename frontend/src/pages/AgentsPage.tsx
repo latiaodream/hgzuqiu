@@ -13,6 +13,7 @@ import {
   Modal,
   Form,
   Tag,
+  InputNumber,
 } from 'antd';
 import {
   PlusOutlined,
@@ -21,10 +22,11 @@ import {
   ReloadOutlined,
   UserOutlined,
   TeamOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { User, StaffCreateRequest, StaffUpdateRequest, TablePagination } from '../types';
-import { agentApi, staffApi } from '../services/api';
+import { agentApi, staffApi, coinApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import dayjs from 'dayjs';
 
@@ -33,6 +35,7 @@ const { Search } = Input;
 
 interface AgentWithStats extends User {
   staff_count: number;
+  coin_balance?: number;
 }
 
 const AgentsPage: React.FC = () => {
@@ -51,6 +54,11 @@ const AgentsPage: React.FC = () => {
   const [editingAgent, setEditingAgent] = useState<User | null>(null);
   const [form] = Form.useForm();
 
+  // 充值模态框状态
+  const [rechargeModalVisible, setRechargeModalVisible] = useState(false);
+  const [rechargeTarget, setRechargeTarget] = useState<User | null>(null);
+  const [rechargeForm] = Form.useForm();
+
   useEffect(() => {
     loadAgentList();
   }, []);
@@ -66,16 +74,20 @@ const AgentsPage: React.FC = () => {
         const staffResponse = await staffApi.getStaffList();
         const staffList = staffResponse.success ? staffResponse.data || [] : [];
 
-        // 计算每个代理的员工数量
-        const agentsWithStats = agentResponse.data.map(agent => {
-          const staffCount = staffList.filter(staff =>
-            staff.parent_id === agent.id || staff.agent_id === agent.id
-          ).length;
-          return {
-            ...agent,
-            staff_count: staffCount,
-          };
-        });
+        // 计算每个代理的员工数量和金币余额
+        const agentsWithStats = await Promise.all(
+          agentResponse.data.map(async (agent) => {
+            const staffCount = staffList.filter(staff =>
+              staff.parent_id === agent.id || staff.agent_id === agent.id
+            ).length;
+
+            return {
+              ...agent,
+              staff_count: staffCount,
+              coin_balance: undefined,
+            };
+          })
+        );
 
         setAgentList(agentsWithStats);
         setPagination(prev => ({
@@ -176,6 +188,42 @@ const AgentsPage: React.FC = () => {
     }
   };
 
+  const handleRecharge = (agent: User) => {
+    setRechargeTarget(agent);
+    rechargeForm.resetFields();
+    setRechargeModalVisible(true);
+  };
+
+  const handleRechargeSubmit = async () => {
+    if (!rechargeTarget) return;
+
+    try {
+      const values = await rechargeForm.validateFields();
+      setLoading(true);
+
+      const response = await coinApi.recharge({
+        target_user_id: rechargeTarget.id,
+        amount: values.amount,
+        description: values.description || `充值 ${values.amount} 金币给代理 ${rechargeTarget.username}`,
+      });
+
+      if (response.success) {
+        message.success(`充值成功！对方新余额：¥${response.data?.new_balance || 0}`);
+        setRechargeModalVisible(false);
+        loadAgentList();
+      }
+    } catch (error: any) {
+      console.error('充值失败:', error);
+      if (error.errorFields) {
+        message.error('请检查表单填写');
+      } else {
+        message.error(error.response?.data?.error || '充值失败');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 表格列定义
   const columns: ColumnsType<AgentWithStats> = [
     {
@@ -225,6 +273,16 @@ const AgentsPage: React.FC = () => {
       ),
     },
     {
+      title: '金币余额',
+      dataIndex: 'coin_balance',
+      key: 'coin_balance',
+      render: (balance: number) => (
+        <Tag color="gold" icon={<DollarOutlined />}>
+          ¥{(balance || 0).toFixed(2)}
+        </Tag>
+      ),
+    },
+    {
       title: '创建时间',
       dataIndex: 'created_at',
       key: 'created_at',
@@ -234,9 +292,17 @@ const AgentsPage: React.FC = () => {
       title: '操作',
       key: 'action',
       fixed: 'right',
-      width: 180,
+      width: 240,
       render: (_, record) => (
         <Space size="small">
+          <Button
+            type="primary"
+            size="small"
+            icon={<DollarOutlined />}
+            onClick={() => handleRecharge(record)}
+          >
+            充值
+          </Button>
           <Button
             type="link"
             size="small"
@@ -380,6 +446,52 @@ const AgentsPage: React.FC = () => {
             ]}
           >
             <Input.Password placeholder={editingAgent ? '留空则不修改密码' : '请输入密码'} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 充值模态框 */}
+      <Modal
+        title={`充值金币 - ${rechargeTarget?.username || ''}`}
+        open={rechargeModalVisible}
+        onOk={handleRechargeSubmit}
+        onCancel={() => {
+          setRechargeModalVisible(false);
+          rechargeForm.resetFields();
+        }}
+        confirmLoading={loading}
+        width={500}
+      >
+        <Form
+          form={rechargeForm}
+          layout="vertical"
+          autoComplete="off"
+        >
+          <Form.Item
+            label="充值金额"
+            name="amount"
+            rules={[
+              { required: true, message: '请输入充值金额' },
+              { type: 'number', min: 0.01, message: '充值金额必须大于0' },
+            ]}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              placeholder="请输入充值金额"
+              min={0.01}
+              precision={2}
+              addonBefore="¥"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="备注"
+            name="description"
+          >
+            <Input.TextArea
+              placeholder="选填，例如：月度充值、活动奖励等"
+              rows={3}
+            />
           </Form.Item>
         </Form>
       </Modal>

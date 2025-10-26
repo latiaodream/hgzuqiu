@@ -32,9 +32,15 @@
   box-sizing: border-box;
 }
 
-body {
+html, body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
   background: linear-gradient(135deg, var(--background-blue), var(--background-light-blue));
   min-height: 100vh;
 }
@@ -338,12 +344,12 @@ body {
 
 .bet-account-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
 
 .bet-account-grid.compact {
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
 
@@ -537,7 +543,7 @@ body {
   }
 
   .bet-account-grid {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .bet-summary-item {
@@ -736,6 +742,22 @@ body {
   color: #555;
 }
 
+.odds-header-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(96px, 1fr));
+  background: #e8e8e8;
+  border-top: 1px solid #d5d5d5;
+  padding: 8px 0;
+}
+
+.odds-header-cell {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  padding: 0 4px;
+}
+
 .odds-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(96px, 1fr));
@@ -801,10 +823,77 @@ body {
 .odds-item .odds-value {
   font-weight: 700;
   font-size: 13px;
-  color: #0f4db8;
+  color: #ff4d4f;
 }
 
 .odds-item:hover .odds-value {
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* 新的左右分栏布局样式 */
+.odds-stack-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.odds-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  width: 100%;
+}
+
+.odds-item-left,
+.odds-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #ffffff;
+  border: 1px solid #e8e8e8;
+  min-height: 36px;
+}
+
+.odds-item-left:hover,
+.odds-item-right:hover {
+  background: linear-gradient(180deg, #1677ff 0%, #4096ff 100%);
+  color: white;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.2);
+  border-color: transparent;
+}
+
+.odds-item-left .odds-team,
+.odds-item-right .odds-team {
+  font-size: 10px;
+  color: #666;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.odds-item-left:hover .odds-team,
+.odds-item-right:hover .odds-team {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.odds-item-left .odds-value,
+.odds-item-right .odds-value {
+  font-weight: 700;
+  font-size: 13px;
+  color: #ff4d4f;
+}
+
+.odds-item-left:hover .odds-value,
+.odds-item-right:hover .odds-value {
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
@@ -1025,7 +1114,7 @@ body {
 /* Account Card Layout Styles */
 .account-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   padding: 16px 0;
 }
@@ -1243,14 +1332,14 @@ body {
 
 @media (max-width: 1024px) and (min-width: 769px) {
   .account-card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
   }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1025px) {
   .account-card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 18px;
   }
 }

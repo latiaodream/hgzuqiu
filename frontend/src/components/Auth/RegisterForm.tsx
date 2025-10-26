@@ -31,16 +31,31 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
   return (
     <Card
       style={{
-        width: 400,
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+        width: '100%',
+        maxWidth: 450,
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+        borderRadius: '16px',
+        border: 'none',
+        background: 'rgba(255, 255, 255, 0.98)',
+        backdropFilter: 'blur(10px)',
       }}
+      bodyStyle={{ padding: '48px 40px' }}
     >
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <div style={{ textAlign: 'center' }}>
-          <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-            注册账号
-          </Title>
-          <Text type="secondary">创建您的智投系统账号</Text>
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <div style={{
+            fontSize: '32px',
+            fontWeight: 'bold',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            marginBottom: '8px'
+          }}>
+            创建账号
+          </div>
+          <Text type="secondary" style={{ fontSize: '15px' }}>
+            加入智投系统，开启智能投注之旅
+          </Text>
         </div>
 
         <Form
@@ -52,7 +67,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
         >
           <Form.Item
             name="username"
-            label="用户名"
+            label={<span style={{ fontSize: '14px', fontWeight: 500 }}>用户名</span>}
             rules={[
               { required: true, message: '请输入用户名' },
               { min: 3, message: '用户名至少3个字符' },
@@ -61,30 +76,40 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
             ]}
           >
             <Input
-              prefix={<UserOutlined />}
+              prefix={<UserOutlined style={{ color: '#bfbfbf' }} />}
               placeholder="请输入用户名"
               size="large"
+              style={{
+                borderRadius: '8px',
+                fontSize: '15px',
+                padding: '12px 16px'
+              }}
             />
           </Form.Item>
 
           <Form.Item
             name="email"
-            label="邮箱"
+            label={<span style={{ fontSize: '14px', fontWeight: 500 }}>邮箱</span>}
             rules={[
               { required: true, message: '请输入邮箱' },
               { type: 'email', message: '请输入有效的邮箱地址' },
             ]}
           >
             <Input
-              prefix={<MailOutlined />}
+              prefix={<MailOutlined style={{ color: '#bfbfbf' }} />}
               placeholder="请输入邮箱"
               size="large"
+              style={{
+                borderRadius: '8px',
+                fontSize: '15px',
+                padding: '12px 16px'
+              }}
             />
           </Form.Item>
 
           <Form.Item
             name="password"
-            label="密码"
+            label={<span style={{ fontSize: '14px', fontWeight: 500 }}>密码</span>}
             rules={[
               { required: true, message: '请输入密码' },
               { min: 6, message: '密码至少6个字符' },
@@ -92,15 +117,20 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
             ]}
           >
             <Input.Password
-              prefix={<LockOutlined />}
+              prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
               placeholder="请输入密码"
               size="large"
+              style={{
+                borderRadius: '8px',
+                fontSize: '15px',
+                padding: '12px 16px'
+              }}
             />
           </Form.Item>
 
           <Form.Item
             name="confirmPassword"
-            label="确认密码"
+            label={<span style={{ fontSize: '14px', fontWeight: 500 }}>确认密码</span>}
             dependencies={['password']}
             rules={[
               { required: true, message: '请确认密码' },
@@ -115,36 +145,55 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
             ]}
           >
             <Input.Password
-              prefix={<LockOutlined />}
+              prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
               placeholder="请再次输入密码"
               size="large"
+              style={{
+                borderRadius: '8px',
+                fontSize: '15px',
+                padding: '12px 16px'
+              }}
             />
           </Form.Item>
 
-          <Form.Item>
+          <Form.Item style={{ marginTop: '32px', marginBottom: '16px' }}>
             <Button
               type="primary"
               htmlType="submit"
               size="large"
               loading={loading}
-              style={{ width: '100%' }}
+              style={{
+                width: '100%',
+                height: '48px',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+              }}
             >
-              注册
+              立即注册
             </Button>
           </Form.Item>
         </Form>
 
-        <Divider>
-          <Text type="secondary">已有账号？</Text>
+        <Divider style={{ margin: '16px 0' }}>
+          <Text type="secondary" style={{ fontSize: '13px' }}>已有账号？</Text>
         </Divider>
 
         <Button
           type="link"
           size="large"
           onClick={onSwitchToLogin}
-          style={{ width: '100%' }}
+          style={{
+            width: '100%',
+            fontSize: '15px',
+            fontWeight: 500,
+            color: '#667eea'
+          }}
         >
-          立即登录
+          ← 返回登录
         </Button>
       </Space>
     </Card>

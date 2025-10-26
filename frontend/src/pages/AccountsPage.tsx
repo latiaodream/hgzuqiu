@@ -24,6 +24,8 @@ import AccountFormModal from '../components/Accounts/AccountFormModal';
 import AccountDetailModal from '../components/Accounts/AccountDetailModal';
 import AccountCard from '../components/Accounts/AccountCard';
 import AccountInitializeModal from '../components/Accounts/AccountInitializeModal';
+import AccountHistoryModal from '../components/Accounts/AccountHistoryModal';
+import AccountShareModal from '../components/Accounts/AccountShareModal';
 import type { AxiosError } from 'axios';
 
 const { Title, Text } = Typography;
@@ -45,6 +47,10 @@ const AccountsPage: React.FC = () => {
   const [viewingAccount, setViewingAccount] = useState<CrownAccount | null>(null);
   const [initializeModalVisible, setInitializeModalVisible] = useState(false);
   const [initializingAccount, setInitializingAccount] = useState<CrownAccount | null>(null);
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [historyAccount, setHistoryAccount] = useState<CrownAccount | null>(null);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [sharingAccount, setSharingAccount] = useState<CrownAccount | null>(null);
   const [initializeCredentials, setInitializeCredentials] = useState<Record<number, { username: string; password: string }>>(() => {
     try {
       const raw = localStorage.getItem(INIT_CREDENTIAL_STORAGE_KEY);
@@ -352,6 +358,15 @@ const AccountsPage: React.FC = () => {
     }
   };
 
+  const handleShareAccount = (account: CrownAccount) => {
+    setSharingAccount(account);
+    setShareModalVisible(true);
+  };
+
+  const handleShareSuccess = () => {
+    loadAccounts();
+  };
+
   const handleBatchStatusUpdate = async (enabled: boolean) => {
     if (selectedRowKeys.length === 0) {
       message.warning('请选择要操作的账号');
@@ -497,6 +512,106 @@ const AccountsPage: React.FC = () => {
     }
   };
 
+  const handleViewHistory = (account: CrownAccount) => {
+    if (!account.is_online) {
+      message.warning('请先登录账号');
+      return;
+    }
+    setHistoryAccount(account);
+    setHistoryModalVisible(true);
+  };
+
+  const handleRefreshAllBalances = async () => {
+    const onlineAccounts = accounts.filter(account => account.is_online);
+
+    if (onlineAccounts.length === 0) {
+      message.warning('没有在线的账号可以刷新余额');
+      return;
+    }
+
+    const batchKey = 'refresh-all-balances';
+    message.loading({
+      content: `正在刷新 ${onlineAccounts.length} 个在线账号的余额...`,
+      key: batchKey,
+      duration: 0
+    });
+
+    let successCount = 0;
+    let partialCount = 0; // 只获取到额度的账号
+    let failCount = 0;
+    const failedAccounts: string[] = [];
+
+    try {
+      // 并发刷新所有在线账号的余额
+      const results = await Promise.allSettled(
+        onlineAccounts.map(account => crownApi.getAccountBalance(account.id))
+      );
+
+      results.forEach((result, index) => {
+        const account = onlineAccounts[index];
+        if (result.status === 'fulfilled') {
+          const response = result.value;
+          const balanceData = (response as any)?.data || {};
+
+          // 参考登录后的余额同步逻辑
+          if (response.success) {
+            successCount++;
+            if (balanceData.balance_source) {
+              console.debug(`账号 ${account.username} 余额来源: ${balanceData.balance_source}`);
+            }
+          } else {
+            // 即使 success 为 false，如果有 credit 数据也算部分成功
+            if (balanceData.credit) {
+              partialCount++;
+              console.warn(`账号 ${account.username} 仅取得额度: ${balanceData.credit}`);
+            } else {
+              failCount++;
+              failedAccounts.push(account.username);
+              const reason = response.error || response.message || '未知错误';
+              console.warn(`刷新账号 ${account.username} 余额失败: ${reason}`);
+            }
+          }
+        } else {
+          failCount++;
+          failedAccounts.push(account.username);
+          console.warn(`刷新账号 ${account.username} 余额失败:`, result.reason);
+        }
+      });
+
+      // 刷新完成后重新加载账号列表
+      await loadAccounts();
+
+      // 根据结果显示不同的提示
+      if (failCount === 0 && partialCount === 0) {
+        message.success({
+          content: `余额刷新完成！成功 ${successCount} 个账号`,
+          key: batchKey,
+          duration: 3
+        });
+      } else if (failCount === 0 && partialCount > 0) {
+        message.warning({
+          content: `余额刷新完成！成功 ${successCount} 个，${partialCount} 个仅获取到额度`,
+          key: batchKey,
+          duration: 4
+        });
+      } else {
+        const msg = `余额刷新完成！成功 ${successCount} 个${partialCount > 0 ? `，${partialCount} 个仅获取到额度` : ''}，失败 ${failCount} 个`;
+        message.warning({
+          content: msg,
+          key: batchKey,
+          duration: 4
+        });
+      }
+    } catch (error) {
+      console.error('Failed to refresh balances:', error);
+      message.error({
+        content: '批量刷新余额失败',
+        key: batchKey,
+        duration: 3
+      });
+    }
+  };
+
   const handleFormSubmit = async () => {
     setFormModalVisible(false);
     loadAccounts();
@@ -561,9 +676,10 @@ const AccountsPage: React.FC = () => {
               </Button>
               <Button
                 icon={<ReloadOutlined />}
-                onClick={loadAccounts}
+                onClick={handleRefreshAllBalances}
+                loading={loading}
               >
-                刷新
+                刷新余额
               </Button>
               {selectedRowKeys.length > 0 && (
                 <>
@@ -653,6 +769,8 @@ const AccountsPage: React.FC = () => {
                 onLogout={handleLogoutAccount}
                 onInitialize={handleInitializeAccount}
                 onToggleFetch={handleToggleFetch}
+                onViewHistory={handleViewHistory}
+                onShare={handleShareAccount}
               />
             ))}
           </div>
@@ -708,6 +826,27 @@ const AccountsPage: React.FC = () => {
           if (!initializingAccount) return;
           handleInitializeCredentialRegenerate(initializingAccount.id, field);
         }}
+      />
+
+      {/* 账号历史总览模态框 */}
+      <AccountHistoryModal
+        visible={historyModalVisible}
+        account={historyAccount}
+        onClose={() => {
+          setHistoryModalVisible(false);
+          setHistoryAccount(null);
+        }}
+      />
+
+      {/* 账号分享模态框 */}
+      <AccountShareModal
+        visible={shareModalVisible}
+        account={sharingAccount}
+        onCancel={() => {
+          setShareModalVisible(false);
+          setSharingAccount(null);
+        }}
+        onSuccess={handleShareSuccess}
       />
     </div>
   );

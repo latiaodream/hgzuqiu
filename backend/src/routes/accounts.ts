@@ -76,7 +76,9 @@ router.get('/', async (req: any, res) => {
         if (userRole === 'admin') {
             // 管理员可以查看所有账号
             sql = `
-                SELECT ca.*, g.name as group_name, u.username as owner_username
+                SELECT ca.*, g.name as group_name, u.username as owner_username,
+                       NULL::integer as shared_from_user_id,
+                       NULL::varchar as shared_from_username
                 FROM crown_accounts ca
                 JOIN groups g ON ca.group_id = g.id
                 JOIN users u ON ca.user_id = u.id
@@ -86,7 +88,9 @@ router.get('/', async (req: any, res) => {
         } else if (userRole === 'agent') {
             // 代理可以查看下属员工的所有账号
             sql = `
-                SELECT ca.*, g.name as group_name, u.username as owner_username
+                SELECT ca.*, g.name as group_name, u.username as owner_username,
+                       NULL::integer as shared_from_user_id,
+                       NULL::varchar as shared_from_username
                 FROM crown_accounts ca
                 JOIN groups g ON ca.group_id = g.id
                 JOIN users u ON ca.user_id = u.id
@@ -94,22 +98,36 @@ router.get('/', async (req: any, res) => {
             `;
             params = [userId];
         } else {
-            // 员工只能查看自己的账号
+            // 员工可以查看自己的账号 + 别人分享给自己的账号
             sql = `
-                SELECT ca.*, g.name as group_name
+                SELECT ca.*, g.name as group_name,
+                       NULL::integer as shared_from_user_id,
+                       NULL::varchar as shared_from_username
                 FROM crown_accounts ca
                 JOIN groups g ON ca.group_id = g.id
                 WHERE ca.user_id = $1
+
+                UNION ALL
+
+                SELECT ca.*, g.name as group_name,
+                       s.owner_user_id as shared_from_user_id,
+                       u.username as shared_from_username
+                FROM crown_accounts ca
+                JOIN groups g ON ca.group_id = g.id
+                JOIN account_shares s ON ca.id = s.account_id
+                JOIN users u ON s.owner_user_id = u.id
+                WHERE s.shared_to_user_id = $1
             `;
             params = [userId];
         }
 
         if (group_id) {
-            sql += ` AND ca.group_id = $${params.length + 1}`;
+            // 注意：UNION 查询需要在外层包装才能添加 WHERE 条件
+            sql = `SELECT * FROM (${sql}) AS accounts WHERE group_id = $${params.length + 1}`;
             params.push(group_id);
         }
 
-        sql += ' ORDER BY ca.created_at DESC';
+        sql += ' ORDER BY created_at DESC';
 
         const result = await query(sql, params);
 

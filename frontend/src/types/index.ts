@@ -79,6 +79,11 @@ export interface CrownAccount {
   proxy_username?: string;
   proxy_password?: string;
 
+  // 共享相关字段
+  share_count?: number;
+  shared_from_user_id?: number;      // 如果是共享账号，记录来自哪个用户
+  shared_from_username?: string;     // 共享来源用户名
+
   // 限额设置
   football_prematch_limit: number;
   football_live_limit: number;
@@ -178,6 +183,8 @@ export interface Match {
 export interface Bet {
   id: number;
   user_id: number;
+  user_username?: string;  // 下注用户（员工）的用户名
+  user_role?: string;      // 下注用户的角色
   account_id: number;
   account_username?: string;
   account_display_name?: string;
@@ -190,6 +197,12 @@ export interface Bet {
   bet_option: string;
   bet_amount: number;
   odds: number;
+  min_odds?: number;
+  official_odds?: number;
+  virtual_bet_amount?: number;
+  virtual_profit_loss?: number;
+  result_score?: string;
+  result_text?: string;
   single_limit: number;
   interval_seconds: number;
   quantity: number;
@@ -211,6 +224,7 @@ export interface BetCreateRequest {
   bet_option: string;
   bet_amount: number;
   odds: number;
+  min_odds?: number;
   single_limit?: number;
   interval_seconds?: number;
   quantity?: number;
@@ -228,6 +242,8 @@ export interface BetCreateRequest {
 export interface CoinTransaction {
   id: number;
   user_id: number;
+  user_username?: string;  // 用户（员工）的用户名
+  user_role?: string;      // 用户的角色
   account_id?: number;
   account_username?: string;
   account_display_name?: string;
@@ -239,6 +255,25 @@ export interface CoinTransaction {
   balance_before: number;
   balance_after: number;
   created_at: string;
+}
+
+// 账号共享类型
+export interface AccountShare {
+  id: number;
+  account_id: number;
+  owner_user_id: number;
+  shared_to_user_id: number;
+  shared_to_username?: string;
+  shared_to_email?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShareableUser {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
 }
 
 // API响应类型
@@ -293,4 +328,22 @@ export interface StaffUpdateRequest {
   username?: string;
   email?: string;
   password?: string;
+}
+
+// 皇冠站点管理相关类型
+export interface CrownSite {
+  url: string;
+  name: string;
+  category: 'hga' | 'mos';
+  isActive: boolean;
+  lastCheckTime?: string;
+  lastSuccessTime?: string;
+  failureCount: number;
+  responseTime?: number;
+  status: 'online' | 'offline' | 'unknown';
+}
+
+export interface CrownSitesResponse {
+  sites: CrownSite[];
+  currentSite: string;
 }

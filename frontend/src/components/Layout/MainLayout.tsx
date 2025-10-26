@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Layout, Menu, Avatar, Dropdown, Space, Button, theme } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Layout, Menu, Avatar, Dropdown, Space, Button, theme, Tag } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -11,20 +11,42 @@ import {
   MenuUnfoldOutlined,
   CalendarOutlined,
   FileTextOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { coinApi } from '../../services/api';
 
 const { Header, Sider, Content } = Layout;
 
 const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [coinBalance, setCoinBalance] = useState(0);
   const { user, logout, isAdmin, isAgent, isStaff } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+
+  // 加载金币余额
+  useEffect(() => {
+    loadCoinBalance();
+    // 每30秒刷新一次余额
+    const interval = setInterval(loadCoinBalance, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadCoinBalance = async () => {
+    try {
+      const response = await coinApi.getBalance();
+      if (response.success && response.data) {
+        setCoinBalance(response.data.balance);
+      }
+    } catch (error) {
+      console.error('Failed to load coin balance:', error);
+    }
+  };
 
   // 根据角色配置菜单项
   const getMenuItems = () => {
@@ -73,6 +95,11 @@ const MainLayout: React.FC = () => {
           key: '/coins',
           icon: <DollarOutlined />,
           label: '金币流水',
+        },
+        {
+          key: '/crown-sites',
+          icon: <GlobalOutlined />,
+          label: '站点管理',
         }
       );
     }
@@ -226,7 +253,15 @@ const MainLayout: React.FC = () => {
             }}
           />
 
-          <Space>
+          <Space size="large">
+            <Tag
+              icon={<DollarOutlined />}
+              color="gold"
+              style={{ fontSize: 14, padding: '4px 12px', cursor: 'pointer' }}
+              onClick={() => navigate('/coins')}
+            >
+              金币：¥{coinBalance.toFixed(2)}
+            </Tag>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <Space style={{ cursor: 'pointer' }}>
                 <Avatar icon={<UserOutlined />} />

@@ -136,6 +136,8 @@ CREATE TABLE bets (
     bet_option VARCHAR(100) NOT NULL, -- 具体选项，如：[盘前]全场主队-0.5@0.88
     bet_amount DECIMAL(15,2) NOT NULL, -- 投注金额
     odds DECIMAL(5,2) NOT NULL, -- 投注时的赔率
+    min_odds DECIMAL(6,3), -- 下注时用户设置的最低赔率
+    official_odds DECIMAL(6,3), -- 皇冠返回的真实赔率
 
     -- 下注设置 (基于参考截图的下注弹窗)
     single_limit DECIMAL(15,2), -- 单笔限额
@@ -147,6 +149,10 @@ CREATE TABLE bets (
     result VARCHAR(20), -- win, lose, draw, cancelled
     payout DECIMAL(15,2) DEFAULT 0, -- 派彩金额
     profit_loss DECIMAL(15,2) DEFAULT 0, -- 盈亏
+    virtual_bet_amount DECIMAL(15,2), -- 虚拟金额
+    virtual_profit_loss DECIMAL(15,2), -- 虚拟盈亏
+    result_score VARCHAR(50), -- 结算比分，例如 1-3
+    result_text VARCHAR(255), -- 结算文本
 
     -- 官网信息
     official_bet_id VARCHAR(100), -- 官网下注单号

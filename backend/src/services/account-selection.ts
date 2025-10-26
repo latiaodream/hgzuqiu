@@ -147,24 +147,34 @@ export async function selectAccounts(options: SelectAccountsOptions): Promise<Ac
     const lineUsage = new Map<string, string[]>();
 
     if (matchId) {
-        const matchUsageResult = await query(
-            `SELECT b.account_id, b.bet_type, ca.original_username, ca.username
-               FROM bets b
-               JOIN crown_accounts ca ON ca.id = b.account_id
-              WHERE b.user_id = $1
-                AND b.match_id = $2
-                AND (b.status IS NULL OR b.status <> 'cancelled')`,
-            [userId, matchId],
+        // 将皇冠 match_id 转换成内部 match_id
+        const matchResult = await query(
+            `SELECT id FROM matches WHERE match_id = $1`,
+            [String(matchId)],
         );
 
-        for (const row of matchUsageResult.rows) {
-            const lineKey = buildLineKey(row.original_username, row.username);
-            if (!lineUsage.has(lineKey)) {
-                lineUsage.set(lineKey, []);
-            }
-            const list = lineUsage.get(lineKey)!;
-            if (row.bet_type) {
-                list.push(String(row.bet_type));
+        const internalMatchId = matchResult.rows.length > 0 ? matchResult.rows[0].id : null;
+
+        if (internalMatchId) {
+            const matchUsageResult = await query(
+                `SELECT b.account_id, b.bet_type, ca.original_username, ca.username
+                   FROM bets b
+                   JOIN crown_accounts ca ON ca.id = b.account_id
+                  WHERE b.user_id = $1
+                    AND b.match_id = $2
+                    AND (b.status IS NULL OR b.status <> 'cancelled')`,
+                [userId, internalMatchId],
+            );
+
+            for (const row of matchUsageResult.rows) {
+                const lineKey = buildLineKey(row.original_username, row.username);
+                if (!lineUsage.has(lineKey)) {
+                    lineUsage.set(lineKey, []);
+                }
+                const list = lineUsage.get(lineKey)!;
+                if (row.bet_type) {
+                    list.push(String(row.bet_type));
+                }
             }
         }
     }

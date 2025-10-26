@@ -95,7 +95,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
           source: '自有',
           currency: 'CNY',
           discount: 1.0,
-          note: '高',
+          note: '',
           stop_profit_limit: 0,
           device_type: 'iPhone 14',
           proxy_enabled: false,
@@ -323,7 +323,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                   </Row>
 
                   <Row gutter={16}>
-                    <Col xs={24} sm={8}>
+                    <Col xs={24} sm={12}>
                       <Form.Item
                         name="game_type"
                         label="游戏类型"
@@ -335,19 +335,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                         </Select>
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={8}>
-                      <Form.Item
-                        name="source"
-                        label="来源"
-                      >
-                        <Select>
-                          <Option value="自有">自有</Option>
-                          <Option value="代理">代理</Option>
-                          <Option value="合作">合作</Option>
-                        </Select>
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} sm={8}>
+                    <Col xs={24} sm={12}>
                       <Form.Item
                         name="currency"
                         label="货币"
@@ -398,11 +386,11 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                         name="note"
                         label="备注"
                       >
-                        <Select>
-                          <Option value="高">高</Option>
-                          <Option value="中">中</Option>
-                          <Option value="低">低</Option>
-                        </Select>
+                        <Input
+                          placeholder="请输入备注信息"
+                          maxLength={50}
+                          showCount
+                        />
                       </Form.Item>
                     </Col>
                     <Col xs={24} sm={8}>
