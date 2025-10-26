@@ -1988,7 +1988,79 @@ export class CrownApiClient {
   }
 
   /**
-   * 修改密码（首次登录初始化）
+   * 修改账号（首次登录第一步）
+   * @param newUsername 新用户名
+   * @returns 修改结果
+   */
+  async changeUsername(newUsername: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    if (!this.uid) {
+      return {
+        success: false,
+        message: '未登录，无法修改账号',
+      };
+    }
+
+    try {
+      const params = new URLSearchParams({
+        p: 'chg_username',
+        ver: this.version,
+        username: newUsername,
+        uid: this.uid,
+        langx: 'zh-cn',
+      });
+
+      console.log(`🔐 [API] 修改账号: ${this.username} -> ${newUsername}`);
+
+      const response = await this.axiosInstance.post(
+        `/transform.php?ver=${this.version}`,
+        params.toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      const responseText = response.data;
+      console.log(`📥 [API] 修改账号响应:`, responseText.substring(0, 500));
+
+      // 解析XML响应
+      const statusMatch = responseText.match(/<status>(.*?)<\/status>/);
+      const errMatch = responseText.match(/<err>(.*?)<\/err>/);
+
+      if (statusMatch && statusMatch[1] === 'error') {
+        const errorCode = errMatch ? errMatch[1] : 'unknown';
+        const message = `修改账号失败 (错误代码: ${errorCode})`;
+        console.error(`❌ [API] ${message}`);
+
+        return {
+          success: false,
+          message,
+        };
+      }
+
+      // 修改成功，更新本地用户名
+      this.username = newUsername;
+      console.log(`✅ [API] 账号修改成功，新用户名: ${newUsername}`);
+
+      return {
+        success: true,
+        message: '账号修改成功',
+      };
+    } catch (error: any) {
+      console.error('❌ [API] 修改账号异常:', error.message);
+      return {
+        success: false,
+        message: `修改账号异常: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * 修改密码（首次登录第二步）
    * @param newPassword 新密码
    * @returns 修改结果
    */
@@ -2007,14 +2079,13 @@ export class CrownApiClient {
       const params = new URLSearchParams({
         p: 'chg_newpwd',
         ver: this.version,
-        username: this.username,
         new_password: newPassword,
         chg_password: newPassword, // 确认密码与新密码相同
         uid: this.uid,
         langx: 'zh-cn',
       });
 
-      console.log(`🔐 [API] 修改密码: username=${this.username}`);
+      console.log(`🔐 [API] 修改密码`);
 
       const response = await this.axiosInstance.post(
         `/transform.php?ver=${this.version}`,

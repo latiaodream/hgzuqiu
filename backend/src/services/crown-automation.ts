@@ -463,15 +463,15 @@ export class CrownAutomationService {
 
       console.log(`✅ [API] 登录成功，检测到需要修改密码 (msg=109)`);
 
-      // 2. 修改密码
-      console.log(`📝 [API] 步骤2: 修改密码为 ${credentials.password}...`);
-      const changeResult = await client.changePassword(credentials.password);
+      // 2. 修改账号（第一步）
+      console.log(`📝 [API] 步骤2: 修改账号为 ${credentials.username}...`);
+      const changeUsernameResult = await client.changeUsername(credentials.username);
 
-      if (!changeResult.success) {
-        console.error(`❌ [API] 修改密码失败: ${changeResult.message}`);
+      if (!changeUsernameResult.success) {
+        console.error(`❌ [API] 修改账号失败: ${changeUsernameResult.message}`);
         return {
           success: false,
-          message: `修改密码失败: ${changeResult.message}`,
+          message: `修改账号失败: ${changeUsernameResult.message}`,
           updatedCredentials: {
             username: account.username,
             password: account.password || '',
@@ -479,17 +479,35 @@ export class CrownAutomationService {
         };
       }
 
+      console.log(`✅ [API] 账号修改成功`);
+
+      // 3. 修改密码（第二步）
+      console.log(`📝 [API] 步骤3: 修改密码为 ${credentials.password}...`);
+      const changePasswordResult = await client.changePassword(credentials.password);
+
+      if (!changePasswordResult.success) {
+        console.error(`❌ [API] 修改密码失败: ${changePasswordResult.message}`);
+        return {
+          success: false,
+          message: `修改密码失败: ${changePasswordResult.message}`,
+          updatedCredentials: {
+            username: credentials.username,
+            password: account.password || '',
+          },
+        };
+      }
+
       console.log(`✅ [API] 密码修改成功`);
 
-      // 3. 使用新密码重新登录验证
-      console.log(`📝 [API] 步骤3: 使用新密码重新登录验证...`);
+      // 4. 使用新账号和新密码重新登录验证
+      console.log(`📝 [API] 步骤4: 使用新账号和新密码重新登录验证...`);
       const verifyResult = await client.login(credentials.username, credentials.password);
 
       if (!verifyResult.success) {
-        console.error(`❌ [API] 新密码登录验证失败: ${verifyResult.message}`);
+        console.error(`❌ [API] 新账号密码登录验证失败: ${verifyResult.message}`);
         return {
           success: false,
-          message: `新密码登录验证失败: ${verifyResult.message}`,
+          message: `新账号密码登录验证失败: ${verifyResult.message}`,
           updatedCredentials: {
             username: credentials.username,
             password: credentials.password,
