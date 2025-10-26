@@ -1988,6 +1988,92 @@ export class CrownApiClient {
   }
 
   /**
+   * 修改密码（首次登录初始化）
+   * @param newPassword 新密码
+   * @returns 修改结果
+   */
+  async changePassword(newPassword: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    if (!this.uid || !this.username) {
+      return {
+        success: false,
+        message: '未登录，无法修改密码',
+      };
+    }
+
+    try {
+      const params = new URLSearchParams({
+        p: 'chg_newpwd',
+        ver: this.version,
+        username: this.username,
+        new_password: newPassword,
+        chg_password: newPassword, // 确认密码与新密码相同
+        uid: this.uid,
+        langx: 'zh-cn',
+      });
+
+      console.log(`🔐 [API] 修改密码: username=${this.username}`);
+
+      const response = await this.axiosInstance.post(
+        `/transform.php?ver=${this.version}`,
+        params.toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      const responseText = response.data;
+      console.log(`📥 [API] 修改密码响应:`, responseText.substring(0, 500));
+
+      // 解析XML响应
+      const statusMatch = responseText.match(/<status>(.*?)<\/status>/);
+      const errMatch = responseText.match(/<err>(.*?)<\/err>/);
+
+      if (statusMatch && statusMatch[1] === 'error') {
+        const errorCode = errMatch ? errMatch[1] : 'unknown';
+        const errorMessages: { [key: string]: string } = {
+          '411': '新密码不能为空',
+          '412': '确认密码不能为空',
+          '413': '两次输入的密码不一致',
+          '414': '新密码不能与旧密码相同',
+          '415': '密码格式不正确（需要6-12位，包含字母和数字）',
+          '416': '密码过于简单',
+          '417': '密码过于简单',
+          '418': '旧密码错误',
+          '419': '新密码不能与用户名相同',
+        };
+
+        const message = errorMessages[errorCode] || `修改密码失败 (错误代码: ${errorCode})`;
+        console.error(`❌ [API] 修改密码失败: ${message}`);
+
+        return {
+          success: false,
+          message,
+        };
+      }
+
+      // 修改成功，更新本地密码
+      this.password = newPassword;
+      console.log(`✅ [API] 密码修改成功`);
+
+      return {
+        success: true,
+        message: '密码修改成功',
+      };
+    } catch (error: any) {
+      console.error('❌ [API] 修改密码异常:', error.message);
+      return {
+        success: false,
+        message: `修改密码异常: ${error.message}`,
+      };
+    }
+  }
+
+  /**
    * 登出
    */
   logout() {

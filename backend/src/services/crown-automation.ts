@@ -427,15 +427,97 @@ export class CrownAutomationService {
   }
 
   async initializeAccountCredentials(account: CrownAccount, credentials: { username: string; password: string }): Promise<AccountInitResult> {
-    console.warn(`⚠️ [API] 当前版本尚未实现账号(${account.username})的自动初始化，返回占位提示。`);
-    return {
-      success: false,
-      message: '账号初始化功能开发中。\n\n临时解决方案：\n1. 手动登录皇冠网站完成首次修改密码\n2. 在系统中编辑账号，更新为新的用户名和密码\n3. 或者直接使用已初始化过的账号',
-      updatedCredentials: {
-        username: credentials.username,
-        password: credentials.password,
-      },
-    };
+    console.log(`🔐 [API] 开始初始化账号: ${account.username} -> ${credentials.username}`);
+
+    try {
+      // 1. 使用原始账号和密码登录
+      const client = this.getOrCreateClient(account.id);
+
+      console.log(`📝 [API] 步骤1: 使用原始凭据登录...`);
+      const loginResult = await client.login(account.username, account.password || '');
+
+      if (!loginResult.success) {
+        console.error(`❌ [API] 登录失败: ${loginResult.message}`);
+        return {
+          success: false,
+          message: `登录失败: ${loginResult.message}`,
+          updatedCredentials: {
+            username: account.username,
+            password: account.password || '',
+          },
+        };
+      }
+
+      // 检查是否需要修改密码（msg=109表示首次登录需要修改密码）
+      if (loginResult.msg !== '109') {
+        console.log(`ℹ️ [API] 账号无需初始化 (msg=${loginResult.msg})`);
+        return {
+          success: false,
+          message: '该账号无需初始化，可能已经完成过首次登录',
+          updatedCredentials: {
+            username: account.username,
+            password: account.password || '',
+          },
+        };
+      }
+
+      console.log(`✅ [API] 登录成功，检测到需要修改密码 (msg=109)`);
+
+      // 2. 修改密码
+      console.log(`📝 [API] 步骤2: 修改密码为 ${credentials.password}...`);
+      const changeResult = await client.changePassword(credentials.password);
+
+      if (!changeResult.success) {
+        console.error(`❌ [API] 修改密码失败: ${changeResult.message}`);
+        return {
+          success: false,
+          message: `修改密码失败: ${changeResult.message}`,
+          updatedCredentials: {
+            username: account.username,
+            password: account.password || '',
+          },
+        };
+      }
+
+      console.log(`✅ [API] 密码修改成功`);
+
+      // 3. 使用新密码重新登录验证
+      console.log(`📝 [API] 步骤3: 使用新密码重新登录验证...`);
+      const verifyResult = await client.login(credentials.username, credentials.password);
+
+      if (!verifyResult.success) {
+        console.error(`❌ [API] 新密码登录验证失败: ${verifyResult.message}`);
+        return {
+          success: false,
+          message: `新密码登录验证失败: ${verifyResult.message}`,
+          updatedCredentials: {
+            username: credentials.username,
+            password: credentials.password,
+          },
+        };
+      }
+
+      console.log(`✅ [API] 账号初始化完成: ${account.username} -> ${credentials.username}`);
+
+      return {
+        success: true,
+        message: '账号初始化成功',
+        updatedCredentials: {
+          username: credentials.username,
+          password: credentials.password,
+        },
+      };
+    } catch (error: any) {
+      console.error(`❌ [API] 账号初始化异常:`, error);
+      return {
+        success: false,
+        message: `初始化异常: ${error.message || '未知错误'}`,
+        updatedCredentials: {
+          username: account.username,
+          password: account.password || '',
+        },
+      };
+    }
   }
 
   async getExternalIP(accountId: number): Promise<string | null> {
