@@ -2087,7 +2087,7 @@ export class CrownApiClient {
         langx: 'zh-cn',
       });
 
-      console.log(`🔐 [API] 修改密码`);
+      console.log(`🔐 [API] 修改密码: username=${this.username}, uid=${this.uid}`);
 
       const response = await this.axiosInstance.post(
         `/transform.php?ver=${this.version}`,
@@ -2101,6 +2101,15 @@ export class CrownApiClient {
 
       const responseText = response.data;
       console.log(`📥 [API] 修改密码响应:`, responseText.substring(0, 500));
+
+      // 检查响应是否为错误消息
+      if (responseText.includes('error') && !responseText.includes('<serverresponse>')) {
+        console.error(`❌ [API] 修改密码失败: ${responseText}`);
+        return {
+          success: false,
+          message: `修改密码失败: ${responseText}`,
+        };
+      }
 
       // 解析XML响应
       const statusMatch = responseText.match(/<status>(.*?)<\/status>/);
