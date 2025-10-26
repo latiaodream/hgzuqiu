@@ -430,7 +430,7 @@ export class CrownAutomationService {
     console.warn(`⚠️ [API] 当前版本尚未实现账号(${account.username})的自动初始化，返回占位提示。`);
     return {
       success: false,
-      message: '纯 API 版本暂未开放账号初始化功能，请通过旧流程或手动方式完成',
+      message: '账号初始化功能开发中。\n\n临时解决方案：\n1. 手动登录皇冠网站完成首次修改密码\n2. 在系统中编辑账号，更新为新的用户名和密码\n3. 或者直接使用已初始化过的账号',
       updatedCredentials: {
         username: credentials.username,
         password: credentials.password,
