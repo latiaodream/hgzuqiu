@@ -919,6 +919,13 @@ router.post('/sync-settlements', async (req: any, res) => {
             return Number.isFinite(num) ? num : null;
         };
 
+        // 初始化结果数组
+        const automation = getCrownAutomation();
+        const updatedBets: Array<{ id: number; ticketId: string; status: string; result: string; payout: number; profit_loss: number }>
+            = [];
+        const errors: Array<{ accountId: number; error: string }> = [];
+        const skipped: Array<{ betId: number; reason: string }> = [];
+
         // 按账号和日期分组
         const groupByAccountAndDate = new Map<string, { accountId: number; date: string; bets: any[] }>();
         for (const bet of pendingBets) {
@@ -939,12 +946,6 @@ router.post('/sync-settlements', async (req: any, res) => {
         }
 
         console.log(`📋 [Sync] 按账号和日期分组: ${Array.from(groupByAccountAndDate.keys()).join(', ')}`);
-
-        const automation = getCrownAutomation();
-        const updatedBets: Array<{ id: number; ticketId: string; status: string; result: string; payout: number; profit_loss: number }>
-            = [];
-        const errors: Array<{ accountId: number; error: string }> = [];
-        const skipped: Array<{ betId: number; reason: string }> = [];
 
         for (const [key, group] of groupByAccountAndDate.entries()) {
             const { accountId, date, bets } = group;

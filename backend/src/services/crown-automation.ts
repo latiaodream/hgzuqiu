@@ -598,6 +598,18 @@ export class CrownAutomationService {
   }
 
   /**
+   * 获取或创建账号的 API 客户端
+   */
+  private getOrCreateClient(accountId: number): CrownApiClient {
+    let client = this.apiClients.get(accountId);
+    if (!client) {
+      client = new CrownApiClient();
+      this.apiClients.set(accountId, client);
+    }
+    return client;
+  }
+
+  /**
    * 获取账号财务信息（余额和信用额度）
    *
    * 通过解析主页 HTML 获取余额信息
