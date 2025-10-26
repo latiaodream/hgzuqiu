@@ -2080,6 +2080,7 @@ export class CrownApiClient {
       const params = new URLSearchParams({
         p: 'chg_newpwd',
         ver: this.version,
+        username: this.username,
         new_password: newPassword,
         chg_password: newPassword, // 确认密码与新密码相同
         uid: this.uid,
