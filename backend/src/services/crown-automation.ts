@@ -517,6 +517,20 @@ export class CrownAutomationService {
 
       console.log(`✅ [API] 账号初始化完成: ${account.username} -> ${credentials.username}`);
 
+      // 5. 保存会话信息并启动保活
+      if (verifyResult.uid && verifyResult.mid) {
+        this.accountSessions.set(account.id, {
+          uid: verifyResult.uid,
+          mid: verifyResult.mid,
+          loginTime: Date.now(),
+        });
+
+        // 启动保活机制
+        this.startKeepAlive(account.id);
+
+        console.log(`✅ [API] 账号会话已保存，保活已启动`);
+      }
+
       return {
         success: true,
         message: '账号初始化成功',

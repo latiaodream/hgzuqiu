@@ -167,6 +167,7 @@ router.post('/initialize/:accountId', async (req: any, res) => {
                    last_login_at = CURRENT_TIMESTAMP,
                    updated_at = CURRENT_TIMESTAMP,
                    status = 'active',
+                   is_online = true,
                    error_message = NULL
              WHERE id = $3`,
             [finalUsername, finalPassword, accountId, originalUsername]
