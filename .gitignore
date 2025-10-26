@@ -12,6 +12,7 @@ backend/.env
 backend/.env.local
 backend/.env.*
 .env
+scripts/.env.sync
 database/*.sqlite
 
 # Logs

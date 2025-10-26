@@ -24,6 +24,11 @@
 # 项目路径
 PROJECT_DIR="/www/wwwroot/aibcbot.top"
 
+# 加载环境变量配置文件（如果存在）
+if [ -f "$PROJECT_DIR/scripts/.env.sync" ]; then
+    source "$PROJECT_DIR/scripts/.env.sync"
+fi
+
 # 数据库配置
 DB_HOST="127.0.0.1"
 DB_PORT="5432"
@@ -36,7 +41,8 @@ API_BASE_URL="http://localhost:3001/api/crown-automation"
 
 # 管理员账号（用于获取JWT token）
 ADMIN_USERNAME="admin"
-ADMIN_PASSWORD="admin123"  # ⚠️ 请修改为实际密码
+# 优先使用环境变量，如果没有则使用默认值
+ADMIN_PASSWORD="${SYNC_ADMIN_PASSWORD:-admin123}"  # ⚠️ 请修改为实际密码或设置环境变量 SYNC_ADMIN_PASSWORD
 
 # 日志目录
 LOG_DIR="$PROJECT_DIR/logs"
