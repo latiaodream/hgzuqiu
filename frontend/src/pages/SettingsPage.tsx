@@ -71,9 +71,16 @@ const SettingsPage: React.FC = () => {
       });
 
       if (response.success) {
-        message.success('密码修改成功');
+        message.success('密码修改成功，请重新登录', 2);
         setPasswordModalVisible(false);
         form.resetFields();
+
+        // 延迟2秒后自动退出登录
+        setTimeout(() => {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }, 2000);
       } else {
         message.error(response.error || '密码修改失败');
       }
