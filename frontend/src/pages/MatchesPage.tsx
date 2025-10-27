@@ -533,7 +533,7 @@ const MatchesPage: React.FC = () => {
                 return (
                   <div
                     key={`${m.gid || m.match_id || idx}-${idx}`}
-                    className={`compact-match-card ${isEvenRow ? 'even' : 'odd'}`}
+                    className={`compact-match-card ${isEvenRow ? 'even' : 'odd'} ${isMobile ? 'mobile' : ''}`}
                   >
                     <div className="match-header-box">
                       <div className="match-league">☆ {leagueLabel}</div>
@@ -546,21 +546,35 @@ const MatchesPage: React.FC = () => {
                         <span className="match-team away">{awayLabel}</span>
                       </div>
                     </div>
-                    <div className="odds-header-row">
-                      <div className="odds-header-cell">独赢</div>
-                      <div className="odds-header-cell">让球</div>
-                      <div className="odds-header-cell">大/小</div>
-                      <div className="odds-header-cell">独赢(半场)</div>
-                      <div className="odds-header-cell">让球(半场)</div>
-                      <div className="odds-header-cell">大/小(半场)</div>
+
+                    {/* 全场盘口 */}
+                    <div className="odds-section">
+                      {!isMobile && <div className="odds-section-title">全场</div>}
+                      <div className="odds-header-row">
+                        <div className="odds-header-cell">独赢</div>
+                        <div className="odds-header-cell">让球</div>
+                        <div className="odds-header-cell">大/小</div>
+                      </div>
+                      <div className="odds-grid">
+                        <div className="odds-col">{renderMoneyline(m, markets)}</div>
+                        <div className="odds-col">{renderHandicap(m, markets.full?.handicapLines || (markets.handicap ? [markets.handicap] : []))}</div>
+                        <div className="odds-col">{renderOverUnder(m, markets.full?.overUnderLines || (markets.ou ? [markets.ou] : []))}</div>
+                      </div>
                     </div>
-                    <div className="odds-grid">
-                      <div className="odds-col">{renderMoneyline(m, markets)}</div>
-                      <div className="odds-col">{renderHandicap(m, markets.full?.handicapLines || (markets.handicap ? [markets.handicap] : []))}</div>
-                      <div className="odds-col">{renderOverUnder(m, markets.full?.overUnderLines || (markets.ou ? [markets.ou] : []))}</div>
-                      <div className="odds-col">{renderHalfMoneyline(m, markets.half?.moneyline)}</div>
-                      <div className="odds-col">{renderHandicap(m, markets.half?.handicapLines || (markets.half?.handicap ? [markets.half.handicap] : []))}</div>
-                      <div className="odds-col">{renderOverUnder(m, markets.half?.overUnderLines || (markets.half?.ou ? [markets.half.ou] : []))}</div>
+
+                    {/* 半场盘口 */}
+                    <div className="odds-section half">
+                      {!isMobile && <div className="odds-section-title">半场</div>}
+                      <div className="odds-header-row">
+                        <div className="odds-header-cell">独赢(半)</div>
+                        <div className="odds-header-cell">让球(半)</div>
+                        <div className="odds-header-cell">大/小(半)</div>
+                      </div>
+                      <div className="odds-grid">
+                        <div className="odds-col">{renderHalfMoneyline(m, markets.half?.moneyline)}</div>
+                        <div className="odds-col">{renderHandicap(m, markets.half?.handicapLines || (markets.half?.handicap ? [markets.half.handicap] : []))}</div>
+                        <div className="odds-col">{renderOverUnder(m, markets.half?.overUnderLines || (markets.half?.ou ? [markets.half.ou] : []))}</div>
+                      </div>
                     </div>
                   </div>
                 );

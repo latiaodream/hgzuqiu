@@ -770,9 +770,27 @@ body {
   color: #555;
 }
 
+.odds-section {
+  position: relative;
+}
+
+.odds-section.half {
+  border-top: 1px solid #d5d5d5;
+}
+
+.odds-section-title {
+  background: #e8e8e8;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  text-align: center;
+  border-top: 1px solid #d5d5d5;
+}
+
 .odds-header-row {
   display: grid;
-  grid-template-columns: repeat(6, minmax(96px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   background: #e8e8e8;
   border-top: 1px solid #d5d5d5;
   padding: 8px 0;
@@ -788,30 +806,23 @@ body {
 
 .odds-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(96px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   background: #fafafa;
-  border-top: 1px solid #d5d5d5;
 }
 
 /* 移动端赛事盘口优化 */
 @media (max-width: 768px) {
-  .odds-grid {
-    grid-template-columns: repeat(6, minmax(80px, 1fr));
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .odds-header-row {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(80px, 1fr));
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  .odds-section-title {
+    display: none;
   }
 
   .odds-header-cell {
     font-size: 11px !important;
     padding: 4px 2px !important;
-    min-width: 80px;
+  }
+
+  .compact-match-card.mobile {
+    margin-bottom: 8px;
   }
 }
 
@@ -822,11 +833,17 @@ body {
   justify-content: center;
   align-items: stretch;
   background: #ffffff;
-  min-width: 80px;
 }
 
 .odds-col:first-child {
   border-left: none;
+}
+
+/* 移动端赔率列优化 */
+@media (max-width: 768px) {
+  .odds-col {
+    padding: 4px 2px;
+  }
 }
 
 .odds-stack {
