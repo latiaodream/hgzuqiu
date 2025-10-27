@@ -528,41 +528,45 @@ const BettingPage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
+    <div style={{ padding: isMobile ? 0 : '24px', background: isMobile ? '#fff' : '#f0f2f5', minHeight: '100vh' }}>
       {/* 页面标题 */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>下注记录</Title>
-        <Text type="secondary">查看和管理所有下注记录</Text>
-      </div>
+      {!isMobile && (
+        <div style={{ marginBottom: 24 }}>
+          <Title level={3} style={{ margin: 0 }}>下注记录</Title>
+          <Text type="secondary">查看和管理所有下注记录</Text>
+        </div>
+      )}
 
       {/* 筛选条件 */}
       <Card
-        style={{ marginBottom: 16 }}
-        bodyStyle={{ padding: '16px 24px' }}
+        style={isMobile ? { marginBottom: 1, borderRadius: 0 } : { marginBottom: 16 }}
+        bodyStyle={{ padding: isMobile ? '12px' : '16px 24px' }}
       >
-        <Row gutter={[16, 16]} align="middle">
-          <Col>
-            <Space>
-              <Text type="secondary">平台:</Text>
+        <Row gutter={isMobile ? [0, 8] : [16, 16]} align="middle">
+          <Col xs={12} sm={6}>
+            <Space size={4}>
+              <Text type="secondary" style={{ fontSize: isMobile ? 12 : 14 }}>平台:</Text>
               <Select
                 value={selectedPlatform}
                 onChange={setSelectedPlatform}
-                style={{ width: 120 }}
+                size={isMobile ? 'small' : 'middle'}
+                style={{ width: isMobile ? 80 : 120 }}
                 options={[
                   { label: '皇冠', value: '皇冠' },
                 ]}
               />
             </Space>
           </Col>
-          <Col>
-            <Space>
-              <Text type="secondary">代理:</Text>
+          <Col xs={12} sm={6}>
+            <Space size={4}>
+              <Text type="secondary" style={{ fontSize: isMobile ? 12 : 14 }}>代理:</Text>
               <Select
                 value={selectedAgent}
                 onChange={setSelectedAgent}
-                placeholder="请选择代理"
+                placeholder={isMobile ? '代理' : '请选择代理'}
                 allowClear
-                style={{ width: 150 }}
+                size={isMobile ? 'small' : 'middle'}
+                style={{ width: isMobile ? 80 : 150 }}
                 options={agents.map(agent => ({
                   label: agent.username,
                   value: agent.id.toString(),
@@ -570,128 +574,119 @@ const BettingPage: React.FC = () => {
               />
             </Space>
           </Col>
-          <Col>
-            <Space>
-              <Text type="secondary">日期:</Text>
+          <Col xs={12} sm={6}>
+            <Space size={4}>
+              <Text type="secondary" style={{ fontSize: isMobile ? 12 : 14 }}>日期:</Text>
               <DatePicker
                 value={selectedDate}
                 onChange={(date) => date && setSelectedDate(date)}
                 format="YYYY-MM-DD"
+                size={isMobile ? 'small' : 'middle'}
+                style={{ width: isMobile ? 110 : 'auto' }}
               />
             </Space>
           </Col>
-          <Col>
-            <Space>
-              <Text type="secondary">时区:</Text>
-              <Select
-                value={selectedTimezone}
-                onChange={setSelectedTimezone}
-                style={{ width: 100 }}
-                options={[
-                  { label: 'UTC+8', value: 'UTC+8' },
-                  { label: 'UTC+0', value: 'UTC+0' },
-                ]}
-              />
-            </Space>
-          </Col>
-          <Col flex="auto" style={{ textAlign: 'right' }}>
-            <Space>
+          <Col xs={12} sm={6}>
+            <Space size={4}>
               <Button
                 type="primary"
                 onClick={handleSyncSettlements}
                 loading={syncing}
                 disabled={loading}
                 icon={<CheckCircleOutlined />}
+                size={isMobile ? 'small' : 'middle'}
               >
-                结算
+                {isMobile ? '结算' : '结算'}
               </Button>
-              <Button
-                onClick={() => message.info('清理功能待实现')}
-                icon={<ReloadOutlined />}
-              >
-                清理
-              </Button>
+              {!isMobile && (
+                <Button
+                  onClick={() => message.info('清理功能待实现')}
+                  icon={<ReloadOutlined />}
+                >
+                  清理
+                </Button>
+              )}
             </Space>
           </Col>
         </Row>
       </Card>
 
       {/* 统计栏 - 卡片式布局 */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={3}>
-          <Card bodyStyle={{ padding: '16px' }}>
+      <Row gutter={isMobile ? 4 : 16} style={{ marginBottom: isMobile ? 4 : 16 }}>
+        <Col xs={8} sm={6} md={3}>
+          <Card bodyStyle={{ padding: isMobile ? '8px' : '16px' }} style={isMobile ? { borderRadius: 0 } : {}}>
             <div style={{ textAlign: 'center' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>票单数</Text>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1890ff', marginTop: 8 }}>
+              <Text type="secondary" style={{ fontSize: isMobile ? 11 : 12 }}>票单数</Text>
+              <div style={{ fontSize: isMobile ? 16 : 24, fontWeight: 'bold', color: '#1890ff', marginTop: isMobile ? 4 : 8 }}>
                 {stats.total_tickets}
               </div>
             </div>
           </Card>
         </Col>
-        <Col span={3}>
-          <Card bodyStyle={{ padding: '16px' }}>
+        <Col xs={8} sm={6} md={3}>
+          <Card bodyStyle={{ padding: isMobile ? '8px' : '16px' }} style={isMobile ? { borderRadius: 0 } : {}}>
             <div style={{ textAlign: 'center' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>注单数</Text>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1890ff', marginTop: 8 }}>
+              <Text type="secondary" style={{ fontSize: isMobile ? 11 : 12 }}>注单数</Text>
+              <div style={{ fontSize: isMobile ? 16 : 24, fontWeight: 'bold', color: '#1890ff', marginTop: isMobile ? 4 : 8 }}>
                 {stats.total_bets}
               </div>
             </div>
           </Card>
         </Col>
-        <Col span={3}>
-          <Card bodyStyle={{ padding: '16px' }}>
+        <Col xs={8} sm={6} md={3}>
+          <Card bodyStyle={{ padding: isMobile ? '8px' : '16px' }} style={isMobile ? { borderRadius: 0 } : {}}>
             <div style={{ textAlign: 'center' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>未结算</Text>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#faad14', marginTop: 8 }}>
+              <Text type="secondary" style={{ fontSize: isMobile ? 11 : 12 }}>未结算</Text>
+              <div style={{ fontSize: isMobile ? 16 : 24, fontWeight: 'bold', color: '#faad14', marginTop: isMobile ? 4 : 8 }}>
                 {stats.pending_bets}
               </div>
             </div>
           </Card>
         </Col>
-        <Col span={3}>
-          <Card bodyStyle={{ padding: '16px' }}>
+        <Col xs={8} sm={6} md={3}>
+          <Card bodyStyle={{ padding: isMobile ? '8px' : '16px' }} style={isMobile ? { borderRadius: 0 } : {}}>
             <div style={{ textAlign: 'center' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>已取消</Text>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#8c8c8c', marginTop: 8 }}>
+              <Text type="secondary" style={{ fontSize: isMobile ? 11 : 12 }}>已取消</Text>
+              <div style={{ fontSize: isMobile ? 16 : 24, fontWeight: 'bold', color: '#8c8c8c', marginTop: isMobile ? 4 : 8 }}>
                 {stats.cancelled_bets}
               </div>
             </div>
           </Card>
         </Col>
-        <Col span={4}>
-          <Card bodyStyle={{ padding: '16px' }}>
+        <Col xs={8} sm={8} md={4}>
+          <Card bodyStyle={{ padding: isMobile ? '8px' : '16px' }} style={isMobile ? { borderRadius: 0 } : {}}>
             <div style={{ textAlign: 'center' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>总金额</Text>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#722ed1', marginTop: 8 }}>
+              <Text type="secondary" style={{ fontSize: isMobile ? 11 : 12 }}>总金额</Text>
+              <div style={{ fontSize: isMobile ? 16 : 24, fontWeight: 'bold', color: '#722ed1', marginTop: isMobile ? 4 : 8 }}>
                 {stats.total_amount.toFixed(0)}
               </div>
             </div>
           </Card>
         </Col>
-        <Col span={4}>
-          <Card bodyStyle={{ padding: '16px' }}>
+        <Col xs={8} sm={8} md={4}>
+          <Card bodyStyle={{ padding: isMobile ? '8px' : '16px' }} style={isMobile ? { borderRadius: 0 } : {}}>
             <div style={{ textAlign: 'center' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>输赢</Text>
+              <Text type="secondary" style={{ fontSize: isMobile ? 11 : 12 }}>输赢</Text>
               <div style={{
-                fontSize: 24,
+                fontSize: isMobile ? 16 : 24,
                 fontWeight: 'bold',
                 color: stats.total_profit > 0 ? '#52c41a' : stats.total_profit < 0 ? '#ff4d4f' : '#8c8c8c',
-                marginTop: 8
+                marginTop: isMobile ? 4 : 8
               }}>
                 {stats.total_profit > 0 ? '+' : ''}{stats.total_profit.toFixed(0)}
               </div>
             </div>
           </Card>
         </Col>
-        <Col span={4}>
-          <Card bodyStyle={{ padding: '16px' }}>
+        <Col xs={8} sm={8} md={4}>
+          <Card bodyStyle={{ padding: isMobile ? '8px' : '16px' }} style={isMobile ? { borderRadius: 0 } : {}}>
             <div style={{ textAlign: 'center' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>回报率</Text>
+              <Text type="secondary" style={{ fontSize: isMobile ? 11 : 12 }}>回报率</Text>
               <div style={{
-                fontSize: 24,
+                fontSize: isMobile ? 16 : 24,
                 fontWeight: 'bold',
                 color: stats.return_rate > 0 ? '#52c41a' : stats.return_rate < 0 ? '#ff4d4f' : '#8c8c8c',
-                marginTop: 8
+                marginTop: isMobile ? 4 : 8
               }}>
                 {stats.return_rate.toFixed(1)}%
               </div>
@@ -704,7 +699,7 @@ const BettingPage: React.FC = () => {
       <Card
         title={
           <Space>
-            <Text strong style={{ fontSize: 16 }}>下注列表</Text>
+            <Text strong style={{ fontSize: isMobile ? 14 : 16 }}>下注列表</Text>
             <Badge count={betGroups.length} style={{ backgroundColor: '#1890ff' }} />
           </Space>
         }
@@ -714,11 +709,13 @@ const BettingPage: React.FC = () => {
             onClick={loadBets}
             loading={loading}
             type="text"
+            size={isMobile ? 'small' : 'middle'}
           >
-            刷新
+            {isMobile ? '' : '刷新'}
           </Button>
         }
         bodyStyle={{ padding: '0' }}
+        style={isMobile ? { marginBottom: 0, borderRadius: 0 } : {}}
       >
         <Table
           columns={mainColumns}

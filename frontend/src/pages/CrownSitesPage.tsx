@@ -33,6 +33,15 @@ const CrownSitesPage: React.FC = () => {
   const [sites, setSites] = useState<CrownSite[]>([]);
   const [currentSite, setCurrentSite] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     loadSites();
@@ -236,43 +245,47 @@ const CrownSitesPage: React.FC = () => {
   const currentSiteInfo = sites.find(s => s.url === currentSite);
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Title level={2}>
-        <GlobalOutlined /> 皇冠站点管理
-      </Title>
+    <div style={{ padding: isMobile ? 0 : '24px' }}>
+      {!isMobile && (
+        <Title level={2}>
+          <GlobalOutlined /> 皇冠站点管理
+        </Title>
+      )}
 
       {/* 当前站点信息 */}
-      <Card style={{ marginBottom: 24 }}>
-        <Row gutter={16}>
-          <Col span={6}>
+      <Card style={isMobile ? { marginBottom: 4, borderRadius: 0 } : { marginBottom: 24 }}>
+        <Row gutter={isMobile ? 8 : 16}>
+          <Col xs={12} sm={6}>
             <Statistic
-              title="当前站点"
+              title={<span style={{ fontSize: isMobile ? 11 : 14 }}>当前站点</span>}
               value={currentSiteInfo?.name || '-'}
+              valueStyle={{ fontSize: isMobile ? 14 : 24 }}
               prefix={<GlobalOutlined />}
             />
           </Col>
-          <Col span={6}>
+          <Col xs={12} sm={6}>
             <Statistic
-              title="在线站点"
+              title={<span style={{ fontSize: isMobile ? 11 : 14 }}>在线站点</span>}
               value={onlineCount}
               suffix={`/ ${sites.length}`}
-              valueStyle={{ color: '#3f8600' }}
+              valueStyle={{ color: '#3f8600', fontSize: isMobile ? 14 : 24 }}
               prefix={<CheckCircleOutlined />}
             />
           </Col>
-          <Col span={6}>
+          <Col xs={12} sm={6}>
             <Statistic
-              title="离线站点"
+              title={<span style={{ fontSize: isMobile ? 11 : 14 }}>离线站点</span>}
               value={offlineCount}
-              valueStyle={{ color: '#cf1322' }}
+              valueStyle={{ color: '#cf1322', fontSize: isMobile ? 14 : 24 }}
               prefix={<CloseCircleOutlined />}
             />
           </Col>
-          <Col span={6}>
+          <Col xs={12} sm={6}>
             <Statistic
-              title="响应时间"
+              title={<span style={{ fontSize: isMobile ? 11 : 14 }}>响应时间</span>}
               value={currentSiteInfo?.responseTime || '-'}
               suffix="ms"
+              valueStyle={{ fontSize: isMobile ? 14 : 24 }}
               prefix={<ThunderboltOutlined />}
             />
           </Col>
@@ -280,43 +293,49 @@ const CrownSitesPage: React.FC = () => {
       </Card>
 
       {/* 提示信息 */}
-      <Alert
-        message="站点自动切换"
-        description="系统会自动监控站点健康状态，当前站点不可用时会自动切换到可用的备用站点。您也可以手动切换站点或触发健康检查。"
-        type="info"
-        showIcon
-        style={{ marginBottom: 24 }}
-      />
+      {!isMobile && (
+        <Alert
+          message="站点自动切换"
+          description="系统会自动监控站点健康状态，当前站点不可用时会自动切换到可用的备用站点。您也可以手动切换站点或触发健康检查。"
+          type="info"
+          showIcon
+          style={{ marginBottom: 24 }}
+        />
+      )}
 
       {/* 站点列表 */}
-      <Card>
+      <Card style={isMobile ? { marginBottom: 0, borderRadius: 0 } : {}}>
         <Row justify="space-between" style={{ marginBottom: 16 }}>
           <Col>
-            <Title level={4}>站点列表</Title>
+            <Title level={isMobile ? 5 : 4}>站点列表</Title>
           </Col>
           <Col>
-            <Space>
+            <Space size={isMobile ? 4 : 8}>
               <Button
                 icon={<ReloadOutlined />}
                 onClick={loadSites}
                 loading={loading}
+                size={isMobile ? 'small' : 'middle'}
               >
-                刷新
+                {isMobile ? '' : '刷新'}
               </Button>
-              <Button
-                icon={<CheckCircleOutlined />}
-                onClick={handleHealthCheck}
-                loading={loading}
-              >
-                健康检查
-              </Button>
+              {!isMobile && (
+                <Button
+                  icon={<CheckCircleOutlined />}
+                  onClick={handleHealthCheck}
+                  loading={loading}
+                >
+                  健康检查
+                </Button>
+              )}
               <Button
                 type="primary"
                 icon={<SwapOutlined />}
                 onClick={handleAutoSwitch}
                 loading={loading}
+                size={isMobile ? 'small' : 'middle'}
               >
-                自动切换
+                {isMobile ? '切换' : '自动切换'}
               </Button>
             </Space>
           </Col>

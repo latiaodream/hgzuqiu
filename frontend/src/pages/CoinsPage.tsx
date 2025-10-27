@@ -48,6 +48,15 @@ const CoinsPage: React.FC = () => {
   const [currentBalance, setCurrentBalance] = useState(0);
   const [stats, setStats] = useState<CoinStats['transaction_summary']>({});
   const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // 用户列表（用于充值和转账）
   const [agents, setAgents] = useState<User[]>([]);
@@ -428,51 +437,62 @@ const CoinsPage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
+    <div style={{ padding: isMobile ? 0 : '24px', background: isMobile ? '#fff' : '#f0f2f5', minHeight: '100vh' }}>
       {/* 页面标题 */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>金币流水</Title>
-        <Text type="secondary">查看和管理金币交易记录</Text>
-      </div>
+      {!isMobile && (
+        <div style={{ marginBottom: 24 }}>
+          <Title level={3} style={{ margin: 0 }}>金币流水</Title>
+          <Text type="secondary">查看和管理金币交易记录</Text>
+        </div>
+      )}
 
       {/* 统计卡片 */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
+      <Row gutter={isMobile ? 4 : 16} style={{ marginBottom: isMobile ? 4 : 16 }}>
         {getStatsCards().map((stat, index) => (
-          <Col xs={24} sm={12} lg={6} key={index}>
-            <Card bodyStyle={{ padding: '20px' }}>
-              <Statistic {...stat} />
+          <Col xs={12} sm={12} lg={6} key={index}>
+            <Card
+              bodyStyle={{ padding: isMobile ? '12px' : '20px' }}
+              style={isMobile ? { borderRadius: 0 } : {}}
+            >
+              <Statistic
+                {...stat}
+                valueStyle={{ fontSize: isMobile ? 16 : 24 }}
+                title={<span style={{ fontSize: isMobile ? 11 : 14 }}>{stat.title}</span>}
+              />
             </Card>
           </Col>
         ))}
       </Row>
 
-      <Card bodyStyle={{ padding: 0 }}>
+      <Card bodyStyle={{ padding: 0 }} style={isMobile ? { marginBottom: 0, borderRadius: 0 } : {}}>
         <Tabs
           defaultActiveKey="transactions"
+          size={isMobile ? 'small' : 'middle'}
           items={[
             {
               key: 'transactions',
               label: (
-                <span style={{ fontSize: 14, fontWeight: 500 }}>
+                <span style={{ fontSize: isMobile ? 12 : 14, fontWeight: 500 }}>
                   <BarChartOutlined /> 流水记录
                 </span>
               ),
               children: (
                 <>
                   {/* 筛选条件 */}
-                  <div style={{ padding: '16px 24px', background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
-                    <Row gutter={[16, 16]} align="middle">
-                      <Col xs={24} sm={8} md={6}>
-                        <Space>
-                          <Text type="secondary">类型:</Text>
+                  <div style={{ padding: isMobile ? '8px' : '16px 24px', background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                    <Row gutter={isMobile ? [0, 8] : [16, 16]} align="middle">
+                      <Col xs={12} sm={8} md={6}>
+                        <Space size={4}>
+                          <Text type="secondary" style={{ fontSize: isMobile ? 12 : 14 }}>类型:</Text>
                           <Select
-                            placeholder="全部类型"
-                            style={{ width: 150 }}
+                            placeholder={isMobile ? '类型' : '全部类型'}
+                            style={{ width: isMobile ? 80 : 150 }}
+                            size={isMobile ? 'small' : 'middle'}
                             allowClear
                             value={selectedType}
                             onChange={setSelectedType}
                             options={[
-                              { label: '全部类型', value: '' },
+                              { label: '全部', value: '' },
                               { label: '消耗', value: '消耗' },
                               { label: '返还', value: '返还' },
                               { label: '充值', value: '充值' },
@@ -482,11 +502,13 @@ const CoinsPage: React.FC = () => {
                           />
                         </Space>
                       </Col>
-                      <Col xs={24} sm={10} md={10}>
-                        <Space>
-                          <Text type="secondary">日期:</Text>
+                      <Col xs={12} sm={10} md={10}>
+                        <Space size={4}>
+                          {!isMobile && <Text type="secondary">日期:</Text>}
                           <RangePicker
                             value={dateRange}
+                            size={isMobile ? 'small' : 'middle'}
+                            style={{ width: isMobile ? '100%' : undefined }}
                             onChange={(dates) => {
                               if (dates && dates[0] && dates[1]) {
                                 setDateRange([dates[0], dates[1]] as [dayjs.Dayjs, dayjs.Dayjs]);

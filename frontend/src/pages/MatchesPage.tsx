@@ -24,6 +24,15 @@ const MatchesPage: React.FC = () => {
   const [selectionPreset, setSelectionPreset] = useState<{ bet_type: string; bet_option: string; odds: number; label?: string } | null>(null);
   const [accounts, setAccounts] = useState<CrownAccount[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchAccounts = async (silent = false) => {
     try {
@@ -417,16 +426,21 @@ const MatchesPage: React.FC = () => {
   };
 
   return (
-    <div className="matches-page">
-      <Title level={2}>赛事中心</Title>
-      <Card className="matches-filter-card" bodyStyle={{ padding: 14 }}>
-        <div className="filter-grid">
-          <div className="filter-left">
-            <div className="filter-group">
+    <div className="matches-page" style={{ padding: isMobile ? 0 : undefined }}>
+      {!isMobile && <Title level={2}>赛事中心</Title>}
+      <Card
+        className="matches-filter-card"
+        bodyStyle={{ padding: isMobile ? 8 : 14 }}
+        style={isMobile ? { marginBottom: 1, borderRadius: 0 } : {}}
+      >
+        <div className="filter-grid" style={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 8 : undefined }}>
+          <div className="filter-left" style={{ width: isMobile ? '100%' : undefined }}>
+            <div className="filter-group" style={{ flexWrap: 'wrap', gap: 4 }}>
               <Select
                 size="small"
                 value={gtype}
                 onChange={(v) => setGtype(v as any)}
+                style={{ width: isMobile ? 70 : undefined }}
                 options={[
                   { label: '足球', value: 'ft' },
                   { label: '篮球', value: 'bk' },
@@ -436,44 +450,52 @@ const MatchesPage: React.FC = () => {
                 size="small"
                 value={showtype}
                 onChange={(v) => setShowtype(v as any)}
+                style={{ width: isMobile ? 70 : undefined }}
                 options={[
                   { label: '滚球', value: 'live' },
                   { label: '今日', value: 'today' },
                   { label: '早盘', value: 'early' },
                 ]}
               />
-              <Segmented
-                size="small"
-                className="filter-segmented"
-                options={[
-                  { label: '实时抓取', value: 'live' },
-                  { label: '本地缓存', value: 'local' },
-                ]}
-                value={mode}
-                onChange={(val) => setMode(val as 'live' | 'local')}
-              />
+              {!isMobile && (
+                <Segmented
+                  size="small"
+                  className="filter-segmented"
+                  options={[
+                    { label: '实时抓取', value: 'live' },
+                    { label: '本地缓存', value: 'local' },
+                  ]}
+                  value={mode}
+                  onChange={(val) => setMode(val as 'live' | 'local')}
+                />
+              )}
             </div>
-            <div className="matches-meta">当前赛事：{filtered.length} 场</div>
+            <div className="matches-meta" style={{ fontSize: isMobile ? 12 : undefined }}>
+              当前赛事：{filtered.length} 场
+            </div>
           </div>
-          <div className="filter-group filter-actions">
+          <div className="filter-group filter-actions" style={{ width: isMobile ? '100%' : undefined, justifyContent: isMobile ? 'space-between' : undefined }}>
             <Input
               size="small"
               allowClear
-              placeholder="搜索联赛/球队"
+              placeholder={isMobile ? '搜索' : '搜索联赛/球队'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              style={{ width: isMobile ? '60%' : undefined }}
             />
             <Button size="small" icon={<ReloadOutlined />} onClick={() => loadMatches()}>
-              刷新
+              {isMobile ? '' : '刷新'}
             </Button>
-            <div className="matches-meta">
-              最近刷新：{renderLastUpdated()}
-            </div>
+            {!isMobile && (
+              <div className="matches-meta">
+                最近刷新：{renderLastUpdated()}
+              </div>
+            )}
           </div>
         </div>
       </Card>
 
-      <Card className="matches-card">
+      <Card className="matches-card" style={isMobile ? { marginBottom: 0, borderRadius: 0 } : {}}>
         <Spin spinning={loading} tip="加载中..." delay={200}>
           {filtered.length === 0 ? (
             <Empty description="暂无赛事" />
