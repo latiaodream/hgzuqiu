@@ -1377,3 +1377,128 @@ body {
     padding: 10px 12px;
   }
 }
+
+/* 移动端登录页面适配 */
+@media (max-width: 768px) {
+  /* 登录页面背景装饰球体 - 移动端隐藏或缩小 */
+  .ant-row > div:first-child > div > div[style*="position: absolute"] {
+    display: none !important;
+  }
+
+  /* 登录表单卡片 */
+  .ant-card {
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 12px !important;
+  }
+
+  .ant-card-body {
+    padding: 32px 24px !important;
+  }
+
+  /* 登录页面左侧信息区域 */
+  .ant-col > div[style*="color: white"] {
+    padding: 20px !important;
+  }
+
+  .ant-col > div[style*="color: white"] > div:first-child {
+    font-size: 32px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .ant-col > div[style*="color: white"] > div:nth-child(2) {
+    font-size: 18px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .ant-col > div[style*="color: white"] > div:nth-child(3) {
+    font-size: 14px !important;
+  }
+
+  .ant-col > div[style*="color: white"] > div:nth-child(3) p {
+    margin: 8px 0 !important;
+  }
+}
+
+@media (max-width: 576px) {
+  /* 超小屏幕 - 进一步优化 */
+  .ant-card-body {
+    padding: 24px 20px !important;
+  }
+
+  /* 输入框 */
+  .ant-input-lg,
+  .ant-input-password-lg {
+    height: 44px !important;
+    font-size: 14px !important;
+    padding: 10px 14px !important;
+  }
+
+  /* 按钮 */
+  .ant-btn-lg {
+    height: 44px !important;
+    font-size: 15px !important;
+  }
+
+  /* 登录页面标题 */
+  .ant-col > div[style*="color: white"] > div:first-child {
+    font-size: 28px !important;
+  }
+
+  .ant-col > div[style*="color: white"] > div:nth-child(2) {
+    font-size: 16px !important;
+  }
+
+  /* 表单标签 */
+  .ant-form-item-label > label {
+    font-size: 13px !important;
+  }
+
+  /* 顶部导航栏 - 移动端优化 */
+  .ant-layout-header {
+    padding: 0 12px !important;
+  }
+
+  .header-right-section {
+    gap: 8px !important;
+  }
+
+  .coin-balance-tag {
+    font-size: 12px !important;
+    padding: 2px 8px !important;
+  }
+
+  .coin-label {
+    display: none;
+  }
+
+  .username-text {
+    display: none;
+  }
+
+  .user-info-space {
+    gap: 0 !important;
+  }
+
+  /* 内容区域 */
+  .ant-layout-content {
+    margin: 12px !important;
+    padding: 16px !important;
+  }
+}
+
+/* 中等屏幕优化 */
+@media (max-width: 768px) and (min-width: 577px) {
+  .ant-layout-header {
+    padding: 0 16px !important;
+  }
+
+  .header-right-section {
+    gap: 12px !important;
+  }
+
+  .coin-balance-tag {
+    font-size: 13px !important;
+    padding: 3px 10px !important;
+  }
+}

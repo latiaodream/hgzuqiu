@@ -253,19 +253,20 @@ const MainLayout: React.FC = () => {
             }}
           />
 
-          <Space size="large">
+          <Space size="large" className="header-right-section">
             <Tag
               icon={<DollarOutlined />}
               color="gold"
               style={{ fontSize: 14, padding: '4px 12px', cursor: 'pointer' }}
               onClick={() => navigate('/coins')}
+              className="coin-balance-tag"
             >
-              金币：¥{coinBalance.toFixed(2)}
+              <span className="coin-label">金币：</span>¥{coinBalance.toFixed(2)}
             </Tag>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <Space style={{ cursor: 'pointer' }}>
+              <Space style={{ cursor: 'pointer' }} className="user-info-space">
                 <Avatar icon={<UserOutlined />} />
-                <span>{user?.username}</span>
+                <span className="username-text">{user?.username}</span>
               </Space>
             </Dropdown>
           </Space>
