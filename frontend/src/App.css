@@ -692,6 +692,34 @@ body {
   align-items: center;
 }
 
+/* 移动端赛事头部优化 */
+@media (max-width: 768px) {
+  .match-header-box {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .match-league {
+    font-size: 10px !important;
+  }
+
+  .match-team {
+    font-size: 11px !important;
+  }
+
+  .score-main {
+    font-size: 14px !important;
+  }
+
+  .score-sub {
+    font-size: 9px !important;
+  }
+
+  .match-score-box {
+    gap: 8px !important;
+  }
+}
+
 .match-league {
   font-size: 12px;
   font-weight: 600;
@@ -765,6 +793,28 @@ body {
   border-top: 1px solid #d5d5d5;
 }
 
+/* 移动端赛事盘口优化 */
+@media (max-width: 768px) {
+  .odds-grid {
+    grid-template-columns: repeat(6, minmax(80px, 1fr));
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .odds-header-row {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(80px, 1fr));
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .odds-header-cell {
+    font-size: 11px !important;
+    padding: 4px 2px !important;
+    min-width: 80px;
+  }
+}
+
 .odds-col {
   padding: 6px 4px;
   border-left: 1px solid #e0e0e0;
@@ -772,6 +822,7 @@ body {
   justify-content: center;
   align-items: stretch;
   background: #ffffff;
+  min-width: 80px;
 }
 
 .odds-col:first-child {
@@ -799,6 +850,24 @@ body {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, #f5f9ff 100%);
   border: 1px solid rgba(22, 119, 255, 0.16);
   min-height: 38px;
+}
+
+/* 移动端赔率项优化 */
+@media (max-width: 768px) {
+  .odds-item {
+    padding: 4px 4px;
+    gap: 2px;
+    min-height: 32px;
+    border-radius: 4px;
+  }
+
+  .odds-item .odds-line {
+    font-size: 8px !important;
+  }
+
+  .odds-item .odds-value {
+    font-size: 11px !important;
+  }
 }
 
 .odds-item:hover {
