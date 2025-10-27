@@ -45,6 +45,16 @@ const AccountCard: React.FC<AccountCardProps> = ({
   onShare,
   pendingCredentials,
 }) => {
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 768);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const formatDiscount = (value?: number) => {
     if (!value || value <= 0) {
       return '-';
@@ -107,49 +117,74 @@ const AccountCard: React.FC<AccountCardProps> = ({
 
       {/* 详细信息区域 */}
       <div className="account-card-details">
-        <div className="account-card-detail-row">
-          <Text strong>赛事:</Text>
-          <Text>{account.game_type || '足球'}</Text>
-          <Text strong>币种:</Text>
-          <Text>{account.currency || 'CNY'}</Text>
-          <Text strong>折扣:</Text>
-          <Text>{formatDiscount(account.discount)}</Text>
-        </div>
-
-        <div className="account-card-detail-row">
-          <Text strong>备注:</Text>
-          <Text>{account.note || '-'}</Text>
-          <Text strong>共享:</Text>
-          <Space size={4}>
-            {account.shared_from_username ? (
-              <Tag color="orange" icon={<ShareAltOutlined />}>
-                来自 {account.shared_from_username}
-              </Tag>
-            ) : (
-              <Text>{account.share_count || 0} 人</Text>
+        {isMobile ? (
+          <>
+            {/* 移动端：紧凑的单行显示 */}
+            <div className="account-card-detail-row">
+              <span><Text strong>余额:</Text><Text>{(() => {
+                const raw: any = (account as any).balance;
+                const num = typeof raw === 'number' ? raw : (raw ? parseFloat(String(raw)) : NaN);
+                return Number.isFinite(num) ? num.toLocaleString() : '-';
+              })()}</Text></span>
+              <span><Text strong>设备:</Text><Text>{account.device_type || 'iPhone 15'}</Text></span>
+              <span><Text strong>代理:</Text><Text style={{ color: account.proxy_enabled ? '#52c41a' : '#999' }}>
+                {account.proxy_enabled ? '有' : '无'}
+              </Text></span>
+            </div>
+            {account.note && account.note !== '-' && (
+              <div className="account-card-detail-row">
+                <span><Text strong>备注:</Text><Text>{account.note}</Text></span>
+              </div>
             )}
-          </Space>
-          <Text strong>止盈:</Text>
-          <Text>{(() => {
-            const formatted = formatAmount(account.stop_profit_limit);
-            return formatted === '-' ? '-' : `${formatted} 元`;
-          })()}</Text>
-        </div>
+          </>
+        ) : (
+          <>
+            {/* 桌面端：原有布局 */}
+            <div className="account-card-detail-row">
+              <Text strong>赛事:</Text>
+              <Text>{account.game_type || '足球'}</Text>
+              <Text strong>币种:</Text>
+              <Text>{account.currency || 'CNY'}</Text>
+              <Text strong>折扣:</Text>
+              <Text>{formatDiscount(account.discount)}</Text>
+            </div>
 
-        <div className="account-card-detail-row">
-          <Text strong>设备:</Text>
-          <Text>{account.device_type || 'iPhone 15'}</Text>
-          <Text strong>代理:</Text>
-          <Text style={{ color: account.proxy_enabled ? '#52c41a' : '#999' }}>
-            {account.proxy_enabled ? '有' : '无'}
-          </Text>
-          <Text strong>余额:</Text>
-          <Text>{(() => {
-            const raw: any = (account as any).balance;
-            const num = typeof raw === 'number' ? raw : (raw ? parseFloat(String(raw)) : NaN);
-            return Number.isFinite(num) ? num.toLocaleString() : '-';
-          })()}</Text>
-        </div>
+            <div className="account-card-detail-row">
+              <Text strong>备注:</Text>
+              <Text>{account.note || '-'}</Text>
+              <Text strong>共享:</Text>
+              <Space size={4}>
+                {account.shared_from_username ? (
+                  <Tag color="orange" icon={<ShareAltOutlined />}>
+                    来自 {account.shared_from_username}
+                  </Tag>
+                ) : (
+                  <Text>{account.share_count || 0} 人</Text>
+                )}
+              </Space>
+              <Text strong>止盈:</Text>
+              <Text>{(() => {
+                const formatted = formatAmount(account.stop_profit_limit);
+                return formatted === '-' ? '-' : `${formatted} 元`;
+              })()}</Text>
+            </div>
+
+            <div className="account-card-detail-row">
+              <Text strong>设备:</Text>
+              <Text>{account.device_type || 'iPhone 15'}</Text>
+              <Text strong>代理:</Text>
+              <Text style={{ color: account.proxy_enabled ? '#52c41a' : '#999' }}>
+                {account.proxy_enabled ? '有' : '无'}
+              </Text>
+              <Text strong>余额:</Text>
+              <Text>{(() => {
+                const raw: any = (account as any).balance;
+                const num = typeof raw === 'number' ? raw : (raw ? parseFloat(String(raw)) : NaN);
+                return Number.isFinite(num) ? num.toLocaleString() : '-';
+              })()}</Text>
+            </div>
+          </>
+        )}
 
         {pendingCredentials && (
           <div className="account-card-detail-row" style={{ background: '#fff6db', borderRadius: 6, padding: '8px 10px' }}>
@@ -172,25 +207,27 @@ const AccountCard: React.FC<AccountCardProps> = ({
         {/* 密码和简易码 - 只显示密码，隐藏简易码 */}
         {account.password && (
           <div className="account-card-detail-row">
-            <Space size={12}>
+            <Space size={isMobile ? 4 : 12}>
               <span>
-                <Text strong>当前密码：</Text>
+                <Text strong>密码：</Text>
                 <Text copyable={{ text: account.password }}>{account.password}</Text>
               </span>
             </Space>
           </div>
         )}
 
-        <div className="account-card-limits">
-          <div className="account-card-limit-row">
-            <Text strong>足球:</Text>
-            <Text>[赛前]{(account.football_prematch_limit || 1100000) / 10000}万/[滚球]{(account.football_live_limit || 1100000) / 10000}万</Text>
+        {!isMobile && (
+          <div className="account-card-limits">
+            <div className="account-card-limit-row">
+              <Text strong>足球:</Text>
+              <Text>[赛前]{(account.football_prematch_limit || 1100000) / 10000}万/[滚球]{(account.football_live_limit || 1100000) / 10000}万</Text>
+            </div>
+            <div className="account-card-limit-row">
+              <Text strong>篮球:</Text>
+              <Text>[赛前]{(account.basketball_prematch_limit || 1100000) / 10000}万/[滚球]{(account.basketball_live_limit || 1100000) / 10000}万</Text>
+            </div>
           </div>
-          <div className="account-card-limit-row">
-            <Text strong>篮球:</Text>
-            <Text>[赛前]{(account.basketball_prematch_limit || 1100000) / 10000}万/[滚球]{(account.basketball_live_limit || 1100000) / 10000}万</Text>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* 底部操作区域 */}

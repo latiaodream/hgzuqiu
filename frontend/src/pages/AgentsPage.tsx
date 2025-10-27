@@ -43,11 +43,21 @@ const AgentsPage: React.FC = () => {
   const [agentList, setAgentList] = useState<AgentWithStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [pagination, setPagination] = useState<TablePagination>({
     current: 1,
     pageSize: 20,
     total: 0,
   });
+
+  // 监听窗口大小变化
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // 模态框状态
   const [formModalVisible, setFormModalVisible] = useState(false);
@@ -230,7 +240,8 @@ const AgentsPage: React.FC = () => {
       title: 'ID',
       dataIndex: 'id',
       key: 'id',
-      width: 80,
+      width: 60,
+      responsive: ['md'] as any,
     },
     {
       title: '用户名',
@@ -240,16 +251,37 @@ const AgentsPage: React.FC = () => {
       onFilter: (value, record) =>
         record.username.toLowerCase().includes((value as string).toLowerCase()) ||
         record.email.toLowerCase().includes((value as string).toLowerCase()),
+      render: (username: string, record) => (
+        <div>
+          <div style={{ fontWeight: 500 }}>{username}</div>
+          {isMobile && (
+            <>
+              <div style={{ fontSize: '12px', color: '#999' }}>{record.email}</div>
+              <Space size={4} style={{ marginTop: 4 }}>
+                <Tag color="purple" style={{ fontSize: '11px', margin: 0 }}>代理</Tag>
+                <Tag color={record.staff_count > 0 ? 'green' : 'default'} style={{ fontSize: '11px', margin: 0 }}>
+                  员工: {record.staff_count}
+                </Tag>
+                <Tag color="gold" style={{ fontSize: '11px', margin: 0 }}>
+                  ¥{(record.coin_balance || 0).toFixed(2)}
+                </Tag>
+              </Space>
+            </>
+          )}
+        </div>
+      ),
     },
     {
       title: '邮箱',
       dataIndex: 'email',
       key: 'email',
+      responsive: ['md'] as any,
     },
     {
       title: '角色',
       dataIndex: 'role',
       key: 'role',
+      responsive: ['lg'] as any,
       render: (role: string) => (
         <Tag color="purple">代理</Tag>
       ),
@@ -258,6 +290,7 @@ const AgentsPage: React.FC = () => {
       title: '员工数量',
       dataIndex: 'staff_count',
       key: 'staff_count',
+      responsive: ['md'] as any,
       render: (count: number) => (
         <Tag color={count > 0 ? 'green' : 'default'} icon={<TeamOutlined />}>
           {count}
@@ -268,6 +301,7 @@ const AgentsPage: React.FC = () => {
       title: '信用额度',
       dataIndex: 'credit_limit',
       key: 'credit_limit',
+      responsive: ['lg'] as any,
       render: (credit_limit: number) => (
         <span>{credit_limit ? credit_limit.toLocaleString() : '0'}</span>
       ),
@@ -276,6 +310,7 @@ const AgentsPage: React.FC = () => {
       title: '金币余额',
       dataIndex: 'coin_balance',
       key: 'coin_balance',
+      responsive: ['md'] as any,
       render: (balance: number) => (
         <Tag color="gold" icon={<DollarOutlined />}>
           ¥{(balance || 0).toFixed(2)}
@@ -286,28 +321,31 @@ const AgentsPage: React.FC = () => {
       title: '创建时间',
       dataIndex: 'created_at',
       key: 'created_at',
+      responsive: ['lg'] as any,
       render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm'),
     },
     {
       title: '操作',
       key: 'action',
-      fixed: 'right',
-      width: 240,
+      fixed: isMobile ? false : 'right',
+      width: isMobile ? 100 : 240,
       render: (_, record) => (
-        <Space size="small">
+        <Space size="small" direction={isMobile ? 'vertical' : 'horizontal'}>
           <Button
             type="primary"
             size="small"
             icon={<DollarOutlined />}
             onClick={() => handleRecharge(record)}
+            style={isMobile ? { width: '100%' } : {}}
           >
-            充值
+            {isMobile ? '充值' : '充值'}
           </Button>
           <Button
             type="link"
             size="small"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            style={isMobile ? { width: '100%', padding: '4px 8px' } : {}}
           >
             编辑
           </Button>
@@ -327,6 +365,7 @@ const AgentsPage: React.FC = () => {
               size="small"
               danger
               icon={<DeleteOutlined />}
+              style={isMobile ? { width: '100%', padding: '4px 8px' } : {}}
             >
               删除
             </Button>
@@ -346,37 +385,41 @@ const AgentsPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card>
+    <div style={{ padding: isMobile ? 0 : '24px' }}>
+      <Card style={isMobile ? { margin: 0, borderRadius: 0 } : {}}>
         <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-          <Col>
-            <Title level={3} style={{ margin: 0 }}>
+          <Col xs={24} sm={12}>
+            <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
               <UserOutlined /> 代理管理
             </Title>
           </Col>
-          <Col>
-            <Space>
+          <Col xs={24} sm={12} style={{ marginTop: isMobile ? 12 : 0 }}>
+            <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: '100%' }}>
               <Search
                 placeholder="搜索用户名或邮箱"
                 allowClear
-                style={{ width: 250 }}
+                style={{ width: isMobile ? '100%' : 250 }}
                 onChange={(e) => setSearchText(e.target.value)}
                 onSearch={setSearchText}
               />
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={loadAgentList}
-                loading={loading}
-              >
-                刷新
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleCreate}
-              >
-                添加代理
-              </Button>
+              <Space style={{ width: isMobile ? '100%' : 'auto' }}>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={loadAgentList}
+                  loading={loading}
+                  style={isMobile ? { flex: 1 } : {}}
+                >
+                  {isMobile ? '' : '刷新'}
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleCreate}
+                  style={isMobile ? { flex: 1 } : {}}
+                >
+                  {isMobile ? '添加' : '添加代理'}
+                </Button>
+              </Space>
             </Space>
           </Col>
         </Row>
@@ -386,11 +429,14 @@ const AgentsPage: React.FC = () => {
           dataSource={agentList}
           rowKey="id"
           loading={loading}
+          scroll={isMobile ? { x: 'max-content' } : undefined}
           pagination={{
             ...pagination,
-            showSizeChanger: true,
-            showQuickJumper: true,
+            showSizeChanger: !isMobile,
+            showQuickJumper: !isMobile,
             showTotal: (total) => `共 ${total} 条`,
+            simple: isMobile,
+            pageSize: isMobile ? 10 : pagination.pageSize,
             onChange: (page, pageSize) => {
               setPagination(prev => ({ ...prev, current: page, pageSize }));
             },
@@ -408,7 +454,8 @@ const AgentsPage: React.FC = () => {
           form.resetFields();
         }}
         confirmLoading={loading}
-        width={500}
+        width={isMobile ? '100%' : 500}
+        style={isMobile ? { top: 0, paddingBottom: 0, maxWidth: '100vw' } : {}}
       >
         <Form
           form={form}
@@ -460,7 +507,8 @@ const AgentsPage: React.FC = () => {
           rechargeForm.resetFields();
         }}
         confirmLoading={loading}
-        width={500}
+        width={isMobile ? '100%' : 500}
+        style={isMobile ? { top: 0, paddingBottom: 0, maxWidth: '100vw' } : {}}
       >
         <Form
           form={rechargeForm}

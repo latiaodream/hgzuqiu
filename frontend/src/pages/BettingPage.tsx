@@ -91,6 +91,16 @@ const BettingPage: React.FC = () => {
   const [agents, setAgents] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // 监听窗口大小变化
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // 筛选条件
   const [selectedPlatform, setSelectedPlatform] = useState<string>('皇冠');

@@ -32,6 +32,16 @@ const FetchAccountsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('all');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // 监听窗口大小变化
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const loadGroups = useCallback(async () => {
     try {
@@ -143,36 +153,47 @@ const FetchAccountsPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Space align="center" size={16} wrap>
-          <Title level={3} style={{ margin: 0 }}>赛事抓取账号</Title>
-          <Tag color="geekblue">当前已启用 {fetchAccounts.length} 个账号</Tag>
-          <Button icon={<ReloadOutlined />} onClick={loadAccounts}>刷新</Button>
-          <Select
-            value={groupFilter}
-            style={{ width: 200 }}
-            onChange={(value) => setGroupFilter(value as GroupFilter)}
-            allowClear={false}
-          >
-            <Option value="all">全部分组</Option>
-            {groups.map((group) => (
-              <Option key={group.id} value={group.id}>{group.name}</Option>
-            ))}
-          </Select>
-        </Space>
+    <div style={{ padding: isMobile ? 0 : '24px' }}>
+      <Space direction="vertical" size={isMobile ? 12 : 16} style={{ width: '100%' }}>
+        <Card style={isMobile ? { margin: 0, borderRadius: 0 } : {}}>
+          <Space direction={isMobile ? 'vertical' : 'horizontal'} align="center" size={isMobile ? 8 : 16} wrap style={{ width: '100%' }}>
+            <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>赛事抓取账号</Title>
+            <Tag color="geekblue">已启用 {fetchAccounts.length} 个</Tag>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={loadAccounts}
+              size={isMobile ? 'small' : 'middle'}
+            >
+              刷新
+            </Button>
+            <Select
+              value={groupFilter}
+              style={{ width: isMobile ? '100%' : 200 }}
+              onChange={(value) => setGroupFilter(value as GroupFilter)}
+              allowClear={false}
+              size={isMobile ? 'small' : 'middle'}
+            >
+              <Option value="all">全部分组</Option>
+              {groups.map((group) => (
+                <Option key={group.id} value={group.id}>{group.name}</Option>
+              ))}
+            </Select>
+          </Space>
+        </Card>
 
         <Spin spinning={loading} tip="正在加载账号信息...">
-          <Row gutter={24}>
+          <Row gutter={isMobile ? [0, 12] : 24}>
             <Col xs={24} lg={12}>
               <Card
                 title="已启用的抓取账号"
-                extra={<Text type="secondary">优先使用这些账号执行赛事抓取</Text>}
+                extra={!isMobile && <Text type="secondary">优先使用这些账号执行赛事抓取</Text>}
                 bodyStyle={{ paddingTop: 12 }}
+                style={isMobile ? { margin: 0, borderRadius: 0 } : {}}
               >
                 <List
                   dataSource={filteredFetchAccounts}
                   locale={{ emptyText: <Empty description="还没有启用抓取账号" /> }}
+                  size={isMobile ? 'small' : 'default'}
                   renderItem={(account) => (
                     <List.Item
                       actions={[
@@ -180,20 +201,25 @@ const FetchAccountsPage: React.FC = () => {
                           key="remove"
                           type="link"
                           size="small"
-                          icon={<CloseOutlined />}
+                          icon={isMobile ? <CloseOutlined /> : undefined}
                           onClick={() => handleToggleFetch(account, false)}
                           loading={updatingId === account.id}
+                          danger
                         >
-                          移出
+                          {isMobile ? '' : '移出'}
                         </Button>,
                       ]}
                     >
                       <List.Item.Meta
                         title={renderAccountMeta(account)}
                         description={(
-                          <Space size={12} wrap>
-                            <Text type="secondary">余额: {account.balance ?? '-'}</Text>
-                            <Text type="secondary">分组: {account.group_name || '未分组'}</Text>
+                          <Space size={isMobile ? 4 : 12} wrap>
+                            <Text type="secondary" style={{ fontSize: isMobile ? '12px' : '14px' }}>
+                              余额: {account.balance ?? '-'}
+                            </Text>
+                            {!isMobile && (
+                              <Text type="secondary">分组: {account.group_name || '未分组'}</Text>
+                            )}
                           </Space>
                         )}
                       />
@@ -206,12 +232,14 @@ const FetchAccountsPage: React.FC = () => {
             <Col xs={24} lg={12}>
               <Card
                 title="可添加的账号"
-                extra={<Text type="secondary">切换为抓取账号后会被自动复用</Text>}
+                extra={!isMobile && <Text type="secondary">切换为抓取账号后会被自动复用</Text>}
                 bodyStyle={{ paddingTop: 12 }}
+                style={isMobile ? { margin: 0, borderRadius: 0 } : {}}
               >
                 <List
                   dataSource={filteredAvailableAccounts}
                   locale={{ emptyText: <Empty description="没有可用账号" /> }}
+                  size={isMobile ? 'small' : 'default'}
                   renderItem={(account) => (
                     <List.Item
                       actions={[
@@ -219,20 +247,27 @@ const FetchAccountsPage: React.FC = () => {
                           key="add"
                           type="link"
                           size="small"
-                          icon={<PlusOutlined />}
+                          icon={isMobile ? <PlusOutlined /> : undefined}
                           onClick={() => handleToggleFetch(account, true)}
                           loading={updatingId === account.id}
                         >
-                          加入抓取
+                          {isMobile ? '' : '加入抓取'}
                         </Button>,
                       ]}
                     >
                       <List.Item.Meta
                         title={renderAccountMeta(account)}
                         description={(
-                          <Space size={12} wrap>
-                            <Text type="secondary">上次登录: {account.updated_at ? new Date(account.updated_at).toLocaleString() : '-'}</Text>
-                            <Text type="secondary">分组: {account.group_name || '未分组'}</Text>
+                          <Space size={isMobile ? 4 : 12} wrap>
+                            <Text type="secondary" style={{ fontSize: isMobile ? '12px' : '14px' }}>
+                              {isMobile
+                                ? (account.updated_at ? new Date(account.updated_at).toLocaleDateString() : '-')
+                                : `上次登录: ${account.updated_at ? new Date(account.updated_at).toLocaleString() : '-'}`
+                              }
+                            </Text>
+                            {!isMobile && (
+                              <Text type="secondary">分组: {account.group_name || '未分组'}</Text>
+                            )}
                           </Space>
                         )}
                       />

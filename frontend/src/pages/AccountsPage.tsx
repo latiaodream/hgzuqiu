@@ -39,6 +39,16 @@ const AccountsPage: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<number | undefined>();
   const [searchText, setSearchText] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // 监听窗口大小变化
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // 模态框状态
   const [formModalVisible, setFormModalVisible] = useState(false);
@@ -636,11 +646,11 @@ const AccountsPage: React.FC = () => {
 
 
   return (
-    <div>
-      <Title level={2}>账号管理</Title>
+    <div style={{ padding: isMobile ? 0 : '24px' }}>
+      <Title level={isMobile ? 4 : 2} style={{ padding: isMobile ? '12px' : 0 }}>账号管理</Title>
 
-      <Card style={{ marginBottom: 16 }}>
-        <Row gutter={[16, 16]} align="middle">
+      <Card style={isMobile ? { marginBottom: 1, borderRadius: 0 } : { marginBottom: 16 }}>
+        <Row gutter={isMobile ? [0, 8] : [16, 16]} align="middle">
           <Col xs={24} sm={8} md={6}>
             <Select
               placeholder="选择分组"
@@ -648,6 +658,7 @@ const AccountsPage: React.FC = () => {
               allowClear
               value={selectedGroup}
               onChange={setSelectedGroup}
+              size={isMobile ? 'small' : 'middle'}
               options={[
                 { label: '全部分组', value: undefined },
                 ...groups.map(group => ({
@@ -663,51 +674,58 @@ const AccountsPage: React.FC = () => {
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               style={{ width: '100%' }}
+              size={isMobile ? 'small' : 'middle'}
             />
           </Col>
           <Col xs={24} sm={8} md={12}>
-            <Space wrap>
+            <Space wrap size={isMobile ? 4 : 8}>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={handleCreateAccount}
+                size={isMobile ? 'small' : 'middle'}
               >
-                新增账号
+                {isMobile ? '新增' : '新增账号'}
               </Button>
               <Button
                 icon={<ReloadOutlined />}
                 onClick={handleRefreshAllBalances}
                 loading={loading}
+                size={isMobile ? 'small' : 'middle'}
               >
-                刷新余额
+                {isMobile ? '刷新' : '刷新余额'}
               </Button>
               {selectedRowKeys.length > 0 && (
                 <>
-                  <Divider type="vertical" />
+                  {!isMobile && <Divider type="vertical" />}
                   <Button
                     type="primary"
                     ghost
                     onClick={() => handleBatchStatusUpdate(true)}
+                    size={isMobile ? 'small' : 'middle'}
                   >
-                    批量启用
+                    {isMobile ? '启用' : '批量启用'}
                   </Button>
                   <Button
                     onClick={() => handleBatchStatusUpdate(false)}
+                    size={isMobile ? 'small' : 'middle'}
                   >
-                    批量禁用
+                    {isMobile ? '禁用' : '批量禁用'}
                   </Button>
-                  <Divider type="vertical" />
+                  {!isMobile && <Divider type="vertical" />}
                   <Button
                     type="primary"
                     ghost
                     onClick={handleBatchLogin}
+                    size={isMobile ? 'small' : 'middle'}
                   >
-                    批量登录
+                    {isMobile ? '登录' : '批量登录'}
                   </Button>
                   <Button
                     onClick={handleBatchLogout}
+                    size={isMobile ? 'small' : 'middle'}
                   >
-                    批量登出
+                    {isMobile ? '登出' : '批量登出'}
                   </Button>
                 </>
               )}
@@ -718,15 +736,17 @@ const AccountsPage: React.FC = () => {
 
       <Card
         title={
-          <Space>
+          <Space size={isMobile ? 4 : 8}>
             <AppstoreOutlined />
-            <span>账号卡片</span>
-            <span style={{ fontSize: '14px', fontWeight: 'normal', color: '#666' }}>
-              共 {filteredAccounts.length} 个账号
+            <span style={{ fontSize: isMobile ? '14px' : '16px' }}>账号卡片</span>
+            <span style={{ fontSize: isMobile ? '12px' : '14px', fontWeight: 'normal', color: '#666' }}>
+              共 {filteredAccounts.length} 个
             </span>
           </Space>
         }
         loading={loading}
+        style={isMobile ? { margin: 0, borderRadius: 0 } : {}}
+        bodyStyle={isMobile ? { padding: 0 } : {}}
       >
         {filteredAccounts.length > 0 ? (
           <div className="account-card-grid">

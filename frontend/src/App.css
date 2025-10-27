@@ -1116,7 +1116,7 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  padding: 16px 0;
+  padding: 16px;
 }
 
 .account-card {
@@ -1277,30 +1277,79 @@ body {
 }
 
 /* Responsive breakpoints for account cards */
-@media (max-width: 576px) {
-  .account-card-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    padding: 12px 0;
-  }
+.mobile-content .ant-card > .ant-card-body {
+  padding: 0 !important;
+}
 
-  .account-card {
-    padding: 12px;
-    margin: 0;
-  }
+.mobile-content .account-card-grid {
+  grid-template-columns: 1fr;
+  gap: 1px;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.mobile-content .account-card {
+  padding: 10px 12px;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border-left: none !important;
+  border-right: none !important;
+  background: #fff;
+}
+
+.mobile-content .account-card:first-child {
+  border-top: none !important;
+}
+
+.mobile-content .account-card:last-child {
+  border-bottom: none !important;
+}
+
+.mobile-content .account-card:hover {
+  transform: none;
+  box-shadow: none;
+}
 
   .account-card-detail-row {
-    grid-template-columns: auto 1fr;
-    gap: 4px 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    font-size: 12px;
   }
 
-  .account-card-detail-row > *:nth-child(3),
-  .account-card-detail-row > *:nth-child(4),
-  .account-card-detail-row > *:nth-child(5),
-  .account-card-detail-row > *:nth-child(6) {
-    grid-column: 1 / -1;
-    display: flex;
-    gap: 8px;
+  .account-card-detail-row > * {
+    display: inline;
+  }
+
+  .account-card-detail-row .ant-typography {
+    font-size: 12px;
+  }
+
+  .account-card-detail-row .ant-typography-strong {
+    margin-right: 4px;
+  }
+
+  .account-card-header {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+  }
+
+  .account-card-details {
+    margin-bottom: 8px;
+  }
+
+  .account-card-limits {
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+
+  .account-card-limit-row {
+    font-size: 11px;
+    margin-bottom: 2px;
+  }
+
+  .account-card-actions {
+    padding-top: 8px;
   }
 
   .account-card-actions .ant-btn {
@@ -1316,6 +1365,10 @@ body {
   .account-card-avatar {
     width: 28px;
     height: 28px;
+  }
+
+  .account-card-user-id {
+    font-size: 11px;
   }
 }
 
@@ -1344,6 +1397,32 @@ body {
   }
 }
 
+/* 移动端模态框优化 */
+@media (max-width: 768px) {
+  .ant-modal {
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding-bottom: 0 !important;
+    top: 0 !important;
+  }
+
+  .ant-modal-content {
+    border-radius: 0 !important;
+  }
+
+  .ant-modal-body {
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+  }
+
+  .ant-modal-footer {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    z-index: 1;
+  }
+}
+
 /* 固定导航栏的内容区域适配 */
 .ant-layout-content {
   margin-left: 200px !important;
@@ -1352,6 +1431,59 @@ body {
 
 .ant-layout-sider-collapsed + .ant-layout .ant-layout-content {
   margin-left: 80px !important;
+}
+
+/* 移动端内容区域样式 - 使用 class 而不是 media query */
+.mobile-content.ant-layout-content {
+  margin: 0 !important;
+  margin-left: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  width: 100vw !important;
+}
+
+.ant-layout-sider-collapsed + .ant-layout .mobile-content.ant-layout-content {
+  margin-left: 0 !important;
+}
+
+.mobile-content > div {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.mobile-content .ant-card {
+  margin: 0 !important;
+  margin-bottom: 1px !important;
+  border-radius: 0 !important;
+}
+
+.mobile-content .ant-card-body {
+  padding: 12px !important;
+}
+
+.mobile-content .ant-row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  row-gap: 1px !important;
+}
+
+.mobile-content .ant-col {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.mobile-content .ant-space {
+  width: 100% !important;
+}
+
+.mobile-content .ant-space-vertical {
+  width: 100% !important;
+}
+
+.mobile-content .ant-select,
+.mobile-content .ant-picker,
+.mobile-content .ant-btn {
+  width: 100% !important;
 }
 
 /* 响应式设计 - 固定导航栏 */
@@ -1499,20 +1631,27 @@ body {
     gap: 0 !important;
   }
 
-  /* 内容区域 - 减少左右边距 */
+  /* 内容区域 - 完全移除边距 */
   .ant-layout-content.main-content {
-    margin: 8px !important;
-    padding: 8px !important;
-    border-radius: 8px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
   }
 
-  /* 所有页面的卡片 - 减少边距 */
+  /* 页面根容器 */
+  .ant-layout-content > div {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* 所有页面的卡片 - 完全移除边距和圆角 */
   .ant-card {
-    margin-bottom: 8px !important;
-    border-radius: 8px !important;
+    margin: 0 !important;
+    margin-bottom: 1px !important;
+    border-radius: 0 !important;
   }
 
-  .ant-card-body {
+  .ant-card .ant-card-body {
     padding: 12px !important;
   }
 
@@ -1529,15 +1668,16 @@ body {
     font-size: 20px !important;
   }
 
-  /* Row 间距 */
+  /* Row 间距 - 完全移除负边距 */
   .ant-row {
-    margin-left: -4px !important;
-    margin-right: -4px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    row-gap: 1px !important;
   }
 
   .ant-col {
-    padding-left: 4px !important;
-    padding-right: 4px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   /* 表单项 */

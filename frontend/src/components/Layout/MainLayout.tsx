@@ -22,6 +22,7 @@ const { Header, Sider, Content } = Layout;
 const MainLayout: React.FC = () => {
   // 移动端默认收起侧边栏
   const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [coinBalance, setCoinBalance] = useState(0);
   const { user, logout, isAdmin, isAgent, isStaff } = useAuth();
   const navigate = useNavigate();
@@ -33,7 +34,9 @@ const MainLayout: React.FC = () => {
   // 监听窗口大小变化
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth <= 768) {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (mobile) {
         setCollapsed(true);
       }
     };
@@ -300,13 +303,13 @@ const MainLayout: React.FC = () => {
         </Header>
         <Content
           style={{
-            margin: '16px',
-            padding: 24,
+            margin: isMobile ? '0' : '16px',
+            padding: isMobile ? 0 : 24,
             minHeight: 280,
             background: colorBgContainer,
-            borderRadius: borderRadiusLG,
+            borderRadius: isMobile ? 0 : borderRadiusLG,
           }}
-          className="main-content"
+          className={isMobile ? 'main-content mobile-content' : 'main-content'}
         >
           <Outlet />
         </Content>
