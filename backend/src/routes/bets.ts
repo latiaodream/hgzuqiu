@@ -146,6 +146,7 @@ router.get('/', async (req: any, res) => {
 
         // 角色范围过滤
         if (userRole === 'admin') {
+            // 管理员：可以查看所有数据，或按 user_id/agent_id 过滤
             if (user_id) {
                 sql += ` AND b.user_id = $${paramIndex++}`;
                 params.push(parseInt(user_id));
@@ -153,6 +154,7 @@ router.get('/', async (req: any, res) => {
                 sql += ` AND b.user_id IN (SELECT id FROM users WHERE agent_id = $${paramIndex++})`;
                 params.push(parseInt(agent_id));
             }
+            // 如果都没指定，则查看所有数据（不添加额外条件）
         } else if (userRole === 'agent') {
             if (user_id) {
                 sql += ` AND b.user_id = $${paramIndex++} AND b.user_id IN (SELECT id FROM users WHERE agent_id = $${paramIndex++})`;
@@ -203,6 +205,7 @@ router.get('/', async (req: any, res) => {
 
         // 添加用户权限筛选
         if (userRole === 'admin') {
+            // 管理员：可以查看所有数据，或按 user_id/agent_id 过滤
             if (user_id) {
                 statsSql += ` AND user_id = $${statsParamIndex++}`;
                 statsParams.push(parseInt(user_id));
@@ -210,6 +213,7 @@ router.get('/', async (req: any, res) => {
                 statsSql += ` AND user_id IN (SELECT id FROM users WHERE agent_id = $${statsParamIndex++})`;
                 statsParams.push(parseInt(agent_id));
             }
+            // 如果都没指定，则查看所有数据（不添加额外条件）
         } else if (userRole === 'agent') {
             if (user_id) {
                 statsSql += ` AND user_id = $${statsParamIndex++} AND user_id IN (SELECT id FROM users WHERE agent_id = $${statsParamIndex++})`;
