@@ -54,7 +54,7 @@ router.get('/stats', async (req: any, res) => {
 
         // 权限控制：管理员和代理可以查看子用户数据
         if (userRole === 'admin') {
-            // 管理员：支持按 user_id 或 agent_id 过滤
+            // 管理员：可以查看所有数据，或按 user_id/agent_id 过滤
             if (user_id) {
                 sql += ` AND user_id = $${paramIndex++}`;
                 params.push(parseInt(user_id));
@@ -62,6 +62,7 @@ router.get('/stats', async (req: any, res) => {
                 sql += ` AND user_id IN (SELECT id FROM users WHERE agent_id = $${paramIndex++})`;
                 params.push(parseInt(agent_id));
             }
+            // 如果都没指定，则查看所有数据（不添加额外条件）
         } else if (userRole === 'agent') {
             // 代理：如果指定了user_id，只看该下级员工数据；否则看自己和所有下级数据
             if (user_id) {
