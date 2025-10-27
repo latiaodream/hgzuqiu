@@ -20,7 +20,8 @@ import { coinApi } from '../../services/api';
 const { Header, Sider, Content } = Layout;
 
 const MainLayout: React.FC = () => {
-  const [collapsed, setCollapsed] = useState(false);
+  // 移动端默认收起侧边栏
+  const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
   const [coinBalance, setCoinBalance] = useState(0);
   const { user, logout, isAdmin, isAgent, isStaff } = useAuth();
   const navigate = useNavigate();
@@ -28,6 +29,17 @@ const MainLayout: React.FC = () => {
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+
+  // 监听窗口大小变化
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 768) {
+        setCollapsed(true);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // 加载金币余额
   useEffect(() => {
@@ -199,6 +211,21 @@ const MainLayout: React.FC = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      {/* 移动端遮罩层 */}
+      {!collapsed && window.innerWidth <= 768 && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.45)',
+            zIndex: 1000,
+          }}
+          onClick={() => setCollapsed(true)}
+        />
+      )}
       <Sider
         trigger={null}
         collapsible

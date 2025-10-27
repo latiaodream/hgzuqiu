@@ -1360,12 +1360,19 @@ body {
     position: fixed !important;
     z-index: 1001 !important;
     height: 100vh;
-    transform: translateX(-100%);
+    left: 0;
+    top: 0;
     transition: transform 0.3s ease;
   }
 
+  /* 移动端：收起状态 = 隐藏在左侧 */
+  .ant-layout-sider.ant-layout-sider-collapsed {
+    transform: translateX(-100%) !important;
+  }
+
+  /* 移动端：展开状态 = 显示 */
   .ant-layout-sider:not(.ant-layout-sider-collapsed) {
-    transform: translateX(0);
+    transform: translateX(0) !important;
   }
 
   .ant-layout-content {
@@ -1375,6 +1382,18 @@ body {
   .matches-meta {
     font-size: 16px;
     padding: 10px 12px;
+  }
+
+  /* 添加遮罩层，点击后关闭侧边栏 */
+  .ant-layout-sider:not(.ant-layout-sider-collapsed)::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: -1;
   }
 }
 
