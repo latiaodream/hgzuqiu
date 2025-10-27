@@ -1499,10 +1499,86 @@ body {
     gap: 0 !important;
   }
 
-  /* 内容区域 */
-  .ant-layout-content {
-    margin: 12px !important;
-    padding: 16px !important;
+  /* 内容区域 - 减少左右边距 */
+  .ant-layout-content.main-content {
+    margin: 8px !important;
+    padding: 8px !important;
+    border-radius: 8px !important;
+  }
+
+  /* 所有页面的卡片 - 减少边距 */
+  .ant-card {
+    margin-bottom: 8px !important;
+    border-radius: 8px !important;
+  }
+
+  .ant-card-body {
+    padding: 12px !important;
+  }
+
+  /* 统计卡片 */
+  .ant-statistic {
+    text-align: center;
+  }
+
+  .ant-statistic-title {
+    font-size: 13px !important;
+  }
+
+  .ant-statistic-content {
+    font-size: 20px !important;
+  }
+
+  /* Row 间距 */
+  .ant-row {
+    margin-left: -4px !important;
+    margin-right: -4px !important;
+  }
+
+  .ant-col {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  /* 表单项 */
+  .ant-form-item {
+    margin-bottom: 12px !important;
+  }
+
+  /* 按钮组 */
+  .ant-space {
+    gap: 8px !important;
+  }
+
+  /* 表格 */
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+
+  .ant-table {
+    font-size: 12px !important;
+  }
+
+  .ant-table-thead > tr > th {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+
+  .ant-table-tbody > tr > td {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+
+  /* 筛选器 */
+  .ant-select,
+  .ant-picker,
+  .ant-input {
+    font-size: 13px !important;
+  }
+
+  /* 日期选择器 */
+  .ant-picker {
+    width: 100% !important;
   }
 }
 
@@ -1519,5 +1595,20 @@ body {
   .coin-balance-tag {
     font-size: 13px !important;
     padding: 3px 10px !important;
+  }
+
+  /* 内容区域 */
+  .ant-layout-content.main-content {
+    margin: 12px !important;
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .ant-card {
+    margin-bottom: 12px !important;
+  }
+
+  .ant-card-body {
+    padding: 16px !important;
   }
 }

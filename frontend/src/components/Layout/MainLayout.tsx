@@ -306,6 +306,7 @@ const MainLayout: React.FC = () => {
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
           }}
+          className="main-content"
         >
           <Outlet />
         </Content>
