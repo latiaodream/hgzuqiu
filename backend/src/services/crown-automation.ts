@@ -7186,9 +7186,13 @@ export class CrownAutomationService {
 
       // 使用 API 客户端登录
       const apiClient = new CrownApiClient();
+      console.log(`🔧 创建 API 客户端成功`);
+
       const loginResult = await apiClient.login(account.username, account.password);
+      console.log(`🔧 登录结果:`, loginResult);
 
       if (!loginResult.success) {
+        console.error(`❌ 登录失败: ${loginResult.message}`);
         return {
           success: false,
           message: `登录失败: ${loginResult.message}`
@@ -7196,6 +7200,7 @@ export class CrownAutomationService {
       }
 
       console.log(`✅ 登录成功，正在获取限额页面...`);
+      console.log(`🔧 API 客户端 baseUrl: ${apiClient.getBaseUrl()}`);
 
       // 获取限额页面的 HTML
       const limitsPageUrl = `${apiClient.getBaseUrl()}/app/member/account/account_wager_limit.php`;
