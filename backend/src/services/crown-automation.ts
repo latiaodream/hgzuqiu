@@ -1725,7 +1725,7 @@ export class CrownAutomationService {
       if (pwdVisibleAfterKick > 0) {
         return 'success';
       }
-      await this.navigateToLogin(page, { waitForNetworkIdle: true, waitForLoginSelector: true }).catch((gotoErr) => {
+      await this.navigateToLogin(page, { waitForNetworkIdle: true, waitForLoginSelector: true }).catch((gotoErr: any) => {
         console.warn('⚠️ 处理强制登出后刷新登录页失败:', gotoErr);
       });
       return 'force_logout';
@@ -6048,6 +6048,65 @@ export class CrownAutomationService {
     };
   }
 
+  // 辅助方法：导航到登录页面
+  private async navigateToLogin(page: Page, options?: { waitForNetworkIdle?: boolean; waitForLoginSelector?: boolean }): Promise<void> {
+    const loginUrl = `${this.activeBaseUrl}/app/member/login.php`;
+    await page.goto(loginUrl, {
+      waitUntil: options?.waitForNetworkIdle ? 'networkidle' : 'domcontentloaded',
+      timeout: 30000
+    });
+
+    if (options?.waitForLoginSelector) {
+      await page.waitForSelector('#usr', { timeout: 10000 }).catch(() => {
+        console.warn('⚠️ 等待登录表单超时');
+      });
+    }
+  }
+
+  // 辅助方法：获取会话预热阈值（毫秒）
+  private getWarmSessionThreshold(): number {
+    return 5 * 60 * 1000; // 5分钟
+  }
+
+  // 辅助方法：检查会话是否还活着
+  private async checkSessionAlive(page: Page): Promise<boolean> {
+    try {
+      if (page.isClosed()) {
+        return false;
+      }
+
+      // 尝试执行简单的页面操作来检查会话
+      const isAlive = await page.evaluate(() => {
+        return document.readyState === 'complete';
+      }).catch(() => false);
+
+      return isAlive;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // 辅助方法：清理会话
+  private async cleanupSession(accountId: number): Promise<void> {
+    try {
+      const page = this.pages.get(accountId);
+      if (page && !page.isClosed()) {
+        await page.close().catch(() => {});
+      }
+      this.pages.delete(accountId);
+      this.contexts.delete(accountId);
+      this.bettingFrames.delete(accountId);
+      this.orderFrames.delete(accountId);
+      this.sessionInfos.delete(accountId);
+
+      if (accountId === 0) {
+        this.systemLastBeat = 0;
+      }
+    } catch (error) {
+      console.error(`清理会话失败 (accountId=${accountId}):`, error);
+    }
+  }
+
   private async ensureSystemSession(): Promise<Page | null> {
     const now = Date.now();
 
@@ -6151,6 +6210,48 @@ export class CrownAutomationService {
     }
 
     console.log(`⚠️ 没有可用账号抓取比赛`);
+    return null;
+  }
+
+  // 公共方法：获取比赛列表（兼容旧接口）
+  async fetchMatches(accountId: number, opts?: {
+    gtype?: string; showtype?: string; rtype?: string; ltype?: string; sorttype?: string
+  }): Promise<{ matches: any[]; xml?: string }> {
+    // 直接调用系统抓取方法（不依赖特定账号）
+    return await this.fetchMatchesSystem(opts);
+  }
+
+  // 公共方法：触发预热
+  triggerFetchWarmup(): void {
+    this.scheduleFetchWarmup();
+  }
+
+  // 公共方法：获取今日注单（占位实现）
+  async fetchTodayWagers(accountId: number): Promise<CrownWagerItem[]> {
+    console.warn(`⚠️ fetchTodayWagers 方法尚未完整实现 (accountId=${accountId})`);
+    return [];
+  }
+
+  // 公共方法：获取账号财务摘要（占位实现）
+  async getAccountFinancialSummary(accountId: number): Promise<FinancialSnapshot> {
+    console.warn(`⚠️ getAccountFinancialSummary 方法尚未完整实现 (accountId=${accountId})`);
+    return {
+      balance: null,
+      credit: null,
+      balanceSource: 'not_implemented',
+      creditSource: 'not_implemented'
+    };
+  }
+
+  // 公共方法：获取外部IP（占位实现）
+  async getExternalIP(accountId: number): Promise<string | null> {
+    console.warn(`⚠️ getExternalIP 方法尚未完整实现 (accountId=${accountId})`);
+    return null;
+  }
+
+  // 公共方法：获取账号信用额度（占位实现）
+  async getAccountCredit(accountId: number): Promise<number | null> {
+    console.warn(`⚠️ getAccountCredit 方法尚未完整实现 (accountId=${accountId})`);
     return null;
   }
 

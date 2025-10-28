@@ -576,7 +576,7 @@ router.post('/', async (req: any, res) => {
 
                 if (wagers && wagers.length > 0) {
                     matchedWager = betResult.betId
-                        ? wagers.find(item => item.ticketId === betResult.betId) || null
+                        ? wagers.find((item: any) => item.ticketId === betResult.betId) || null
                         : null;
 
                     if (!matchedWager) {

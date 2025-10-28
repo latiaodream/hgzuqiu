@@ -1329,10 +1329,10 @@ router.post('/fetch-limits/:accountId', async (req: any, res) => {
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $5`,
                 [
-                    limitsResult.limits.football.prematch,
-                    limitsResult.limits.football.live,
-                    limitsResult.limits.basketball.prematch,
-                    limitsResult.limits.basketball.live,
+                    limitsResult.limits?.football.prematch || 0,
+                    limitsResult.limits?.football.live || 0,
+                    limitsResult.limits?.basketball.prematch || 0,
+                    limitsResult.limits?.basketball.live || 0,
                     accountId
                 ]
             );
