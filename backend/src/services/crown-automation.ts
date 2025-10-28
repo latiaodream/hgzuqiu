@@ -6235,6 +6235,28 @@ export class CrownAutomationService {
 
   // 公共方法：获取账号财务摘要
   async getAccountFinancialSummary(accountId: number): Promise<FinancialSnapshot> {
+    // 优先使用 API 方式获取余额
+    const uid = this.apiUids.get(accountId);
+    if (uid) {
+      try {
+        const apiClient = this.apiClients.get(accountId);
+        if (apiClient) {
+          const balanceData = await apiClient.getBalance(uid);
+          if (balanceData) {
+            return {
+              balance: balanceData.balance,
+              credit: balanceData.credit,
+              balanceSource: 'api',
+              creditSource: 'api'
+            };
+          }
+        }
+      } catch (error) {
+        console.warn(`⚠️ API 获取余额失败 (accountId=${accountId}):`, error);
+      }
+    }
+
+    // 回退到页面方式获取
     return await this.getAccountFinancialSnapshot(accountId);
   }
 
