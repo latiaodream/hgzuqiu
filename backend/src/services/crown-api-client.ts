@@ -672,6 +672,73 @@ export class CrownApiClient {
   }
 
   /**
+   * 获取比赛的所有玩法和盘口（更多盘口）
+   *
+   * @param params 查询参数
+   * @param params.gid 比赛ID（从赛事列表获取，对应 ecid）
+   * @param params.lid 联赛ID（从赛事列表获取）
+   * @param params.gtype 比赛类型（ft=足球, bk=篮球等）
+   * @param params.showtype 显示类型（live=滚球, today=今日, early=早盘）
+   * @param params.ltype 联赛类型
+   * @param params.isRB 是否滚球（Y/N）
+   *
+   * @returns 返回包含所有玩法和盘口的 XML 数据
+   */
+  async getGameMore(params: {
+    gid: string;          // 比赛ID (ecid)
+    lid: string;          // 联赛ID
+    gtype?: string;       // 比赛类型 (ft=足球, bk=篮球等)
+    showtype?: string;    // 显示类型 (live=滚球, today=今日, early=早盘)
+    ltype?: string;       // 联赛类型
+    isRB?: string;        // 是否滚球 (Y/N)
+  }): Promise<any> {
+    console.log('📋 获取比赛所有玩法...');
+
+    if (!this.uid) {
+      throw new Error('未登录，无法获取比赛玩法');
+    }
+
+    const timestamp = Date.now().toString();
+
+    const requestParams = new URLSearchParams({
+      uid: this.uid,
+      ver: this.version,
+      langx: 'zh-cn',
+      p: 'get_game_more',
+      gtype: params.gtype || 'ft',
+      showtype: params.showtype || 'live',
+      ltype: params.ltype || '3',
+      isRB: params.isRB || 'Y',
+      lid: params.lid,
+      specialClick: '',
+      mode: 'NORMAL',
+      from: 'game_more',
+      filter: 'Main',
+      ts: timestamp,
+      ecid: params.gid,
+    });
+
+    try {
+      console.log('📤 发送获取更多玩法请求...');
+      console.log('   比赛ID:', params.gid);
+      console.log('   联赛ID:', params.lid);
+
+      const response = await this.httpClient.post(`/transform.php?ver=${this.version}`, requestParams.toString());
+
+      // 返回原始 XML 字符串
+      const xmlString = response.data;
+
+      console.log('📥 获取更多玩法响应（前 2000 字符）:', xmlString.substring(0, 2000));
+
+      return xmlString;
+
+    } catch (error: any) {
+      console.error('❌ 获取更多玩法请求失败:', error.code || error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 获取比赛最新赔率和状态（⭐ 下注前必须调用）
    *
    * 这是下注流程中最关键的一步！必须在下注前调用此方法获取最新赔率。
