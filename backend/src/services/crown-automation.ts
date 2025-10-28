@@ -6368,6 +6368,59 @@ export class CrownAutomationService {
                 try { await fs.writeFile('matches-latest.xml', xml); } catch {}
                 const matches = this.parseMatchesFromXml(xml);
                 console.log(`✅ 纯 API 抓取赛事成功，数量: ${matches.length}`);
+
+                // 为每场比赛获取更多盘口（限制前 20 场，避免请求过多）
+                const matchesToEnrich = matches.slice(0, 20);
+                console.log(`📊 开始获取 ${matchesToEnrich.length} 场比赛的更多盘口...`);
+
+                for (const match of matchesToEnrich) {
+                  try {
+                    const gid = match.gid;
+                    const lid = match.raw?.LID || match.raw?.lid;
+
+                    if (!gid || !lid) {
+                      console.log(`⚠️ 比赛 ${match.home} vs ${match.away} 缺少 gid 或 lid，跳过`);
+                      continue;
+                    }
+
+                    // 调用 get_game_more API
+                    const moreXml = await apiClient.getGameMore({
+                      gid: String(gid),
+                      lid: String(lid),
+                      gtype: params.gtype,
+                      showtype: params.showtype,
+                      ltype: params.ltype,
+                      isRB: params.showtype === 'live' ? 'Y' : 'N',
+                    });
+
+                    if (moreXml) {
+                      // 解析更多盘口
+                      const { handicapLines, overUnderLines } = this.parseMoreMarketsFromXml(moreXml);
+
+                      // 合并到原有的盘口数据中
+                      if (handicapLines.length > 0) {
+                        match.markets.full.handicapLines = handicapLines;
+                        match.markets.handicap = handicapLines[0]; // 主盘口
+                      }
+
+                      if (overUnderLines.length > 0) {
+                        match.markets.full.overUnderLines = overUnderLines;
+                        match.markets.ou = overUnderLines[0]; // 主盘口
+                      }
+
+                      console.log(`  ✅ ${match.home} vs ${match.away}: ${handicapLines.length} 个让球盘口, ${overUnderLines.length} 个大小球盘口`);
+                    }
+
+                    // 添加延迟，避免请求过快
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                  } catch (error) {
+                    console.error(`  ❌ 获取比赛 ${match.home} vs ${match.away} 的更多盘口失败:`, error);
+                    // 继续处理下一场比赛
+                  }
+                }
+
+                console.log(`✅ 完成获取更多盘口`);
                 return { matches, xml };
               }
             } finally {
@@ -7041,31 +7094,92 @@ export class CrownAutomationService {
     }
   }
 
+  // 解析 get_game_more 返回的 XML，提取所有盘口
+  private parseMoreMarketsFromXml(xml: string): { handicapLines: any[]; overUnderLines: any[] } {
+    try {
+      const { XMLParser } = require('fast-xml-parser');
+      const parser = new XMLParser({ ignoreAttributes: false });
+      const parsed = parser.parse(xml);
+
+      const games = parsed?.serverresponse?.game;
+      if (!games) {
+        console.log('⚠️ get_game_more XML 中没有 game 数据');
+        return { handicapLines: [], overUnderLines: [] };
+      }
+
+      const gameArray = Array.isArray(games) ? games : [games];
+      const handicapLines: any[] = [];
+      const overUnderLines: any[] = [];
+
+      for (const game of gameArray) {
+        // 提取让球盘口
+        const handicapLine = this.pickString(game, ['RATIO_RE', 'ratio_re']);
+        const handicapHome = this.pickString(game, ['IOR_REH', 'ior_REH']);
+        const handicapAway = this.pickString(game, ['IOR_REC', 'ior_REC']);
+
+        if (handicapLine && (handicapHome || handicapAway)) {
+          handicapLines.push({
+            line: handicapLine,
+            home: handicapHome,
+            away: handicapAway,
+          });
+        }
+
+        // 提取大小球盘口
+        const ouLineOver = this.pickString(game, ['RATIO_ROUO', 'ratio_rouo']);
+        const ouLineUnder = this.pickString(game, ['RATIO_ROUU', 'ratio_rouu']);
+        const ouLine = ouLineOver || ouLineUnder;
+        const ouOver = this.pickString(game, ['IOR_ROUH', 'ior_ROUH']);
+        const ouUnder = this.pickString(game, ['IOR_ROUC', 'ior_ROUC']);
+
+        if (ouLine && (ouOver || ouUnder)) {
+          overUnderLines.push({
+            line: ouLine,
+            over: ouOver,
+            under: ouUnder,
+          });
+        }
+      }
+
+      console.log(`📊 解析到 ${handicapLines.length} 个让球盘口, ${overUnderLines.length} 个大小球盘口`);
+      return { handicapLines, overUnderLines };
+
+    } catch (error) {
+      console.error('❌ 解析 get_game_more XML 失败:', error);
+      return { handicapLines: [], overUnderLines: [] };
+    }
+  }
+
+  // 辅助方法：从对象中提取字符串值
+  private pickString(obj: any, keys: string[]): string {
+    if (!obj) return '';
+    for (const key of keys) {
+      if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
+        return String(obj[key]).trim();
+      }
+      const attrKey = `@_${key}`;
+      if (obj[attrKey] !== undefined && obj[attrKey] !== null && obj[attrKey] !== '') {
+        return String(obj[attrKey]).trim();
+      }
+      const lowerKey = key.toLowerCase();
+      for (const currentKey of Object.keys(obj)) {
+        if (currentKey.toLowerCase() === lowerKey || currentKey.toLowerCase() === `@_${lowerKey}`) {
+          const value = obj[currentKey];
+          if (value !== undefined && value !== null && value !== '') {
+            return String(value).trim();
+          }
+        }
+      }
+    }
+    return '';
+  }
+
   // 解析赛事的盘口数据
   private parseMarketsFromEvent(event: any): any {
     const markets: any = { full: {}, half: {} };
 
     const pick = (keys: string[]): string => {
-      if (!event) return '';
-      for (const key of keys) {
-        if (event[key] !== undefined && event[key] !== null && event[key] !== '') {
-          return String(event[key]).trim();
-        }
-        const attrKey = `@_${key}`;
-        if (event[attrKey] !== undefined && event[attrKey] !== null && event[attrKey] !== '') {
-          return String(event[attrKey]).trim();
-        }
-        const lowerKey = key.toLowerCase();
-        for (const currentKey of Object.keys(event)) {
-          if (currentKey.toLowerCase() === lowerKey || currentKey.toLowerCase() === `@_${lowerKey}`) {
-            const value = event[currentKey];
-            if (value !== undefined && value !== null && value !== '') {
-              return String(value).trim();
-            }
-          }
-        }
-      }
-      return '';
+      return this.pickString(event, keys);
     };
 
     const addHandicapLine = (target: any[], ratioKeys: string[], homeKeys: string[], awayKeys: string[]) => {
