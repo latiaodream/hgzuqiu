@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Avatar, Dropdown, Space, Button, theme, Tag } from 'antd';
+import React, { useState } from 'react';
+import { Layout, Menu, Avatar, Dropdown, Space, Button, theme } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -11,57 +11,20 @@ import {
   MenuUnfoldOutlined,
   CalendarOutlined,
   FileTextOutlined,
-  GlobalOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { coinApi } from '../../services/api';
 
 const { Header, Sider, Content } = Layout;
 
 const MainLayout: React.FC = () => {
-  // 移动端默认收起侧边栏
-  const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [coinBalance, setCoinBalance] = useState(0);
+  const [collapsed, setCollapsed] = useState(false);
   const { user, logout, isAdmin, isAgent, isStaff } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
-
-  // 监听窗口大小变化
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth <= 768;
-      setIsMobile(mobile);
-      if (mobile) {
-        setCollapsed(true);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // 加载金币余额
-  useEffect(() => {
-    loadCoinBalance();
-    // 每30秒刷新一次余额
-    const interval = setInterval(loadCoinBalance, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadCoinBalance = async () => {
-    try {
-      const response = await coinApi.getBalance();
-      if (response.success && response.data) {
-        setCoinBalance(response.data.balance);
-      }
-    } catch (error) {
-      console.error('Failed to load coin balance:', error);
-    }
-  };
 
   // 根据角色配置菜单项
   const getMenuItems = () => {
@@ -110,11 +73,6 @@ const MainLayout: React.FC = () => {
           key: '/coins',
           icon: <DollarOutlined />,
           label: '金币流水',
-        },
-        {
-          key: '/crown-sites',
-          icon: <GlobalOutlined />,
-          label: '站点管理',
         }
       );
     }
@@ -214,21 +172,6 @@ const MainLayout: React.FC = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      {/* 移动端遮罩层 */}
-      {!collapsed && window.innerWidth <= 768 && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.45)',
-            zIndex: 1000,
-          }}
-          onClick={() => setCollapsed(true)}
-        />
-      )}
       <Sider
         trigger={null}
         collapsible
@@ -283,33 +226,23 @@ const MainLayout: React.FC = () => {
             }}
           />
 
-          <Space size="large" className="header-right-section">
-            <Tag
-              icon={<DollarOutlined />}
-              color="gold"
-              style={{ fontSize: 14, padding: '4px 12px', cursor: 'pointer' }}
-              onClick={() => navigate('/coins')}
-              className="coin-balance-tag"
-            >
-              <span className="coin-label">金币：</span>¥{coinBalance.toFixed(2)}
-            </Tag>
+          <Space>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <Space style={{ cursor: 'pointer' }} className="user-info-space">
+              <Space style={{ cursor: 'pointer' }}>
                 <Avatar icon={<UserOutlined />} />
-                <span className="username-text">{user?.username}</span>
+                <span>{user?.username}</span>
               </Space>
             </Dropdown>
           </Space>
         </Header>
         <Content
           style={{
-            margin: isMobile ? '0' : '16px',
-            padding: isMobile ? 0 : 24,
+            margin: '16px',
+            padding: 24,
             minHeight: 280,
             background: colorBgContainer,
-            borderRadius: isMobile ? 0 : borderRadiusLG,
+            borderRadius: borderRadiusLG,
           }}
-          className={isMobile ? 'main-content mobile-content' : 'main-content'}
         >
           <Outlet />
         </Content>

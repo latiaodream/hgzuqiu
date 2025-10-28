@@ -24,8 +24,6 @@ import AccountFormModal from '../components/Accounts/AccountFormModal';
 import AccountDetailModal from '../components/Accounts/AccountDetailModal';
 import AccountCard from '../components/Accounts/AccountCard';
 import AccountInitializeModal from '../components/Accounts/AccountInitializeModal';
-import AccountHistoryModal from '../components/Accounts/AccountHistoryModal';
-import AccountShareModal from '../components/Accounts/AccountShareModal';
 import type { AxiosError } from 'axios';
 
 const { Title, Text } = Typography;
@@ -39,16 +37,6 @@ const AccountsPage: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<number | undefined>();
   const [searchText, setSearchText] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  // 监听窗口大小变化
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // 模态框状态
   const [formModalVisible, setFormModalVisible] = useState(false);
@@ -57,10 +45,6 @@ const AccountsPage: React.FC = () => {
   const [viewingAccount, setViewingAccount] = useState<CrownAccount | null>(null);
   const [initializeModalVisible, setInitializeModalVisible] = useState(false);
   const [initializingAccount, setInitializingAccount] = useState<CrownAccount | null>(null);
-  const [historyModalVisible, setHistoryModalVisible] = useState(false);
-  const [historyAccount, setHistoryAccount] = useState<CrownAccount | null>(null);
-  const [shareModalVisible, setShareModalVisible] = useState(false);
-  const [sharingAccount, setSharingAccount] = useState<CrownAccount | null>(null);
   const [initializeCredentials, setInitializeCredentials] = useState<Record<number, { username: string; password: string }>>(() => {
     try {
       const raw = localStorage.getItem(INIT_CREDENTIAL_STORAGE_KEY);
@@ -239,7 +223,10 @@ const AccountsPage: React.FC = () => {
     });
 
     try {
-      const response = await crownApi.initializeAccount(initializingAccount.id, { username, password });
+      // 使用纯 API 方式初始化（推荐）
+      console.log('🚀 调用纯 API 初始化，账号ID:', initializingAccount.id);
+      const response = await crownApi.initializeAccountWithApi(initializingAccount.id, { username, password });
+      console.log('📥 初始化响应:', response);
 
       if (!response.success) {
         throw new Error(response.error || '初始化账号失败');
@@ -368,15 +355,6 @@ const AccountsPage: React.FC = () => {
     }
   };
 
-  const handleShareAccount = (account: CrownAccount) => {
-    setSharingAccount(account);
-    setShareModalVisible(true);
-  };
-
-  const handleShareSuccess = () => {
-    loadAccounts();
-  };
-
   const handleBatchStatusUpdate = async (enabled: boolean) => {
     if (selectedRowKeys.length === 0) {
       message.warning('请选择要操作的账号');
@@ -453,38 +431,15 @@ const AccountsPage: React.FC = () => {
     const loginKey = `login-${account.id}`;
     try {
       message.loading({ content: `正在登录账号 ${account.username}...`, key: loginKey, duration: 0 });
-      const response = await crownApi.loginAccount(account.id);
+      // 使用纯 API 方式登录（推荐）
+      const response = await crownApi.loginAccountWithApi(account.id);
 
       // 先销毁loading消息
       message.destroy(loginKey);
 
       if (response.success) {
         message.success(`账号 ${account.username} 登录成功`, 2);
-        // 登录成功后尝试同步余额
-        const syncKey = `balance-${account.id}`;
-        message.loading({ content: '正在同步余额...', key: syncKey, duration: 0 });
-        try {
-          const balanceResp = await crownApi.getAccountBalance(account.id);
-          const balanceData = (balanceResp as any)?.data || {};
-          if (balanceResp.success) {
-            if (balanceData.balance_source) {
-              console.debug(`余额来源: ${balanceData.balance_source}`);
-            }
-            message.success('余额已同步', 2);
-          } else {
-            const reason = balanceResp.error || balanceResp.message || '余额同步失败';
-            if (balanceData.credit) {
-              message.warning(`${reason}，仅取得额度 ${balanceData.credit}`, 4);
-            } else {
-              message.warning(reason, 3);
-            }
-          }
-        } catch (err) {
-          const tips = err instanceof Error ? err.message : '余额同步失败';
-          message.warning(tips, 3);
-        } finally {
-          message.destroy(syncKey);
-        }
+        // 纯 API 登录已经在后端自动获取余额了，不需要再次调用
         loadAccounts();
       } else {
         const errorMsg = response.error || response.message || '未知错误';
@@ -522,106 +477,6 @@ const AccountsPage: React.FC = () => {
     }
   };
 
-  const handleViewHistory = (account: CrownAccount) => {
-    if (!account.is_online) {
-      message.warning('请先登录账号');
-      return;
-    }
-    setHistoryAccount(account);
-    setHistoryModalVisible(true);
-  };
-
-  const handleRefreshAllBalances = async () => {
-    const onlineAccounts = accounts.filter(account => account.is_online);
-
-    if (onlineAccounts.length === 0) {
-      message.warning('没有在线的账号可以刷新余额');
-      return;
-    }
-
-    const batchKey = 'refresh-all-balances';
-    message.loading({
-      content: `正在刷新 ${onlineAccounts.length} 个在线账号的余额...`,
-      key: batchKey,
-      duration: 0
-    });
-
-    let successCount = 0;
-    let partialCount = 0; // 只获取到额度的账号
-    let failCount = 0;
-    const failedAccounts: string[] = [];
-
-    try {
-      // 并发刷新所有在线账号的余额
-      const results = await Promise.allSettled(
-        onlineAccounts.map(account => crownApi.getAccountBalance(account.id))
-      );
-
-      results.forEach((result, index) => {
-        const account = onlineAccounts[index];
-        if (result.status === 'fulfilled') {
-          const response = result.value;
-          const balanceData = (response as any)?.data || {};
-
-          // 参考登录后的余额同步逻辑
-          if (response.success) {
-            successCount++;
-            if (balanceData.balance_source) {
-              console.debug(`账号 ${account.username} 余额来源: ${balanceData.balance_source}`);
-            }
-          } else {
-            // 即使 success 为 false，如果有 credit 数据也算部分成功
-            if (balanceData.credit) {
-              partialCount++;
-              console.warn(`账号 ${account.username} 仅取得额度: ${balanceData.credit}`);
-            } else {
-              failCount++;
-              failedAccounts.push(account.username);
-              const reason = response.error || response.message || '未知错误';
-              console.warn(`刷新账号 ${account.username} 余额失败: ${reason}`);
-            }
-          }
-        } else {
-          failCount++;
-          failedAccounts.push(account.username);
-          console.warn(`刷新账号 ${account.username} 余额失败:`, result.reason);
-        }
-      });
-
-      // 刷新完成后重新加载账号列表
-      await loadAccounts();
-
-      // 根据结果显示不同的提示
-      if (failCount === 0 && partialCount === 0) {
-        message.success({
-          content: `余额刷新完成！成功 ${successCount} 个账号`,
-          key: batchKey,
-          duration: 3
-        });
-      } else if (failCount === 0 && partialCount > 0) {
-        message.warning({
-          content: `余额刷新完成！成功 ${successCount} 个，${partialCount} 个仅获取到额度`,
-          key: batchKey,
-          duration: 4
-        });
-      } else {
-        const msg = `余额刷新完成！成功 ${successCount} 个${partialCount > 0 ? `，${partialCount} 个仅获取到额度` : ''}，失败 ${failCount} 个`;
-        message.warning({
-          content: msg,
-          key: batchKey,
-          duration: 4
-        });
-      }
-    } catch (error) {
-      console.error('Failed to refresh balances:', error);
-      message.error({
-        content: '批量刷新余额失败',
-        key: batchKey,
-        duration: 3
-      });
-    }
-  };
-
   const handleFormSubmit = async () => {
     setFormModalVisible(false);
     loadAccounts();
@@ -646,11 +501,11 @@ const AccountsPage: React.FC = () => {
 
 
   return (
-    <div style={{ padding: isMobile ? 0 : '24px' }}>
-      <Title level={isMobile ? 4 : 2} style={{ padding: isMobile ? '12px' : 0 }}>账号管理</Title>
+    <div>
+      <Title level={2}>账号管理</Title>
 
-      <Card style={isMobile ? { marginBottom: 1, borderRadius: 0 } : { marginBottom: 16 }}>
-        <Row gutter={isMobile ? [0, 8] : [16, 16]} align="middle">
+      <Card style={{ marginBottom: 16 }}>
+        <Row gutter={[16, 16]} align="middle">
           <Col xs={24} sm={8} md={6}>
             <Select
               placeholder="选择分组"
@@ -658,7 +513,6 @@ const AccountsPage: React.FC = () => {
               allowClear
               value={selectedGroup}
               onChange={setSelectedGroup}
-              size={isMobile ? 'small' : 'middle'}
               options={[
                 { label: '全部分组', value: undefined },
                 ...groups.map(group => ({
@@ -674,58 +528,50 @@ const AccountsPage: React.FC = () => {
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               style={{ width: '100%' }}
-              size={isMobile ? 'small' : 'middle'}
             />
           </Col>
           <Col xs={24} sm={8} md={12}>
-            <Space wrap size={isMobile ? 4 : 8}>
+            <Space wrap>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={handleCreateAccount}
-                size={isMobile ? 'small' : 'middle'}
               >
-                {isMobile ? '新增' : '新增账号'}
+                新增账号
               </Button>
               <Button
                 icon={<ReloadOutlined />}
-                onClick={handleRefreshAllBalances}
-                loading={loading}
-                size={isMobile ? 'small' : 'middle'}
+                onClick={loadAccounts}
               >
-                {isMobile ? '刷新' : '刷新余额'}
+                刷新
               </Button>
               {selectedRowKeys.length > 0 && (
                 <>
-                  {!isMobile && <Divider type="vertical" />}
+                  <Divider type="vertical" />
                   <Button
                     type="primary"
                     ghost
                     onClick={() => handleBatchStatusUpdate(true)}
-                    size={isMobile ? 'small' : 'middle'}
                   >
-                    {isMobile ? '启用' : '批量启用'}
+                    批量启用
                   </Button>
                   <Button
                     onClick={() => handleBatchStatusUpdate(false)}
-                    size={isMobile ? 'small' : 'middle'}
                   >
-                    {isMobile ? '禁用' : '批量禁用'}
+                    批量禁用
                   </Button>
-                  {!isMobile && <Divider type="vertical" />}
+                  <Divider type="vertical" />
                   <Button
                     type="primary"
                     ghost
                     onClick={handleBatchLogin}
-                    size={isMobile ? 'small' : 'middle'}
                   >
-                    {isMobile ? '登录' : '批量登录'}
+                    批量登录
                   </Button>
                   <Button
                     onClick={handleBatchLogout}
-                    size={isMobile ? 'small' : 'middle'}
                   >
-                    {isMobile ? '登出' : '批量登出'}
+                    批量登出
                   </Button>
                 </>
               )}
@@ -736,17 +582,15 @@ const AccountsPage: React.FC = () => {
 
       <Card
         title={
-          <Space size={isMobile ? 4 : 8}>
+          <Space>
             <AppstoreOutlined />
-            <span style={{ fontSize: isMobile ? '14px' : '16px' }}>账号卡片</span>
-            <span style={{ fontSize: isMobile ? '12px' : '14px', fontWeight: 'normal', color: '#666' }}>
-              共 {filteredAccounts.length} 个
+            <span>账号卡片</span>
+            <span style={{ fontSize: '14px', fontWeight: 'normal', color: '#666' }}>
+              共 {filteredAccounts.length} 个账号
             </span>
           </Space>
         }
         loading={loading}
-        style={isMobile ? { margin: 0, borderRadius: 0 } : {}}
-        bodyStyle={isMobile ? { padding: 0 } : {}}
       >
         {filteredAccounts.length > 0 ? (
           <div className="account-card-grid">
@@ -789,8 +633,6 @@ const AccountsPage: React.FC = () => {
                 onLogout={handleLogoutAccount}
                 onInitialize={handleInitializeAccount}
                 onToggleFetch={handleToggleFetch}
-                onViewHistory={handleViewHistory}
-                onShare={handleShareAccount}
               />
             ))}
           </div>
@@ -846,27 +688,6 @@ const AccountsPage: React.FC = () => {
           if (!initializingAccount) return;
           handleInitializeCredentialRegenerate(initializingAccount.id, field);
         }}
-      />
-
-      {/* 账号历史总览模态框 */}
-      <AccountHistoryModal
-        visible={historyModalVisible}
-        account={historyAccount}
-        onClose={() => {
-          setHistoryModalVisible(false);
-          setHistoryAccount(null);
-        }}
-      />
-
-      {/* 账号分享模态框 */}
-      <AccountShareModal
-        visible={shareModalVisible}
-        account={sharingAccount}
-        onCancel={() => {
-          setShareModalVisible(false);
-          setSharingAccount(null);
-        }}
-        onSuccess={handleShareSuccess}
       />
     </div>
   );

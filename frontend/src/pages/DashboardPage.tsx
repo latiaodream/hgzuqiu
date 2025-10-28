@@ -48,9 +48,6 @@ const DashboardPage: React.FC = () => {
     canceledBets: 0,
   });
 
-  // 检测是否为移动端
-  const isMobile = window.innerWidth <= 768;
-
   useEffect(() => {
     loadSubUsers();
     loadAccounts();
@@ -129,33 +126,31 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div style={{ margin: 0, padding: 0 }}>
+    <div>
       {/* 筛选条件 */}
-      <Card style={{ marginBottom: isMobile ? 8 : 16 }}>
-        <Space wrap direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: '100%' }}>
-          <Space style={{ width: isMobile ? '100%' : 'auto' }}>
+      <Card style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Space>
             <span>开始</span>
             <DatePicker
               value={dateRange[0]}
               onChange={(date) => date && setDateRange([date, dateRange[1]])}
               format="YYYY-MM-DD"
-              style={{ flex: isMobile ? 1 : undefined }}
             />
           </Space>
 
-          <Space style={{ width: isMobile ? '100%' : 'auto' }}>
+          <Space>
             <span>结束</span>
             <DatePicker
               value={dateRange[1]}
               onChange={(date) => date && setDateRange([dateRange[0], date])}
               format="YYYY-MM-DD"
-              style={{ flex: isMobile ? 1 : undefined }}
             />
           </Space>
 
           {(isAdmin || isAgent) && (
             <Select
-              style={{ width: isMobile ? '100%' : 200 }}
+              style={{ width: 200 }}
               placeholder="子用户"
               allowClear
               value={selectedUserId}
@@ -170,7 +165,7 @@ const DashboardPage: React.FC = () => {
           )}
 
           <Select
-            style={{ width: isMobile ? '100%' : 200 }}
+            style={{ width: 200 }}
             placeholder="账号筛选"
             showSearch
             allowClear
@@ -190,7 +185,6 @@ const DashboardPage: React.FC = () => {
             icon={<SearchOutlined />}
             onClick={handleSearch}
             loading={loading}
-            style={{ width: isMobile ? '100%' : 'auto' }}
           >
             查询
           </Button>
@@ -204,7 +198,7 @@ const DashboardPage: React.FC = () => {
         </div>
       ) : (
         <>
-          <Row gutter={isMobile ? [8, 8] : [16, 16]}>
+          <Row gutter={[16, 16]}>
             <Col xs={24} sm={12} lg={8}>
               <Card>
                 <Statistic
@@ -241,7 +235,7 @@ const DashboardPage: React.FC = () => {
             </Col>
           </Row>
 
-          <Row gutter={isMobile ? [8, 8] : [16, 16]} style={{ marginTop: isMobile ? 8 : 16 }}>
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             <Col xs={24} sm={12} lg={8}>
               <Card>
                 <Statistic

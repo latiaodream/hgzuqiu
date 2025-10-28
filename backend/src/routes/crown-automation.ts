@@ -57,8 +57,8 @@ router.post('/login/:accountId', async (req: any, res) => {
             } as ApiResponse);
         }
 
-        // 执行登录
-        const loginResult = await getCrownAutomation().loginAccount(account);
+        // 执行登录（使用纯 API 方式）
+        const loginResult = await getCrownAutomation().loginAccountWithApi(account);
 
         if (loginResult.success) {
             await query(
@@ -88,13 +88,89 @@ router.post('/login/:accountId', async (req: any, res) => {
             message: loginResult.message,
             data: {
                 accountId,
-                status: loginResult.success ? 'online' : 'offline',
-                sessionInfo: loginResult.sessionInfo
+                status: loginResult.success ? 'online' : 'offline'
             }
         } as ApiResponse);
 
     } catch (error) {
         console.error('登录皇冠账号错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '登录失败'
+        });
+    }
+});
+
+// 使用纯 API 方式登录皇冠账号（推荐）
+router.post('/login-api/:accountId', async (req: any, res) => {
+    console.log('🎯 收到纯 API 登录请求，账号ID:', req.params.accountId);
+    try {
+        const userId = req.user.id;
+        const accountId = parseInt(req.params.accountId);
+
+        // 验证账号是否属于当前用户
+        const access = buildAccountAccess(req.user, { includeDisabled: false });
+        const accountResult = await query(
+            `SELECT ca.* FROM crown_accounts ca WHERE ca.id = $1${access.clause}`,
+            [accountId, ...access.params]
+        );
+
+        if (accountResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: '账号不存在或已禁用'
+            });
+        }
+
+        const account = accountResult.rows[0];
+
+        // 使用纯 API 方式登录
+        const automation = getCrownAutomation();
+        const loginResult = await automation.loginAccountWithApi(account);
+
+        if (!loginResult.success) {
+            console.warn('API 登录账号失败:', loginResult.message, loginResult);
+
+            // 更新数据库状态
+            await query(
+                `UPDATE crown_accounts
+                 SET is_online = false,
+                     status = 'error',
+                     error_message = $2,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $1`,
+                [accountId, (loginResult.message || '登录失败').slice(0, 255)]
+            );
+
+            return res.status(400).json({
+                success: false,
+                error: loginResult.message || '登录失败'
+            });
+        }
+
+        // 更新数据库状态
+        await query(
+            `UPDATE crown_accounts
+             SET last_login_at = CURRENT_TIMESTAMP,
+                 is_online = true,
+                 status = 'active',
+                 error_message = NULL,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1`,
+            [accountId]
+        );
+
+        res.json({
+            success: true,
+            message: loginResult.message || '登录成功',
+            data: {
+                accountId,
+                status: 'online'
+            }
+        } as ApiResponse);
+
+    } catch (error) {
+        console.error('API 登录账号失败:', error);
         res.status(500).json({
             success: false,
             error: '登录失败'
@@ -167,7 +243,6 @@ router.post('/initialize/:accountId', async (req: any, res) => {
                    last_login_at = CURRENT_TIMESTAMP,
                    updated_at = CURRENT_TIMESTAMP,
                    status = 'active',
-                   is_online = true,
                    error_message = NULL
              WHERE id = $3`,
             [finalUsername, finalPassword, accountId, originalUsername]
@@ -184,6 +259,79 @@ router.post('/initialize/:accountId', async (req: any, res) => {
 
     } catch (error) {
         console.error('皇冠账号初始化失败:', error);
+        res.status(500).json({
+            success: false,
+            error: '初始化失败'
+        });
+    }
+});
+
+// 使用纯 API 方式初始化账号（推荐）
+router.post('/initialize-api/:accountId', async (req: any, res) => {
+    console.log('🎯 收到纯 API 初始化请求，账号ID:', req.params.accountId);
+    try {
+        const userId = req.user.id;
+        const accountId = parseInt(req.params.accountId, 10);
+        const { username: newUsername, password: newPassword } = req.body || {};
+
+        if (!newUsername || typeof newUsername !== 'string' || newUsername.trim().length < 4) {
+            return res.status(400).json({
+                success: false,
+                error: '请提供长度至少4个字符的新账号',
+            });
+        }
+
+        if (!newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 6) {
+            return res.status(400).json({
+                success: false,
+                error: '请提供长度至少6个字符的新密码',
+            });
+        }
+
+        const access = buildAccountAccess(req.user, { includeDisabled: true });
+        const accountResult = await query(
+            `SELECT ca.* FROM crown_accounts ca WHERE ca.id = $1${access.clause}`,
+            [accountId, ...access.params]
+        );
+
+        if (accountResult.rows.length === 0) {
+            console.warn(`[INIT-API] 账号不存在或无权限`, { userId, accountId });
+            return res.status(404).json({
+                success: false,
+                error: '账号不存在或无权限'
+            });
+        }
+
+        const account = accountResult.rows[0];
+
+        const automation = getCrownAutomation();
+        const initResult = await automation.initializeAccountWithApi(account, {
+            username: newUsername.trim(),
+            password: newPassword.trim(),
+        });
+
+        if (!initResult.success) {
+            console.warn('API 初始化账号失败:', initResult.message, initResult);
+            return res.status(400).json({
+                success: false,
+                error: initResult.message || '初始化失败'
+            });
+        }
+
+        const finalUsername = initResult.updatedCredentials.username.trim();
+        const finalPassword = initResult.updatedCredentials.password.trim();
+
+        res.json({
+            success: true,
+            message: initResult.message || '账号初始化成功',
+            data: {
+                username: finalUsername,
+                password: finalPassword,
+            },
+        } as ApiResponse);
+
+    } catch (error) {
+        console.error('API 初始化账号失败:', error);
         res.status(500).json({
             success: false,
             error: '初始化失败'
@@ -258,7 +406,6 @@ router.post('/bet/:accountId', async (req: any, res) => {
             home_team,
             awayTeam,
             away_team,
-            min_odds,
         } = req.body;
 
         const matchDbId = matchId ?? match_id;
@@ -288,9 +435,7 @@ router.post('/bet/:accountId', async (req: any, res) => {
         }
 
         // 检查账号是否在线
-        const automation = getCrownAutomation();
-
-        if (!automation.isAccountOnline(accountId)) {
+        if (!getCrownAutomation().isAccountOnline(accountId)) {
             return res.status(400).json({
                 success: false,
                 error: '账号未登录，请先登录'
@@ -316,84 +461,20 @@ router.post('/bet/:accountId', async (req: any, res) => {
 
         const platformAmount = amount;
         const crownAmount = parseFloat((platformAmount / discount).toFixed(2));
-        const parsedMinOdds = min_odds !== undefined && min_odds !== null ? Number(min_odds) : undefined;
-        const normalizedMinOdds = Number.isFinite(parsedMinOdds) && (parsedMinOdds as number) > 0 ? (parsedMinOdds as number) : undefined;
-        const targetGid = crownMatch ? String(crownMatch) : undefined;
-
-        if (normalizedMinOdds !== undefined && !targetGid) {
-            return res.status(400).json({
-                success: false,
-                error: '缺少皇冠比赛ID，无法校验最低赔率'
-            });
-        }
-
-        let previewOdds: number | undefined;
-        if (normalizedMinOdds !== undefined && Number.isFinite(normalizedMinOdds)) {
-            const preview = await automation.previewBetOdds(accountId, {
-                betType,
-                betOption,
-                amount: crownAmount,
-                odds,
-                min_odds: normalizedMinOdds,
-                match_id: matchDbId !== undefined ? Number(matchDbId) : undefined,
-                matchId: matchDbId !== undefined ? Number(matchDbId) : undefined,
-                gid: targetGid,
-                crown_match_id: targetGid,
-                crownMatchId: targetGid,
-                home_team: homeTeamName,
-                away_team: awayTeamName,
-            });
-            if (!preview.success || typeof preview.odds !== 'number') {
-                return res.status(400).json({
-                    success: false,
-                    error: preview.error || '无法获取官方赔率'
-                });
-            }
-            previewOdds = preview.odds;
-            if (previewOdds < normalizedMinOdds) {
-                return res.status(400).json({
-                    success: false,
-                    error: `当前官方赔率 ${previewOdds.toFixed(3)} 低于最低赔率 ${normalizedMinOdds.toFixed(3)}`
-                });
-            }
-        }
 
         // 执行下注
-        const betResult = await automation.placeBet(accountId, {
+        const betResult = await getCrownAutomation().placeBet(accountId, {
             betType,
             betOption,
             amount: crownAmount,
             odds,
-            min_odds: normalizedMinOdds,
             platformAmount,
             discount,
             match_id: matchDbId !== undefined ? Number(matchDbId) : undefined,
-            matchId: matchDbId !== undefined ? Number(matchDbId) : undefined,
-            gid: targetGid,
             crown_match_id: crownMatch,
             home_team: homeTeamName,
             away_team: awayTeamName,
         });
-
-        // 下注成功后同步更新皇冠余额
-        let balanceAfter: number | null = null;
-        let creditAfter: number | null = null;
-        if (betResult.success) {
-            try {
-                const financial = await automation.getAccountFinancialSummary(accountId);
-                if (financial.balance !== null) {
-                    await query(
-                        `UPDATE crown_accounts SET balance = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-                        [financial.balance, accountId]
-                    );
-                }
-                balanceAfter = financial.balance ?? null;
-                creditAfter = financial.credit ?? null;
-            } catch (e) {
-                console.warn('下注成功后更新皇冠余额失败:', { accountId, error: (e as any)?.message || e });
-            }
-        }
-
 
         // 如果下注成功，更新数据库中的下注记录
         if (betResult.success && betResult.betId) {
@@ -410,11 +491,10 @@ router.post('/bet/:accountId', async (req: any, res) => {
             data: {
                 accountId,
                 betId: betResult.betId,
+                actualOdds: betResult.actualOdds,
                 platformAmount,
                 crownAmount,
                 discount,
-                balanceAfter,
-                creditAfter,
             }
         } as ApiResponse);
 
@@ -423,70 +503,6 @@ router.post('/bet/:accountId', async (req: any, res) => {
         res.status(500).json({
             success: false,
             error: '下注失败'
-        });
-    }
-});
-
-// 预览官方赔率（用于默认最低赔率）
-router.post('/preview-odds', async (req: any, res) => {
-    try {
-        const { match_id, crown_match_id, bet_type, bet_option } = req.body || {};
-
-        if (!bet_type || !bet_option) {
-            return res.status(400).json({
-                success: false,
-                error: '缺少投注类型或选项'
-            });
-        }
-
-        let crownMatchId: string | undefined = typeof crown_match_id === 'string' && crown_match_id.trim().length > 0
-            ? crown_match_id.trim()
-            : undefined;
-
-        if (!crownMatchId && typeof match_id === 'number') {
-            const matchResult = await query('SELECT match_id FROM matches WHERE id = $1', [match_id]);
-            if (matchResult.rows.length > 0 && matchResult.rows[0].match_id) {
-                crownMatchId = String(matchResult.rows[0].match_id);
-            }
-        }
-
-        if (!crownMatchId) {
-            return res.status(400).json({
-                success: false,
-                error: '缺少皇冠比赛ID，无法获取官方赔率'
-            });
-        }
-
-        const automation = getCrownAutomation();
-        const result = await automation.previewMatchOdds({
-            betType: bet_type,
-            betOption: bet_option,
-            amount: 0,
-            odds: 0,
-            crown_match_id: crownMatchId,
-            crownMatchId,
-            gid: crownMatchId,
-        });
-
-        if (!result.success || typeof result.odds !== 'number') {
-            return res.status(400).json({
-                success: false,
-                error: result.error || '获取官方赔率失败'
-            });
-        }
-
-        res.json({
-            success: true,
-            data: {
-                odds: result.odds,
-                source: 'system'
-            }
-        } as ApiResponse);
-    } catch (error) {
-        console.error('预览官方赔率失败:', error);
-        res.status(500).json({
-            success: false,
-            error: '获取官方赔率失败'
         });
     }
 });
@@ -521,7 +537,6 @@ router.get('/balance/:accountId', async (req: any, res) => {
 
         const financial = await getCrownAutomation().getAccountFinancialSummary(accountId);
 
-        // 如果获取到余额，更新数据库
         if (financial.balance !== null) {
             await query(
                 `UPDATE crown_accounts
@@ -531,8 +546,7 @@ router.get('/balance/:accountId', async (req: any, res) => {
             );
         }
 
-        // 只要有余额或额度数据就算成功
-        const success = financial.balance !== null || financial.credit !== null;
+        const success = financial.balance !== null;
 
         res.json({
             success,
@@ -555,57 +569,6 @@ router.get('/balance/:accountId', async (req: any, res) => {
         });
     }
 });
-
-// 获取账号历史总览
-router.get('/history/:accountId', async (req: any, res) => {
-    try {
-        const accountId = parseInt(req.params.accountId);
-        const { startDate, endDate, sportType } = req.query;
-
-        // 验证账号是否属于当前用户
-        const access = buildAccountAccess(req.user, { includeDisabled: true });
-        const accountResult = await query(
-            `SELECT ca.id FROM crown_accounts ca WHERE ca.id = $1${access.clause}`,
-            [accountId, ...access.params]
-        );
-
-        if (accountResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: '账号不存在'
-            } as ApiResponse);
-        }
-
-        // 检查账号是否在线
-        if (!getCrownAutomation().isAccountOnline(accountId)) {
-            return res.status(400).json({
-                success: false,
-                error: '账号未登录，无法获取历史数据'
-            } as ApiResponse);
-        }
-
-        const result = await getCrownAutomation().getAccountHistory(accountId, {
-            startDate: startDate as string,
-            endDate: endDate as string,
-            sportType: sportType as string,
-        });
-
-        res.json({
-            success: result.success,
-            data: result.data,
-            total: result.total,
-            error: result.error,
-        } as ApiResponse);
-
-    } catch (error) {
-        console.error('获取账号历史错误:', error);
-        res.status(500).json({
-            success: false,
-            error: '获取历史数据失败'
-        } as ApiResponse);
-    }
-});
-
 
 // 获取自动化状态
 router.get('/status', async (req: any, res) => {
@@ -707,10 +670,10 @@ router.post('/batch-login', async (req: any, res) => {
 
         const results = [];
 
-        // 逐个登录账号（避免并发过多导致检测）
+        // 逐个登录账号（避免并发过多导致检测）（使用纯 API 方式）
         for (const account of accountsResult.rows) {
             try {
-                const loginResult = await getCrownAutomation().loginAccount(account);
+                const loginResult = await getCrownAutomation().loginAccountWithApi(account);
                 results.push({
                     accountId: account.id,
                     username: account.username,
@@ -1049,7 +1012,6 @@ router.post('/matches/sync/:accountId', async (req: any, res) => {
         res.status(500).json({ success: false, error: '同步赛事失败' });
     }
 });
-
 export { router as crownAutomationRoutes };
 
 // =============== SSE 实时赛事推送（按账号+参数聚合轮询） ===============
@@ -1143,28 +1105,10 @@ const startPollingIfNeeded = (key: StreamKey) => {
   tick().catch(() => undefined);
 };
 
-// SSE 入口：/api/crown-automation/matches/stream?accountId=1&gtype=ft&showtype=live&rtype=rb&ltype=3&sorttype=L&token=xxx
+// SSE 入口：/api/crown-automation/matches/stream?accountId=1&gtype=ft&showtype=live&rtype=rb&ltype=3&sorttype=L
 router.get('/matches/stream', async (req: any, res: Response) => {
   try {
-    // SSE特殊处理：从URL参数获取token（因为EventSource不支持自定义头）
-    const token = String(req.query.token || '');
-    if (!token) {
-      res.status(401).json({ success: false, error: '缺少token参数' });
-      return;
-    }
-
-    // 验证token
-    const jwt = require('jsonwebtoken');
-    let user: any;
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
-      user = { id: decoded.id, role: decoded.role };
-    } catch (error) {
-      res.status(401).json({ success: false, error: 'token无效或已过期' });
-      return;
-    }
-
-    const userId = user.id;
+    const userId = req.user.id;
     const accountId = parseInt(String(req.query.accountId || ''));
     const gtype = String(req.query.gtype || 'ft');
     const showtype = String(req.query.showtype || 'live');
@@ -1173,7 +1117,7 @@ router.get('/matches/stream', async (req: any, res: Response) => {
     const sorttype = String(req.query.sorttype || 'L');
 
     // 验证账号归属
-        const access = buildAccountAccess(user, { includeDisabled: true });
+        const access = buildAccountAccess(req.user, { includeDisabled: true });
         const accountResult = await query(
             `SELECT ca.id FROM crown_accounts ca WHERE ca.id = $1${access.clause}`,
             [accountId, ...access.params]
@@ -1286,24 +1230,7 @@ router.patch('/account/:accountId/fetch-config', async (req: any, res) => {
 // 系统默认账号 SSE 推送
 router.get('/matches/system/stream', async (req: any, res: Response) => {
   try {
-    // SSE特殊处理：从URL参数获取token（因为EventSource不支持自定义头）
-    const token = String(req.query.token || '');
-    if (!token) {
-      res.status(401).json({ success: false, error: '缺少token参数' });
-      return;
-    }
-
-    // 验证token
-    const jwt = require('jsonwebtoken');
-    let userId: number;
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
-      userId = decoded.id;
-    } catch (error) {
-      res.status(401).json({ success: false, error: 'token无效或已过期' });
-      return;
-    }
-
+    const userId = req.user.id;
     const gtype = String(req.query.gtype || 'ft');
     const showtype = String(req.query.showtype || 'live');
     const rtype = String(req.query.rtype || (showtype === 'live' ? 'rb' : 'r'));

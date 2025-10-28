@@ -15,10 +15,12 @@ import {
   Divider,
   Button,
   Tooltip,
+  Radio,
+  Alert,
 } from 'antd';
-import type { CrownAccount, Group, CrownAccountCreateRequest } from '../../types';
+import type { CrownAccount, Group, CrownAccountCreateRequest, InitType } from '../../types';
 import { accountApi, groupApi } from '../../services/api';
-import { ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined, CheckCircleOutlined, KeyOutlined, SyncOutlined } from '@ant-design/icons';
 import { generateAccountPassword, generateAccountUsername } from '../../utils/credentials';
 
 const { Option } = Select;
@@ -64,6 +66,8 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const [localGroups, setLocalGroups] = useState<Group[]>(groups);
   const [newGroupName, setNewGroupName] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [initType, setInitType] = useState<InitType>('full');
+  const [userHasSelectedInitType, setUserHasSelectedInitType] = useState(false);
 
   const regenerateCredential = useCallback((field: 'username' | 'password') => {
     const value = field === 'username' ? generateAccountUsername() : generateAccountPassword();
@@ -83,19 +87,24 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
           stop_profit_limit: account.stop_profit_limit ?? 0,
         });
         setProxyEnabled(account.proxy_enabled);
+        setInitType(account.init_type || 'full');
+        setUserHasSelectedInitType(false);
       } else {
         // 新增模式
         form.resetFields();
         setProxyEnabled(false);
+        setInitType('full');
+        setUserHasSelectedInitType(false);
         // 设置默认值
         form.setFieldsValue({
           username: generateAccountUsername(),
           password: generateAccountPassword(),
+          init_type: 'full',
           game_type: '足球',
           source: '自有',
           currency: 'CNY',
           discount: 1.0,
-          note: '',
+          note: '高',
           stop_profit_limit: 0,
           device_type: 'iPhone 14',
           proxy_enabled: false,
@@ -199,9 +208,35 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
       <Form
         form={form}
         layout="vertical"
-        onValuesChange={(_, allValues) => {
-          if ('proxy_enabled' in allValues) {
+        onValuesChange={(changedValues, allValues) => {
+          if ('proxy_enabled' in changedValues) {
             setProxyEnabled(allValues.proxy_enabled);
+          }
+
+          // 智能判断初始化类型
+          if ('original_username' in changedValues || 'initialized_username' in changedValues) {
+            if (!userHasSelectedInitType) {
+              const originalUsername = allValues.original_username;
+              const initializedUsername = allValues.initialized_username;
+
+              let autoInitType: InitType = 'none';
+              if (originalUsername && initializedUsername) {
+                autoInitType = 'full';
+              } else if (originalUsername && !initializedUsername) {
+                autoInitType = 'password_only';
+              } else {
+                autoInitType = 'none';
+              }
+
+              form.setFieldsValue({ init_type: autoInitType });
+              setInitType(autoInitType);
+            }
+          }
+
+          // 用户手动选择初始化类型
+          if ('init_type' in changedValues) {
+            setInitType(changedValues.init_type);
+            setUserHasSelectedInitType(true);
           }
         }}
       >
@@ -314,6 +349,17 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     </Col>
                     <Col xs={24} sm={12}>
                       <Form.Item
+                        name="passcode"
+                        label="简易密码"
+                      >
+                        <Input placeholder="可选，四位简易登录密码" maxLength={4} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={16}>
+                    <Col span={24}>
+                      <Form.Item
                         name="display_name"
                         label="显示名称"
                       >
@@ -322,8 +368,103 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     </Col>
                   </Row>
 
+                  <Divider orientation="left" style={{ fontSize: '14px', fontWeight: 500 }}>
+                    初始化设置
+                  </Divider>
+
                   <Row gutter={16}>
-                    <Col xs={24} sm={12}>
+                    <Col span={24}>
+                      <Form.Item
+                        name="init_type"
+                        label="初始化类型"
+                        tooltip="选择账号的初始化方式，系统会根据您填写的字段自动判断"
+                      >
+                        <Radio.Group>
+                          <Space direction="vertical" size="middle">
+                            <Radio value="none">
+                              <Space>
+                                <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                                <span style={{ fontWeight: 500 }}>不需要初始化</span>
+                              </Space>
+                              <div style={{ fontSize: '12px', color: '#999', marginLeft: 24, marginTop: 4 }}>
+                                账号和密码都不需要修改，直接使用
+                              </div>
+                            </Radio>
+                            <Radio value="password_only">
+                              <Space>
+                                <KeyOutlined style={{ color: '#1890ff' }} />
+                                <span style={{ fontWeight: 500 }}>仅修改密码</span>
+                              </Space>
+                              <div style={{ fontSize: '12px', color: '#999', marginLeft: 24, marginTop: 4 }}>
+                                保持账号不变，只修改密码
+                              </div>
+                            </Radio>
+                            <Radio value="full">
+                              <Space>
+                                <SyncOutlined style={{ color: '#faad14' }} />
+                                <span style={{ fontWeight: 500 }}>完整初始化</span>
+                              </Space>
+                              <div style={{ fontSize: '12px', color: '#999', marginLeft: 24, marginTop: 4 }}>
+                                修改账号和密码（默认）
+                              </div>
+                            </Radio>
+                          </Space>
+                        </Radio.Group>
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  {initType !== 'none' && (
+                    <Alert
+                      message="提示"
+                      description={
+                        initType === 'full'
+                          ? '完整初始化需要提供原始账号和初始化后的账号'
+                          : '仅修改密码需要提供原始账号'
+                      }
+                      type="info"
+                      showIcon
+                      style={{ marginBottom: 16 }}
+                    />
+                  )}
+
+                  {(initType === 'password_only' || initType === 'full') && (
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="original_username"
+                          label="原始账号"
+                          tooltip="首次登录时使用的账号"
+                          rules={[
+                            { required: true, message: '请输入原始账号' }
+                          ]}
+                        >
+                          <Input placeholder="请输入原始账号" />
+                        </Form.Item>
+                      </Col>
+                      {initType === 'full' && (
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="initialized_username"
+                            label="初始化账号"
+                            tooltip="修改后使用的账号"
+                            rules={[
+                              { required: true, message: '请输入初始化后的账号' }
+                            ]}
+                          >
+                            <Input placeholder="请输入初始化后的账号" />
+                          </Form.Item>
+                        </Col>
+                      )}
+                    </Row>
+                  )}
+
+                  <Divider orientation="left" style={{ fontSize: '14px', fontWeight: 500 }}>
+                    其他信息
+                  </Divider>
+
+                  <Row gutter={16}>
+                    <Col xs={24} sm={8}>
                       <Form.Item
                         name="game_type"
                         label="游戏类型"
@@ -335,7 +476,19 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                         </Select>
                       </Form.Item>
                     </Col>
-                    <Col xs={24} sm={12}>
+                    <Col xs={24} sm={8}>
+                      <Form.Item
+                        name="source"
+                        label="来源"
+                      >
+                        <Select>
+                          <Option value="自有">自有</Option>
+                          <Option value="代理">代理</Option>
+                          <Option value="合作">合作</Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
                       <Form.Item
                         name="currency"
                         label="货币"
@@ -386,11 +539,11 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                         name="note"
                         label="备注"
                       >
-                        <Input
-                          placeholder="请输入备注信息"
-                          maxLength={50}
-                          showCount
-                        />
+                        <Select>
+                          <Option value="高">高</Option>
+                          <Option value="中">中</Option>
+                          <Option value="低">低</Option>
+                        </Select>
                       </Form.Item>
                     </Col>
                     <Col xs={24} sm={8}>

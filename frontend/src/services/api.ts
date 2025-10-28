@@ -19,8 +19,6 @@ import type {
   AccountSelectionResponse,
   StaffCreateRequest,
   StaffUpdateRequest,
-  CrownSite,
-  CrownSitesResponse,
 } from '../types';
 
 // 创建axios实例
@@ -56,8 +54,16 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
+    const hasToken = !!(token && token.trim().length > 0);
+    if (hasToken) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (import.meta.env.DEV) {
+      console.log('[API] request', {
+        method: config.method,
+        url: (config.baseURL || '') + (config.url || ''),
+        hasToken,
+      });
     }
     return config;
   },
@@ -303,42 +309,17 @@ export const coinApi = {
     summary: any;
   }>> =>
     apiClient.get('/coins/analytics', { params: { period } }).then(res => res.data),
-
-  // 充值
-  recharge: (data: {
-    target_user_id: number;
-    amount: number;
-    description?: string;
-  }): Promise<ApiResponse<{
-    target_user_id: number;
-    target_username: string;
-    amount: number;
-    new_balance: number;
-  }>> =>
-    apiClient.post('/coins/recharge', data).then(res => res.data),
-
-  // 转账
-  transfer: (data: {
-    target_user_id: number;
-    amount: number;
-    description?: string;
-  }): Promise<ApiResponse<{
-    sender_id: number;
-    sender_username: string;
-    sender_new_balance: number;
-    receiver_id: number;
-    receiver_username: string;
-    receiver_new_balance: number;
-    amount: number;
-  }>> =>
-    apiClient.post('/coins/transfer', data).then(res => res.data),
 };
 
 // 皇冠自动化API
 export const crownApi = {
-  // 登录账号
+  // 登录账号（Playwright 方式，旧方法）
   loginAccount: (accountId: number): Promise<ApiResponse> =>
     apiClient.post(`/crown-automation/login/${accountId}`, undefined, { timeout: 120000 }).then(res => res.data),
+
+  // 登录账号（纯 API 方式，推荐）
+  loginAccountWithApi: (accountId: number): Promise<ApiResponse> =>
+    apiClient.post(`/crown-automation/login-api/${accountId}`, undefined, { timeout: 30000 }).then(res => res.data),
 
   // 登出账号
   logoutAccount: (accountId: number): Promise<ApiResponse> =>
@@ -358,45 +339,6 @@ export const crownApi = {
   getAccountBalance: (accountId: number): Promise<ApiResponse> =>
     apiClient.get(`/crown-automation/balance/${accountId}`, { timeout: 60000 }).then(res => res.data),
 
-  // 预览官方赔率
-  previewOdds: (data: {
-    match_id?: number;
-    crown_match_id?: string;
-    bet_type: string;
-    bet_option: string;
-  }): Promise<ApiResponse<{ odds: number }>> =>
-    apiClient.post('/crown-automation/preview-odds', data, { timeout: 20000 }).then(res => res.data),
-
-  // 获取账号历史总览
-  getAccountHistory: (accountId: number, params?: {
-    startDate?: string;
-    endDate?: string;
-    sportType?: string;
-  }): Promise<{
-    success: boolean;
-    data?: Array<{
-      date: string;
-      dayOfWeek: string;
-      betAmount: number;
-      validAmount: number;
-      winLoss: number;
-    }>;
-    total?: {
-      betAmount: number;
-      validAmount: number;
-      winLoss: number;
-    };
-    error?: string;
-  }> =>
-    apiClient.get(`/crown-automation/history/${accountId}`, {
-      params,
-      timeout: 60000,
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      }
-    }).then(res => res.data),
-
   // 检查出口IP（用于验证代理）
   getProxyIP: (accountId: number): Promise<ApiResponse<{ ip: string }>> =>
     apiClient.get(`/crown-automation/proxy-ip/${accountId}`).then(res => res.data),
@@ -405,9 +347,16 @@ export const crownApi = {
   getStatus: (): Promise<ApiResponse> =>
     apiClient.get('/crown-automation/status', { timeout: 15000 }).then(res => res.data),
 
-  // 首次登录改密
+  // 首次登录改密（Playwright 方式，旧方法）
   initializeAccount: (accountId: number, data: { username: string; password: string }): Promise<ApiResponse> =>
     apiClient.post(`/crown-automation/initialize/${accountId}`, data, { timeout: 180000 }).then(res => res.data),
+
+  // 首次登录改密（纯 API 方式，推荐）
+  initializeAccountWithApi: (accountId: number, data: { username: string; password: string }): Promise<ApiResponse> => {
+    const url = `/crown-automation/initialize-api/${accountId}`;
+    console.log('📡 发送初始化请求:', { baseURL, url, fullUrl: `${baseURL}${url}` });
+    return apiClient.post(url, data, { timeout: 180000 }).then(res => res.data);
+  },
 
   // 批量登录账号
   batchLogin: (accountIds: number[]): Promise<ApiResponse> =>
@@ -440,29 +389,6 @@ export const crownApi = {
     params?: { gtype?: string; showtype?: string; rtype?: string; ltype?: string; sorttype?: string }
   ): Promise<ApiResponse> =>
     apiClient.post(`/crown-automation/matches/sync/${accountId}`, undefined, { params, timeout: 120000 }).then(res => res.data),
-};
-
-// 皇冠站点管理API
-export const crownSitesApi = {
-  // 获取所有站点信息
-  getAllSites: (): Promise<ApiResponse<CrownSitesResponse>> =>
-    apiClient.get('/crown-sites').then(res => res.data),
-
-  // 获取当前站点信息
-  getCurrentSite: (): Promise<ApiResponse<{ url: string; info: CrownSite }>> =>
-    apiClient.get('/crown-sites/current').then(res => res.data),
-
-  // 手动切换站点
-  switchSite: (url: string): Promise<ApiResponse<{ currentSite: string; message: string }>> =>
-    apiClient.post('/crown-sites/switch', { url }).then(res => res.data),
-
-  // 自动切换到可用站点
-  autoSwitch: (): Promise<ApiResponse<{ currentSite: string; message: string }>> =>
-    apiClient.post('/crown-sites/auto-switch').then(res => res.data),
-
-  // 手动触发健康检查
-  triggerHealthCheck: (): Promise<ApiResponse<{ sites: CrownSite[]; message: string }>> =>
-    apiClient.post('/crown-sites/health-check').then(res => res.data),
 };
 
 export default apiClient;

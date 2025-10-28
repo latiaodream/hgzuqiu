@@ -76,9 +76,7 @@ router.get('/', async (req: any, res) => {
         if (userRole === 'admin') {
             // 管理员可以查看所有账号
             sql = `
-                SELECT ca.*, g.name as group_name, u.username as owner_username,
-                       NULL::integer as shared_from_user_id,
-                       NULL::varchar as shared_from_username
+                SELECT ca.*, g.name as group_name, u.username as owner_username
                 FROM crown_accounts ca
                 JOIN groups g ON ca.group_id = g.id
                 JOIN users u ON ca.user_id = u.id
@@ -88,9 +86,7 @@ router.get('/', async (req: any, res) => {
         } else if (userRole === 'agent') {
             // 代理可以查看下属员工的所有账号
             sql = `
-                SELECT ca.*, g.name as group_name, u.username as owner_username,
-                       NULL::integer as shared_from_user_id,
-                       NULL::varchar as shared_from_username
+                SELECT ca.*, g.name as group_name, u.username as owner_username
                 FROM crown_accounts ca
                 JOIN groups g ON ca.group_id = g.id
                 JOIN users u ON ca.user_id = u.id
@@ -98,36 +94,22 @@ router.get('/', async (req: any, res) => {
             `;
             params = [userId];
         } else {
-            // 员工可以查看自己的账号 + 别人分享给自己的账号
+            // 员工只能查看自己的账号
             sql = `
-                SELECT ca.*, g.name as group_name,
-                       NULL::integer as shared_from_user_id,
-                       NULL::varchar as shared_from_username
+                SELECT ca.*, g.name as group_name
                 FROM crown_accounts ca
                 JOIN groups g ON ca.group_id = g.id
                 WHERE ca.user_id = $1
-
-                UNION ALL
-
-                SELECT ca.*, g.name as group_name,
-                       s.owner_user_id as shared_from_user_id,
-                       u.username as shared_from_username
-                FROM crown_accounts ca
-                JOIN groups g ON ca.group_id = g.id
-                JOIN account_shares s ON ca.id = s.account_id
-                JOIN users u ON s.owner_user_id = u.id
-                WHERE s.shared_to_user_id = $1
             `;
             params = [userId];
         }
 
         if (group_id) {
-            // 注意：UNION 查询需要在外层包装才能添加 WHERE 条件
-            sql = `SELECT * FROM (${sql}) AS accounts WHERE group_id = $${params.length + 1}`;
+            sql += ` AND ca.group_id = $${params.length + 1}`;
             params.push(group_id);
         }
 
-        sql += ' ORDER BY created_at DESC';
+        sql += ' ORDER BY ca.created_at DESC';
 
         const result = await query(sql, params);
 
@@ -232,13 +214,37 @@ router.post('/', async (req: any, res) => {
         const proxyUsername = accountData.proxy_enabled ? accountData.proxy_username || null : null;
         const proxyPassword = accountData.proxy_enabled ? accountData.proxy_password || null : null;
 
+        // 获取初始化类型，默认为 'full'
+        const initType = accountData.init_type || 'full';
+
+        // 根据初始化类型验证必填字段
+        if (initType === 'full') {
+            // 完整初始化：需要原始账号和初始化账号
+            if (!accountData.original_username || !accountData.initialized_username) {
+                return res.status(400).json({
+                    success: false,
+                    error: '完整初始化需要提供原始账号和初始化账号'
+                });
+            }
+        } else if (initType === 'password_only') {
+            // 只改密码：需要原始账号
+            if (!accountData.original_username) {
+                return res.status(400).json({
+                    success: false,
+                    error: '修改密码需要提供原始账号'
+                });
+            }
+        }
+        // initType === 'none' 时不需要额外验证
+
         const result = await query(`
             INSERT INTO crown_accounts (
                 user_id, group_id, agent_id, username, password, passcode, display_name,
+                original_username, initialized_username, init_type,
                 game_type, source, currency, discount, note, device_type, stop_profit_limit,
                 proxy_enabled, proxy_type, proxy_host, proxy_port, proxy_username, proxy_password,
                 football_prematch_limit, football_live_limit, basketball_prematch_limit, basketball_live_limit
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
             RETURNING *
         `, [
             userId,
@@ -248,6 +254,9 @@ router.post('/', async (req: any, res) => {
             accountData.password,
             accountData.passcode || null,
             accountData.display_name || `${accountData.username} (${accountData.username.slice(0, 6)})`,
+            accountData.original_username || null,
+            accountData.initialized_username || null,
+            initType,
             accountData.game_type || '足球',
             accountData.source || '自有',
             accountData.currency || 'CNY',

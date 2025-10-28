@@ -10,7 +10,6 @@ import {
   CrownOutlined,
   PlayCircleOutlined,
   StopOutlined,
-  ShareAltOutlined,
 } from '@ant-design/icons';
 import type { CrownAccount } from '../../types';
 
@@ -26,8 +25,6 @@ interface AccountCardProps {
   onLogout?: (account: CrownAccount) => void;
   onInitialize?: (account: CrownAccount) => void;
   onToggleFetch?: (account: CrownAccount, useForFetch: boolean) => void;
-  onViewHistory?: (account: CrownAccount) => void;
-  onShare?: (account: CrownAccount) => void;
   pendingCredentials?: { username: string; password: string };
 }
 
@@ -41,20 +38,8 @@ const AccountCard: React.FC<AccountCardProps> = ({
   onLogout,
   onInitialize,
   onToggleFetch,
-  onViewHistory,
-  onShare,
   pendingCredentials,
 }) => {
-  const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 768);
-
-  React.useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   const formatDiscount = (value?: number) => {
     if (!value || value <= 0) {
       return '-';
@@ -82,10 +67,21 @@ const AccountCard: React.FC<AccountCardProps> = ({
             <CrownOutlined style={{ color: '#1677FF', fontSize: '20px' }} />
           </div>
           <div className="account-card-user-info">
-            <Space size={6} align="center">
+            <Space size={6} align="center" wrap>
               <div className="account-card-username">{account.username}</div>
               <Tag color={account.is_online ? 'green' : 'default'}>
                 {account.is_online ? '在线' : '离线'}
+              </Tag>
+              <Tag color={
+                account.init_type === 'none' ? 'success' :
+                account.init_type === 'password_only' ? 'processing' :
+                'warning'
+              }>
+                {
+                  account.init_type === 'none' ? '无需初始化' :
+                  account.init_type === 'password_only' ? '仅改密码' :
+                  '完整初始化'
+                }
               </Tag>
             </Space>
             <div className="account-card-user-id">
@@ -117,74 +113,57 @@ const AccountCard: React.FC<AccountCardProps> = ({
 
       {/* 详细信息区域 */}
       <div className="account-card-details">
-        {isMobile ? (
-          <>
-            {/* 移动端：紧凑的单行显示 */}
-            <div className="account-card-detail-row">
-              <span><Text strong>余额:</Text><Text>{(() => {
-                const raw: any = (account as any).balance;
-                const num = typeof raw === 'number' ? raw : (raw ? parseFloat(String(raw)) : NaN);
-                return Number.isFinite(num) ? num.toLocaleString() : '-';
-              })()}</Text></span>
-              <span><Text strong>设备:</Text><Text>{account.device_type || 'iPhone 15'}</Text></span>
-              <span><Text strong>代理:</Text><Text style={{ color: account.proxy_enabled ? '#52c41a' : '#999' }}>
-                {account.proxy_enabled ? '有' : '无'}
-              </Text></span>
-            </div>
-            {account.note && account.note !== '-' && (
-              <div className="account-card-detail-row">
-                <span><Text strong>备注:</Text><Text>{account.note}</Text></span>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            {/* 桌面端：原有布局 */}
-            <div className="account-card-detail-row">
-              <Text strong>赛事:</Text>
-              <Text>{account.game_type || '足球'}</Text>
-              <Text strong>币种:</Text>
-              <Text>{account.currency || 'CNY'}</Text>
-              <Text strong>折扣:</Text>
-              <Text>{formatDiscount(account.discount)}</Text>
-            </div>
+        <div className="account-card-detail-row">
+          <Text strong>赛事:</Text>
+          <Text>{account.game_type || '足球'}</Text>
+          <Text strong>来源:</Text>
+          <Text>{account.source || '自有'}</Text>
+          <Text strong>分享:</Text>
+          <Text>{account.discount || '0'}</Text>
+        </div>
 
-            <div className="account-card-detail-row">
-              <Text strong>备注:</Text>
-              <Text>{account.note || '-'}</Text>
-              <Text strong>共享:</Text>
-              <Space size={4}>
-                {account.shared_from_username ? (
-                  <Tag color="orange" icon={<ShareAltOutlined />}>
-                    来自 {account.shared_from_username}
-                  </Tag>
-                ) : (
-                  <Text>{account.share_count || 0} 人</Text>
-                )}
-              </Space>
-              <Text strong>止盈:</Text>
-              <Text>{(() => {
-                const formatted = formatAmount(account.stop_profit_limit);
-                return formatted === '-' ? '-' : `${formatted} 元`;
-              })()}</Text>
-            </div>
+        <div className="account-card-detail-row">
+          <Text strong>币种:</Text>
+          <Text>{account.currency || 'CNY'}</Text>
+          <Text strong>折扣:</Text>
+          <Text>{formatDiscount(account.discount)}</Text>
+          <Text strong>备注:</Text>
+          <Text>{account.note || '3失85'}</Text>
+        </div>
 
-            <div className="account-card-detail-row">
-              <Text strong>设备:</Text>
-              <Text>{account.device_type || 'iPhone 15'}</Text>
-              <Text strong>代理:</Text>
-              <Text style={{ color: account.proxy_enabled ? '#52c41a' : '#999' }}>
-                {account.proxy_enabled ? '有' : '无'}
-              </Text>
-              <Text strong>余额:</Text>
-              <Text>{(() => {
-                const raw: any = (account as any).balance;
-                const num = typeof raw === 'number' ? raw : (raw ? parseFloat(String(raw)) : NaN);
-                return Number.isFinite(num) ? num.toLocaleString() : '-';
-              })()}</Text>
-            </div>
-          </>
-        )}
+        <div className="account-card-detail-row">
+          <Text strong>设备:</Text>
+          <Text>{account.device_type || 'iPhone 15'}</Text>
+          <Text strong>代理:</Text>
+          <Text style={{ color: account.proxy_enabled ? '#52c41a' : '#999' }}>
+            {account.proxy_enabled ? '有' : '无'}
+          </Text>
+          <Text strong>余额:</Text>
+          <Text>{(() => {
+            const raw: any = (account as any).balance;
+            const num = typeof raw === 'number' ? raw : (raw ? parseFloat(String(raw)) : NaN);
+            return Number.isFinite(num) ? num.toLocaleString() : '-';
+          })()}</Text>
+        </div>
+
+        <div className="account-card-detail-row">
+          <Text strong>赛事抓取:</Text>
+          <Switch
+            checked={!!account.use_for_fetch}
+            size="small"
+            onChange={(checked) => onToggleFetch?.(account, checked)}
+            checkedChildren="开"
+            unCheckedChildren="关"
+          />
+        </div>
+
+        <div className="account-card-detail-row">
+          <Text strong>止盈:</Text>
+          <Text>{(() => {
+            const formatted = formatAmount(account.stop_profit_limit);
+            return formatted === '-' ? '-' : `${formatted} 元`;
+          })()}</Text>
+        </div>
 
         {pendingCredentials && (
           <div className="account-card-detail-row" style={{ background: '#fff6db', borderRadius: 6, padding: '8px 10px' }}>
@@ -204,30 +183,35 @@ const AccountCard: React.FC<AccountCardProps> = ({
           </div>
         )}
 
-        {/* 密码和简易码 - 只显示密码，隐藏简易码 */}
-        {account.password && (
+        {(account.password || account.passcode) && (
           <div className="account-card-detail-row">
-            <Space size={isMobile ? 4 : 12}>
-              <span>
-                <Text strong>密码：</Text>
-                <Text copyable={{ text: account.password }}>{account.password}</Text>
-              </span>
+            <Space size={12}>
+              {account.password && (
+                <span>
+                  <Text strong>当前密码：</Text>
+                  <Text copyable={{ text: account.password }}>{account.password}</Text>
+                </span>
+              )}
+              {account.passcode && (
+                <span>
+                  <Text strong>简易码：</Text>
+                  <Text copyable={{ text: account.passcode }}>{account.passcode}</Text>
+                </span>
+              )}
             </Space>
           </div>
         )}
 
-        {!isMobile && (
-          <div className="account-card-limits">
-            <div className="account-card-limit-row">
-              <Text strong>足球:</Text>
-              <Text>[赛前]{(account.football_prematch_limit || 1100000) / 10000}万/[滚球]{(account.football_live_limit || 1100000) / 10000}万</Text>
-            </div>
-            <div className="account-card-limit-row">
-              <Text strong>篮球:</Text>
-              <Text>[赛前]{(account.basketball_prematch_limit || 1100000) / 10000}万/[滚球]{(account.basketball_live_limit || 1100000) / 10000}万</Text>
-            </div>
+        <div className="account-card-limits">
+          <div className="account-card-limit-row">
+            <Text strong>足球:</Text>
+            <Text>[赛前]{(account.football_prematch_limit || 1100000) / 10000}万/[滚球]{(account.football_live_limit || 1100000) / 10000}万</Text>
           </div>
-        )}
+          <div className="account-card-limit-row">
+            <Text strong>篮球:</Text>
+            <Text>[赛前]{(account.basketball_prematch_limit || 1100000) / 10000}万/[滚球]{(account.basketball_live_limit || 1100000) / 10000}万</Text>
+          </div>
+        </div>
       </div>
 
       {/* 底部操作区域 */}
@@ -244,7 +228,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
             <Button type="text" size="small" onClick={() => onRefresh?.(account)}>
               刷新
             </Button>
-            <Button type="text" size="small" onClick={() => onViewHistory?.(account)}>
+            <Button type="text" size="small" onClick={() => {/* onView */}}>
               查账
             </Button>
             {onInitialize && (
@@ -255,17 +239,6 @@ const AccountCard: React.FC<AccountCardProps> = ({
             <Button type="text" size="small" onClick={() => onEdit(account)}>
               编辑
             </Button>
-            {/* 只有账号所有者才能看到分享按钮 */}
-            {!account.shared_from_user_id && onShare && (
-              <Button
-                type="text"
-                size="small"
-                icon={<ShareAltOutlined />}
-                onClick={() => onShare(account)}
-              >
-                分享
-              </Button>
-            )}
             <Popconfirm
               title="确定删除这个账号吗？"
               onConfirm={() => onDelete(account.id)}

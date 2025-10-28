@@ -14,12 +14,10 @@ import {
   Button,
   Spin,
   Empty,
-  Alert,
-  Statistic,
 } from 'antd';
-import { TrophyOutlined, DollarOutlined } from '@ant-design/icons';
+import { TrophyOutlined } from '@ant-design/icons';
 import type { Match, CrownAccount, BetCreateRequest, AccountSelectionResponse } from '../../types';
-import { betApi, accountApi, coinApi } from '../../services/api';
+import { betApi, accountApi } from '../../services/api';
 import dayjs from 'dayjs';
 import type { AxiosError } from 'axios';
 
@@ -55,10 +53,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   const [betMode, setBetMode] = useState<'优选' | '平均'>('优选');
   const [autoSelection, setAutoSelection] = useState<AccountSelectionResponse | null>(null);
   const [autoLoading, setAutoLoading] = useState(false);
-  const [coinBalance, setCoinBalance] = useState(0);
-  const [requiredCoins, setRequiredCoins] = useState(0);
-
-  const formatOddsValue = (value: number) => Number(value).toFixed(3).replace(/\.?0+$/, '');
 
   const accountDict = useMemo(() => {
     const map = new Map<number, CrownAccount>();
@@ -78,22 +72,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     return base ? base.slice(0, 4).toUpperCase() : 'UNKNOWN';
   }, [accounts, autoSelection]);
 
-
-  const loadCoinBalance = async () => {
-    try {
-      const response = await coinApi.getBalance();
-      if (response.success && response.data) {
-        setCoinBalance(response.data.balance);
-      }
-    } catch (error) {
-      console.error('Failed to load coin balance:', error);
-    }
-  };
-
-  const watchedBetType = Form.useWatch('bet_type', form);
-  const watchedBetOption = Form.useWatch('bet_option', form);
-  const watchedOdds = Form.useWatch('odds', form);
-
   useEffect(() => {
     if (visible && match) {
       form.resetFields();
@@ -107,6 +85,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       setSelectionLabel(defaultSelection?.label || '');
       setAutoSelection(null);
       setAutoLoading(false);
+      // 设置默认值
       form.setFieldsValue({
         bet_type: defaults.bet_type,
         bet_option: defaults.bet_option,
@@ -115,12 +94,12 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         single_limit: 100,
         interval_seconds: 3,
         quantity: 1,
-        total_amount: undefined,
+        min_odds: defaults.odds,
+        total_amount: 100,
         interval_range: '1-3',
         group: undefined,
         account_ids: [],
       });
-      loadCoinBalance();
     }
   }, [visible, match, form, defaultSelection]);
 
@@ -239,16 +218,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     const normalized = accountIds.map(id => Number(id));
     setSelectedAccounts(normalized);
     form.setFieldValue('account_ids', normalized);
-
-    // 如果总金额有值，重新计算单注金额
-    const totalAmount = form.getFieldValue('total_amount');
-    if (totalAmount > 0) {
-      const quantity = form.getFieldValue('quantity') || 1;
-      const accountCount = normalized.length || 1;
-      const betAmount = Math.floor(totalAmount / (quantity * accountCount));
-      form.setFieldValue('bet_amount', betAmount);
-    }
-
     calculatePayout(normalized.length);
   };
 
@@ -260,43 +229,9 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
     const payout = betAmount * odds * quantity * accountCount;
     setEstimatedPayout(payout);
-
-    // 计算需要的金币（下注金额 × 数量 × 账号数量）
-    const required = betAmount * quantity * accountCount;
-    setRequiredCoins(required);
   };
 
-  const handleFormValuesChange = (changedValues: any) => {
-    console.log('🔄 表单值变化:', changedValues);
-
-    // 如果总金额变化，自动计算单注金额
-    if ('total_amount' in changedValues) {
-      const totalAmount = changedValues.total_amount || 0;
-      const quantity = form.getFieldValue('quantity') || 1;
-      const accountCount = selectedAccounts.length || 1;
-
-      console.log('💰 总金额变化:', { totalAmount, quantity, accountCount });
-
-      if (totalAmount > 0) {
-        // 单注金额 = 总金额 / (数量 × 账号数量)
-        const betAmount = Math.floor(totalAmount / (quantity * accountCount));
-        console.log('✅ 计算单注金额:', betAmount);
-        form.setFieldValue('bet_amount', betAmount);
-      }
-    }
-
-    // 如果数量或账号数量变化，且总金额有值，重新计算单注金额
-    if (('quantity' in changedValues || 'account_ids' in changedValues)) {
-      const totalAmount = form.getFieldValue('total_amount');
-      if (totalAmount > 0) {
-        const quantity = form.getFieldValue('quantity') || 1;
-        const accountCount = selectedAccounts.length || 1;
-        const betAmount = Math.floor(totalAmount / (quantity * accountCount));
-        console.log('✅ 重新计算单注金额:', betAmount);
-        form.setFieldValue('bet_amount', betAmount);
-      }
-    }
-
+  const handleFormValuesChange = () => {
     calculatePayout();
   };
 
@@ -315,9 +250,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
       const betTypeValue = values.bet_type ?? defaultSelection?.bet_type ?? '让球';
       const betOptionValue = values.bet_option ?? defaultSelection?.bet_option ?? '主队';
-      const oddsValueRaw = values.odds ?? defaultSelection?.odds ?? 1;
-      const oddsValueNumber = typeof oddsValueRaw === 'number' ? oddsValueRaw : Number(oddsValueRaw);
-      const oddsValue = Number.isFinite(oddsValueNumber) ? oddsValueNumber : 1;
+      const oddsValue = values.odds ?? defaultSelection?.odds ?? 1;
 
       const usedLines = new Set<string>();
       const conflictAccounts: number[] = [];
@@ -403,28 +336,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   ), [autoSelection]);
 
   const sortedAccounts = useMemo(() => {
-    // 在优选模式下，只显示 eligible_accounts 中的账号
-    if (betMode === '优选' && autoSelection) {
-      const eligibleIds = new Set(autoSelection.eligible_accounts.map(entry => entry.account.id));
-      const filtered = accounts.filter(acc => eligibleIds.has(acc.id));
-
-      if (!recommendedOrder.length) {
-        return filtered;
-      }
-
-      const orderMap = new Map<number, number>();
-      recommendedOrder.forEach((id, index) => orderMap.set(id, index));
-      return [...filtered].sort((a, b) => {
-        const rankA = orderMap.has(a.id) ? orderMap.get(a.id)! : Number.POSITIVE_INFINITY;
-        const rankB = orderMap.has(b.id) ? orderMap.get(b.id)! : Number.POSITIVE_INFINITY;
-        if (rankA !== rankB) {
-          return rankA - rankB;
-        }
-        return a.username.localeCompare(b.username);
-      });
-    }
-
-    // 平均模式下，显示所有账号
     if (!recommendedOrder.length) {
       return accounts;
     }
@@ -438,7 +349,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       }
       return a.username.localeCompare(b.username);
     });
-  }, [accounts, recommendedOrder, betMode, autoSelection]);
+  }, [accounts, recommendedOrder]);
 
   const formatAmount = (value: number) => {
     if (!Number.isFinite(value)) {
@@ -446,8 +357,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     }
     return value.toLocaleString();
   };
-
-  const isBalanceInsufficient = requiredCoins > coinBalance;
 
   return (
     <Modal
@@ -465,7 +374,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       maskClosable={false}
       className="bet-modal compact"
       okText="下单"
-      okButtonProps={{ disabled: isBalanceInsufficient }}
       cancelButtonProps={{ style: { display: 'none' } }}
     >
       <div className="bet-modal-body compact">
@@ -515,41 +423,16 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
               {selectionLabel && (
                 <div className="bet-quick-selection">{selectionLabel}</div>
               )}
-              <div className="bet-quick-summary">
-                <Space size={12} wrap>
-                  <span>类型：{watchedBetType || '-'}</span>
-                  <span>选项：{watchedBetOption || '-'}</span>
-                  <span>赔率：{watchedOdds !== undefined ? formatOddsValue(Number(watchedOdds) || 0) : '-'}</span>
-                </Space>
-              </div>
-
-              {/* 金币余额显示 */}
-              <Alert
-                message={
-                  <Space>
-                    <DollarOutlined />
-                    <span>金币余额：¥{coinBalance.toFixed(2)}</span>
-                    {requiredCoins > 0 && (
-                      <span style={{ marginLeft: 8 }}>
-                        | 本次需要：¥{requiredCoins.toFixed(2)}
-                      </span>
-                    )}
-                  </Space>
-                }
-                type={requiredCoins > coinBalance ? 'error' : 'info'}
-                showIcon
-                style={{ marginBottom: 12 }}
-                description={
-                  requiredCoins > coinBalance
-                    ? `金币余额不足！还需要 ¥${(requiredCoins - coinBalance).toFixed(2)}`
-                    : undefined
-                }
-              />
 
               <Row gutter={8} className="bet-quick-row">
-                <Col span={24}>
-                  <Form.Item name="total_amount" label="总金额（实数）" className="bet-quick-item">
-                    <InputNumber size="small" min={0} placeholder="输入总金额自动计算单注金额" style={{ width: '100%' }} />
+                <Col span={12}>
+                  <Form.Item name="min_odds" label="最低赔率" className="bet-quick-item">
+                    <InputNumber size="small" min={0} step={0.01} style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="total_amount" label="总金额" className="bet-quick-item">
+                    <InputNumber size="small" min={0} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
               </Row>

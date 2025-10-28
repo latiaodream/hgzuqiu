@@ -303,11 +303,9 @@ router.post('/change-password', authenticateToken, async (req: any, res) => {
             [newPasswordHash, userId]
         );
 
-        console.log(`✅ 用户 ${req.user.username} (ID: ${userId}) 修改密码成功`);
-
         res.json({
             success: true,
-            message: '密码修改成功，请重新登录'
+            message: '密码修改成功'
         });
 
     } catch (error) {

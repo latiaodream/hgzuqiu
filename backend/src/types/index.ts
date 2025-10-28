@@ -54,6 +54,9 @@ export interface GroupCreateRequest {
     description?: string;
 }
 
+// 初始化类型
+export type InitType = 'none' | 'password_only' | 'full';
+
 // 皇冠账号相关类型
 export interface CrownAccount {
     id: number;
@@ -66,6 +69,7 @@ export interface CrownAccount {
     display_name?: string;
     original_username?: string;        // 原始账号（首次登录时的账号）
     initialized_username?: string;     // 修改后的账号（初始化后使用的账号）
+    init_type: InitType;               // 初始化类型：none-不初始化, password_only-仅改密码, full-完整初始化
     platform: string;
     game_type: string;
     source: string;
@@ -94,30 +98,6 @@ export interface CrownAccount {
     error_message?: string;
     created_at: string;
     updated_at: string;
-    // 共享相关字段
-    shared_from_user_id?: number;      // 如果是共享账号，记录来自哪个用户
-    shared_from_username?: string;     // 共享来源用户名
-}
-
-// 账号共享相关类型
-export interface AccountShare {
-    id: number;
-    account_id: number;
-    owner_user_id: number;
-    shared_to_user_id: number;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface AccountShareRequest {
-    account_id: number;
-    shared_to_user_ids: number[];
-}
-
-export interface AccountShareResponse {
-    success: boolean;
-    message: string;
-    shares?: AccountShare[];
 }
 
 export interface CrownAccountCreateRequest {
@@ -126,6 +106,9 @@ export interface CrownAccountCreateRequest {
     password: string;
     passcode?: string;
     display_name?: string;
+    original_username?: string;
+    initialized_username?: string;
+    init_type?: InitType;
     game_type?: string;
     source?: string;
     currency?: string;
@@ -231,10 +214,6 @@ export interface Bet {
     result?: 'win' | 'lose' | 'draw' | 'cancelled';
     payout: number;
     profit_loss: number;
-    virtual_bet_amount?: number;
-    virtual_profit_loss?: number;
-    result_score?: string;
-    result_text?: string;
     official_bet_id?: string;
     confirmed_at?: string;
     settled_at?: string;
