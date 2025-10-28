@@ -26,6 +26,121 @@ const buildAccountAccess = (user: any, options?: { includeDisabled?: boolean }) 
 const router = Router();
 router.use(authenticateToken);
 
+// 辅助函数：自动获取并保存账号限额
+async function autoFetchAndSaveLimits(accountId: number, account: any): Promise<void> {
+    try {
+        console.log(`🎯 开始自动获取账号 ${accountId} 的限额信息...`);
+
+        const uid = getCrownAutomation().getApiUid(accountId);
+        if (!uid) {
+            console.warn('⚠️ 无法获取 UID，跳过限额获取');
+            return;
+        }
+
+        const { CrownApiClient } = await import('../services/crown-api-client');
+        const apiClient = new CrownApiClient({
+            baseUrl: account.base_url || 'https://hga038.com',
+            deviceType: account.device_type,
+            userAgent: account.user_agent,
+            proxy: account.proxy_enabled ? {
+                enabled: true,
+                type: account.proxy_type,
+                host: account.proxy_host,
+                port: account.proxy_port,
+                username: account.proxy_username,
+                password: account.proxy_password,
+            } : { enabled: false },
+        });
+
+        // 恢复 Cookie 和 UID
+        if (account.api_cookies) {
+            apiClient.setCookies(account.api_cookies);
+        }
+        apiClient.setUid(uid);
+
+        // 获取足球限额
+        const ftSettings = await apiClient.getAccountSettings('FT');
+        let footballPrematchLimit = null;
+        let footballLiveLimit = null;
+
+        if (typeof ftSettings === 'string' && ftSettings.includes('<FT>')) {
+            const ftMatch = ftSettings.match(/<FT>(.*?)<\/FT>/s);
+            if (ftMatch) {
+                const ftContent = ftMatch[1];
+                const extractMax = (tag: string): number | null => {
+                    const regex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
+                    const match = ftContent.match(regex);
+                    if (match) {
+                        return parseInt(match[1].replace(/,/g, ''), 10);
+                    }
+                    return null;
+                };
+                footballPrematchLimit = extractMax('R');
+                footballLiveLimit = extractMax('RE');
+            }
+        }
+
+        // 获取篮球限额
+        const bkSettings = await apiClient.getAccountSettings('BK');
+        let basketballPrematchLimit = null;
+        let basketballLiveLimit = null;
+
+        if (typeof bkSettings === 'string' && bkSettings.includes('<BK>')) {
+            const bkMatch = bkSettings.match(/<BK>(.*?)<\/BK>/s);
+            if (bkMatch) {
+                const bkContent = bkMatch[1];
+                const extractMax = (tag: string): number | null => {
+                    const regex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
+                    const match = bkContent.match(regex);
+                    if (match) {
+                        return parseInt(match[1].replace(/,/g, ''), 10);
+                    }
+                    return null;
+                };
+                basketballPrematchLimit = extractMax('R');
+                basketballLiveLimit = extractMax('RE');
+            }
+        }
+
+        // 更新数据库中的限额信息
+        const updateFields: string[] = [];
+        const updateValues: any[] = [];
+        let paramIndex = 1;
+
+        if (footballPrematchLimit !== null) {
+            updateFields.push(`football_prematch_limit = $${paramIndex++}`);
+            updateValues.push(footballPrematchLimit);
+        }
+        if (footballLiveLimit !== null) {
+            updateFields.push(`football_live_limit = $${paramIndex++}`);
+            updateValues.push(footballLiveLimit);
+        }
+        if (basketballPrematchLimit !== null) {
+            updateFields.push(`basketball_prematch_limit = $${paramIndex++}`);
+            updateValues.push(basketballPrematchLimit);
+        }
+        if (basketballLiveLimit !== null) {
+            updateFields.push(`basketball_live_limit = $${paramIndex++}`);
+            updateValues.push(basketballLiveLimit);
+        }
+
+        if (updateFields.length > 0) {
+            updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+            updateValues.push(accountId);
+
+            await query(
+                `UPDATE crown_accounts SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
+                updateValues
+            );
+
+            console.log(`✅ 自动获取限额成功: 足球早盘=${footballPrematchLimit}, 足球滚球=${footballLiveLimit}, 篮球早盘=${basketballPrematchLimit}, 篮球滚球=${basketballLiveLimit}`);
+        }
+    } catch (error) {
+        console.error('❌ 自动获取限额失败:', error);
+        // 不影响登录结果，只记录错误
+    }
+}
+
 // 登录皇冠账号
 router.post('/login/:accountId', async (req: any, res) => {
     try {
@@ -71,6 +186,9 @@ router.post('/login/:accountId', async (req: any, res) => {
                  WHERE id = $1`,
                 [accountId]
             );
+
+            // 登录成功后，自动获取并保存限额信息
+            await autoFetchAndSaveLimits(accountId, account);
         } else {
             await query(
                 `UPDATE crown_accounts
@@ -159,6 +277,9 @@ router.post('/login-api/:accountId', async (req: any, res) => {
              WHERE id = $1`,
             [accountId]
         );
+
+        // 登录成功后，自动获取并保存限额信息
+        await autoFetchAndSaveLimits(accountId, account);
 
         res.json({
             success: true,
