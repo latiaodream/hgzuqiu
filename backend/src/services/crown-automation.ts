@@ -6516,8 +6516,8 @@ export class CrownAutomationService {
 
         console.log('📥 下注响应:', betResult);
 
-        // 解析下注结果
-        if (betResult.code === '200') {
+        // 解析下注结果（code=560 表示下注成功）
+        if (betResult.code === '560' || betResult.ticket_id) {
           return {
             success: true,
             message: '下注成功',
