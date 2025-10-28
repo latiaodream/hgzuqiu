@@ -326,6 +326,8 @@ const MatchesPage: React.FC = () => {
       <div className="odds-stack-grid">
         {lines.map((data, index) => {
           const formattedLine = formatHandicapLine(data.line);
+          // 第一行显示队名，其他行只显示盘口数字
+          const showTeamName = index === 0;
           return (
             <div key={index} className="odds-row">
               {data.home && (
@@ -338,7 +340,9 @@ const MatchesPage: React.FC = () => {
                     label: `[让球] ${(match.home || '主队')} ${formattedLine ? `(${formattedLine})` : ''} @${data.home}`,
                   })}
                 >
-                  <span className="odds-team">{match.home || '主'} {formattedLine}</span>
+                  <span className="odds-team">
+                    {showTeamName ? (match.home || '主') : ''} {formattedLine}
+                  </span>
                   <span className="odds-value">{data.home}</span>
                 </div>
               )}
@@ -352,7 +356,9 @@ const MatchesPage: React.FC = () => {
                     label: `[让球] ${(match.away || '客队')} ${formattedLine ? `(${formattedLine})` : ''} @${data.away}`,
                   })}
                 >
-                  <span className="odds-team">{match.away || '客'} {formattedLine}</span>
+                  <span className="odds-team">
+                    {showTeamName ? (match.away || '客') : ''} {formattedLine}
+                  </span>
                   <span className="odds-value">{data.away}</span>
                 </div>
               )}
@@ -370,6 +376,8 @@ const MatchesPage: React.FC = () => {
       <div className="odds-stack-grid">
         {lines.map((data, index) => {
           const formattedLine = formatHandicapLine(data.line);
+          // 第一行显示"大/小"，其他行只显示盘口数字
+          const showLabel = index === 0;
           return (
             <div key={index} className="odds-row">
               {data.over && (
@@ -382,7 +390,9 @@ const MatchesPage: React.FC = () => {
                     label: `[大小] 大球${formattedLine ? `(${formattedLine})` : ''} @${data.over}`,
                   })}
                 >
-                  <span className="odds-team">大 {formattedLine}</span>
+                  <span className="odds-team">
+                    {showLabel ? '大' : ''} {formattedLine}
+                  </span>
                   <span className="odds-value">{data.over}</span>
                 </div>
               )}
@@ -396,7 +406,9 @@ const MatchesPage: React.FC = () => {
                     label: `[大小] 小球${formattedLine ? `(${formattedLine})` : ''} @${data.under}`,
                   })}
                 >
-                  <span className="odds-team">小 {formattedLine}</span>
+                  <span className="odds-team">
+                    {showLabel ? '小' : ''} {formattedLine}
+                  </span>
                   <span className="odds-value">{data.under}</span>
                 </div>
               )}
