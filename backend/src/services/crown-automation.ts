@@ -6368,6 +6368,55 @@ export class CrownAutomationService {
                 try { await fs.writeFile('matches-latest.xml', xml); } catch {}
                 const matches = this.parseMatchesFromXml(xml);
                 console.log(`✅ 纯 API 抓取赛事成功，数量: ${matches.length}`);
+
+                // 为前 10 场比赛获取更多盘口选项
+                const matchesToEnrich = matches.slice(0, 10);
+                console.log(`📊 开始获取 ${matchesToEnrich.length} 场比赛的更多盘口...`);
+
+                for (const match of matchesToEnrich) {
+                  try {
+                    const gid = match.gid;
+                    const lid = match.raw?.LID || match.raw?.lid;
+
+                    if (!gid || !lid) continue;
+
+                    // 调用 get_game_more API
+                    const moreXml = await apiClient.getGameMore({
+                      gid: String(gid),
+                      lid: String(lid),
+                      gtype: params.gtype,
+                      showtype: params.showtype,
+                      ltype: params.ltype,
+                      isRB: params.showtype === 'live' ? 'Y' : 'N',
+                    });
+
+                    if (moreXml) {
+                      // 解析更多盘口
+                      const { handicapLines, overUnderLines } = this.parseMoreMarketsFromXml(moreXml);
+
+                      // 合并到原有的盘口数据中
+                      if (handicapLines.length > 0) {
+                        match.markets.full.handicapLines = handicapLines;
+                        match.markets.handicap = handicapLines[0];
+                      }
+
+                      if (overUnderLines.length > 0) {
+                        match.markets.full.overUnderLines = overUnderLines;
+                        match.markets.ou = overUnderLines[0];
+                      }
+
+                      console.log(`  ✅ ${match.home} vs ${match.away}: ${handicapLines.length} 让球, ${overUnderLines.length} 大小`);
+                    }
+
+                    // 延迟 50ms，避免请求过快
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
+                  } catch (error) {
+                    console.error(`  ❌ 获取 ${match.home} vs ${match.away} 更多盘口失败`);
+                  }
+                }
+
+                console.log(`✅ 完成获取更多盘口`);
                 return { matches, xml };
               }
             } finally {
