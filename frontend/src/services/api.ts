@@ -412,6 +412,10 @@ export const crownApi = {
     params?: { gtype?: string; showtype?: string; rtype?: string; ltype?: string; sorttype?: string }
   ): Promise<ApiResponse> =>
     apiClient.post(`/crown-automation/matches/sync/${accountId}`, undefined, { params, timeout: 120000 }).then(res => res.data),
+
+  // 获取账号限额信息
+  fetchLimits: (accountId: number): Promise<ApiResponse> =>
+    apiClient.post(`/crown-automation/fetch-limits/${accountId}`, undefined, { timeout: 60000 }).then(res => res.data),
 };
 
 export default apiClient;
