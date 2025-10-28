@@ -180,11 +180,20 @@ const MatchesPage: React.FC = () => {
   // 格式化盘口数字，添加 + 或 - 符号
   const formatHandicapLine = (line?: string): string => {
     if (!line) return '';
-    const num = parseFloat(line);
-    if (isNaN(num)) return line;
+
+    // 移除可能存在的空格和特殊字符
+    const cleanLine = String(line).trim();
+
+    // 如果已经有 + 或 - 符号，直接返回
+    if (cleanLine.startsWith('+') || cleanLine.startsWith('-')) {
+      return cleanLine;
+    }
+
+    const num = parseFloat(cleanLine);
+    if (isNaN(num)) return cleanLine;
     if (num === 0) return '+0';
-    if (num > 0) return `+${line}`;
-    return line; // 负数已经有 - 符号
+    if (num > 0) return `+${cleanLine}`;
+    return cleanLine; // 负数已经有 - 符号
   };
 
   const getScoreParts = (score: string) => {
