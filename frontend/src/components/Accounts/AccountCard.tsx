@@ -21,11 +21,6 @@ interface AccountCardProps {
   onDelete: (id: number) => void;
   onToggleStatus: (account: CrownAccount) => void;
   onRefresh?: (account: CrownAccount) => void;
-  onLogin?: (account: CrownAccount) => void;
-  onLogout?: (account: CrownAccount) => void;
-  onInitialize?: (account: CrownAccount) => void;
-  onToggleFetch?: (account: CrownAccount, useForFetch: boolean) => void;
-  pendingCredentials?: { username: string; password: string };
 }
 
 const AccountCard: React.FC<AccountCardProps> = ({
@@ -34,11 +29,6 @@ const AccountCard: React.FC<AccountCardProps> = ({
   onDelete,
   onToggleStatus,
   onRefresh,
-  onLogin,
-  onLogout,
-  onInitialize,
-  onToggleFetch,
-  pendingCredentials,
 }) => {
   const formatDiscount = (value?: number) => {
     if (!value || value <= 0) {
@@ -146,16 +136,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
           })()}</Text>
         </div>
 
-        <div className="account-card-detail-row">
-          <Text strong>赛事抓取:</Text>
-          <Switch
-            checked={!!account.use_for_fetch}
-            size="small"
-            onChange={(checked) => onToggleFetch?.(account, checked)}
-            checkedChildren="开"
-            unCheckedChildren="关"
-          />
-        </div>
+
 
         <div className="account-card-detail-row">
           <Text strong>止盈:</Text>
@@ -165,23 +146,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
           })()}</Text>
         </div>
 
-        {pendingCredentials && (
-          <div className="account-card-detail-row" style={{ background: '#fff6db', borderRadius: 6, padding: '8px 10px' }}>
-            <Space direction="vertical" size={0}>
-              <Text type="secondary">待初始化凭证</Text>
-              <Space size={12}>
-                <span>
-                  <Text strong>账号：</Text>
-                  <Text copyable={{ text: pendingCredentials.username }}>{pendingCredentials.username}</Text>
-                </span>
-                <span>
-                  <Text strong>密码：</Text>
-                  <Text copyable={{ text: pendingCredentials.password }}>{pendingCredentials.password}</Text>
-                </span>
-              </Space>
-            </Space>
-          </div>
-        )}
+
 
         {(account.password || account.passcode) && (
           <div className="account-card-detail-row">
@@ -216,26 +181,11 @@ const AccountCard: React.FC<AccountCardProps> = ({
 
       {/* 底部操作区域 */}
       <div className="account-card-actions">
-        <div className="account-card-actions-left">
-          <Switch
-            checked={!!account.is_online}
-            size="small"
-            onChange={() => (account.is_online ? onLogout?.(account) : onLogin?.(account))}
-          />
-        </div>
         <div className="account-card-actions-center">
           <Space>
             <Button type="text" size="small" onClick={() => onRefresh?.(account)}>
               刷新
             </Button>
-            <Button type="text" size="small" onClick={() => {/* onView */}}>
-              查账
-            </Button>
-            {onInitialize && (
-              <Button type="text" size="small" onClick={() => onInitialize(account)}>
-                初始化
-              </Button>
-            )}
             <Button type="text" size="small" onClick={() => onEdit(account)}>
               编辑
             </Button>

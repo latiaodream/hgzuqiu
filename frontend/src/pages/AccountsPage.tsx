@@ -176,11 +176,7 @@ const AccountsPage: React.FC = () => {
     return created;
   };
 
-  const handleInitializeAccount = (account: CrownAccount) => {
-    getOrCreateInitializeCredentials(account);
-    setInitializingAccount(account);
-    setInitializeModalVisible(true);
-  };
+
 
   const handleInitializeCredentialsChange = (accountId: number, values: Partial<{ username: string; password: string }>) => {
     if (!values.username && !values.password) {
@@ -349,18 +345,7 @@ const AccountsPage: React.FC = () => {
     }
   };
 
-  const handleToggleFetch = async (account: CrownAccount, useForFetch: boolean) => {
-    try {
-      const response = await crownApi.setFetchConfig(account.id, useForFetch);
-      if (response.success) {
-        message.success(useForFetch ? '已启用该账号用于赛事抓取' : '已禁用该账号用于赛事抓取');
-        loadAccounts();
-      }
-    } catch (error) {
-      console.error('Failed to update fetch config:', error);
-      message.error('更新赛事抓取配置失败');
-    }
-  };
+
 
   const handleBatchStatusUpdate = async (enabled: boolean) => {
     if (selectedRowKeys.length === 0) {
@@ -434,78 +419,7 @@ const AccountsPage: React.FC = () => {
     }
   };
 
-  const handleLoginAccount = async (account: CrownAccount) => {
-    const loginKey = `login-${account.id}`;
-    try {
-      message.loading({ content: `正在登录账号 ${account.username}...`, key: loginKey, duration: 0 });
-      const response = await crownApi.loginAccount(account.id);
 
-      // 先销毁loading消息
-      message.destroy(loginKey);
-
-      if (response.success) {
-        message.success(`账号 ${account.username} 登录成功`, 2);
-        // 登录成功后尝试同步余额
-        const syncKey = `balance-${account.id}`;
-        message.loading({ content: '正在同步余额...', key: syncKey, duration: 0 });
-        try {
-          const balanceResp = await crownApi.getAccountBalance(account.id);
-          const balanceData = (balanceResp as any)?.data || {};
-          if (balanceResp.success) {
-            if (balanceData.balance_source) {
-              console.debug(`余额来源: ${balanceData.balance_source}`);
-            }
-            message.success('余额已同步', 2);
-          } else {
-            const reason = balanceResp.error || balanceResp.message || '余额同步失败';
-            if (balanceData.credit) {
-              message.warning(`${reason}，仅取得额度 ${balanceData.credit}`, 4);
-            } else {
-              message.warning(reason, 3);
-            }
-          }
-        } catch (err) {
-          const tips = err instanceof Error ? err.message : '余额同步失败';
-          message.warning(tips, 3);
-        } finally {
-          message.destroy(syncKey);
-        }
-        loadAccounts();
-      } else {
-        const errorMsg = response.error || response.message || '未知错误';
-        message.error(`登录失败: ${errorMsg}`, 3);
-      }
-    } catch (error: any) {
-      // 先销毁loading消息
-      message.destroy(loginKey);
-
-      let errorMsg = '网络错误';
-      if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
-        errorMsg = '登录超时，请检查网络或稍后重试';
-      } else if (error?.response?.data?.error) {
-        errorMsg = error.response.data.error;
-      } else if (error instanceof Error) {
-        errorMsg = error.message;
-      }
-      message.error(`登录失败: ${errorMsg}`, 3);
-      console.error('Failed to login account:', error);
-    }
-  };
-
-  const handleLogoutAccount = async (account: CrownAccount) => {
-    try {
-      const response = await crownApi.logoutAccount(account.id);
-      if (response.success) {
-        message.success(response.message || '登出成功');
-        loadAccounts();
-      } else {
-        message.error(response.error || '登出失败');
-      }
-    } catch (error) {
-      console.error('Failed to logout account:', error);
-      message.error('登出失败');
-    }
-  };
 
   const handleRefreshAllBalances = async () => {
     const onlineAccounts = accounts.filter(account => account.is_online);
@@ -761,10 +675,6 @@ const AccountsPage: React.FC = () => {
                     message.destroy(key);
                   }
                 }}
-                onLogin={handleLoginAccount}
-                onLogout={handleLogoutAccount}
-                onInitialize={handleInitializeAccount}
-                onToggleFetch={handleToggleFetch}
               />
             ))}
           </div>
