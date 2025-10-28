@@ -7,7 +7,7 @@ import {
   WifiOutlined,
   DisconnectOutlined,
   MobileOutlined,
-  CrownOutlined,
+  FileTextOutlined,
   PlayCircleOutlined,
   StopOutlined,
 } from '@ant-design/icons';
@@ -24,7 +24,7 @@ interface AccountCardProps {
   onLogin?: (account: CrownAccount) => void;
   onLogout?: (account: CrownAccount) => void;
   onInitialize?: (account: CrownAccount) => void;
-  onFetchLimits?: (account: CrownAccount) => void;
+  onCheckHistory?: (account: CrownAccount) => void;
 }
 
 const AccountCard: React.FC<AccountCardProps> = ({
@@ -36,7 +36,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
   onLogin,
   onLogout,
   onInitialize,
-  onFetchLimits,
+  onCheckHistory,
 }) => {
   const formatDiscount = (value?: number) => {
     if (!value || value <= 0) {
@@ -217,15 +217,15 @@ const AccountCard: React.FC<AccountCardProps> = ({
               icon={<ReloadOutlined />}
               onClick={() => onRefresh?.(account)}
             >
-              刷新余额
+              刷新
             </Button>
             <Button
               type="text"
               size="small"
-              icon={<CrownOutlined />}
-              onClick={() => onFetchLimits?.(account)}
+              icon={<FileTextOutlined />}
+              onClick={() => onCheckHistory?.(account)}
             >
-              获取限额
+              查账
             </Button>
             <Button
               type="text"

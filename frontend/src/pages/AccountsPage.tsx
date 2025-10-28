@@ -462,21 +462,11 @@ const AccountsPage: React.FC = () => {
     }
   };
 
-  // 获取账号限额
-  const handleFetchLimits = async (account: CrownAccount) => {
-    const key = `fetch-limits-${account.id}`;
-    try {
-      message.loading({ content: `正在获取账号 ${account.username} 的限额信息...`, key, duration: 0 });
-      const response = await crownApi.fetchLimits(account.id);
-      if (response.success) {
-        message.success({ content: `账号 ${account.username} 限额信息获取成功`, key, duration: 2 });
-        await loadAccounts();
-      } else {
-        message.error({ content: response.error || '获取限额失败', key, duration: 3 });
-      }
-    } catch (error: any) {
-      message.error({ content: error.response?.data?.error || '获取限额失败', key, duration: 3 });
-    }
+  // 查账 - 查询账号下注历史记录
+  const handleCheckHistory = async (account: CrownAccount) => {
+    message.info(`查账功能开发中，账号：${account.username}`);
+    // TODO: 实现查账功能
+    // 需要调用后端 API 获取账号的下注历史记录
   };
 
   // 初始化账号
@@ -716,7 +706,7 @@ const AccountsPage: React.FC = () => {
                 onLogin={handleLoginAccount}
                 onLogout={handleLogoutAccount}
                 onRefresh={handleRefreshBalance}
-                onFetchLimits={handleFetchLimits}
+                onCheckHistory={handleCheckHistory}
                 onInitialize={handleInitializeAccount}
               />
             ))}
