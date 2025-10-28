@@ -7111,12 +7111,18 @@ export class CrownAutomationService {
 
       // 检查盘口是否关闭
       const allClose = parsed?.serverresponse?.all_close;
+      const games = parsed?.serverresponse?.game;
+
       if (allClose === 'Y') {
-        console.log('⚠️ 盘口已关闭，跳过');
-        return { handicapLines: [], overUnderLines: [] };
+        console.log('⚠️ 盘口已关闭');
+        // 即使盘口关闭，也尝试解析 game 数据（可能还有数据）
+        if (!games) {
+          console.log('   且没有 game 数据，跳过');
+          return { handicapLines: [], overUnderLines: [] };
+        }
+        console.log('   但仍尝试解析 game 数据...');
       }
 
-      const games = parsed?.serverresponse?.game;
       if (!games) {
         console.log('⚠️ get_game_more XML 中没有 game 数据');
         console.log('📋 完整响应:', JSON.stringify(parsed?.serverresponse, null, 2).substring(0, 500));
