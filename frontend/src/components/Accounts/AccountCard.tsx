@@ -23,6 +23,8 @@ interface AccountCardProps {
   onRefresh?: (account: CrownAccount) => void;
   onLogin?: (account: CrownAccount) => void;
   onLogout?: (account: CrownAccount) => void;
+  onInitialize?: (account: CrownAccount) => void;
+  onFetchLimits?: (account: CrownAccount) => void;
 }
 
 const AccountCard: React.FC<AccountCardProps> = ({
@@ -33,6 +35,8 @@ const AccountCard: React.FC<AccountCardProps> = ({
   onRefresh,
   onLogin,
   onLogout,
+  onInitialize,
+  onFetchLimits,
 }) => {
   const formatDiscount = (value?: number) => {
     if (!value || value <= 0) {
@@ -186,7 +190,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
       {/* 底部操作区域 */}
       <div className="account-card-actions">
         <div className="account-card-actions-center">
-          <Space>
+          <Space wrap>
             {account.is_online ? (
               <Button
                 type="text"
@@ -213,7 +217,23 @@ const AccountCard: React.FC<AccountCardProps> = ({
               icon={<ReloadOutlined />}
               onClick={() => onRefresh?.(account)}
             >
-              刷新
+              刷新余额
+            </Button>
+            <Button
+              type="text"
+              size="small"
+              icon={<CrownOutlined />}
+              onClick={() => onFetchLimits?.(account)}
+            >
+              获取限额
+            </Button>
+            <Button
+              type="text"
+              size="small"
+              icon={<PlayCircleOutlined />}
+              onClick={() => onInitialize?.(account)}
+            >
+              初始化
             </Button>
             <Button type="text" size="small" onClick={() => onEdit(account)}>
               编辑
