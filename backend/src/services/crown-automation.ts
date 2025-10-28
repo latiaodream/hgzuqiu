@@ -7205,9 +7205,10 @@ export class CrownAutomationService {
       console.log(`🔧 API 客户端 baseUrl: ${apiClient.getBaseUrl()}`);
       console.log(`🔧 登录 UID: ${loginResult.uid}`);
 
-      // 限额信息直接在首页显示，获取首页 HTML
-      const homePageUrl = `${apiClient.getBaseUrl()}/`;
-      console.log(`📄 首页 URL: ${homePageUrl}`);
+      // 限额信息直接在首页显示，但登录后首页可能是跳转页面
+      // 需要访问会员中心首页：/app/member/FT_browse/index.php
+      const homePageUrl = `${apiClient.getBaseUrl()}/app/member/FT_browse/index.php?rtype=r&langx=zh-cn`;
+      console.log(`📄 会员中心 URL: ${homePageUrl}`);
 
       const response = await apiClient.fetch(homePageUrl, {
         method: 'GET',
@@ -7217,17 +7218,17 @@ export class CrownAutomationService {
         }
       });
 
-      console.log(`📥 首页响应状态: ${response.status}, OK: ${response.ok}`);
+      console.log(`📥 会员中心响应状态: ${response.status}, OK: ${response.ok}`);
 
       if (!response.ok) {
         return {
           success: false,
-          message: `获取首页失败: HTTP ${response.status}`
+          message: `获取会员中心失败: HTTP ${response.status}`
         };
       }
 
       const html = await response.text();
-      console.log(`📄 首页 HTML 长度: ${html.length} 字符`);
+      console.log(`📄 会员中心 HTML 长度: ${html.length} 字符`);
 
       // 解析 HTML 提取限额数据
       const limits = this.parseLimitsFromHtml(html);
@@ -7236,7 +7237,7 @@ export class CrownAutomationService {
         console.error(`❌ 无法解析限额数据，HTML 前 1000 字符:`, html.substring(0, 1000));
         return {
           success: false,
-          message: '无法从首页中解析限额数据'
+          message: '无法从会员中心解析限额数据'
         };
       }
 
