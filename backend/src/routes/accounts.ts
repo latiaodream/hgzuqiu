@@ -68,6 +68,7 @@ router.get('/', async (req: any, res) => {
     try {
         const userId = req.user.id;
         const userRole = req.user.role;
+        const agentId = req.user.agent_id;
         const { group_id } = req.query;
 
         let sql: string;
