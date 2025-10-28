@@ -93,20 +93,56 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
         const response = await crownApi.getAccountSettings(account.id, 'FT');
 
         if (response.success && response.data) {
-          // 解析返回的数据，提取限额信息
-          // 注意：实际返回的数据结构可能需要根据 API 响应调整
           console.log('账号设置响应:', response.data);
           message.success({ content: '额度设置获取成功！', key: 'fetchLimits' });
 
-          // TODO: 根据实际返回的数据结构解析限额信息
-          // 暂时显示原始数据
+          // 解析 XML 数据
+          const xmlData = response.data;
+          let limitsInfo = '';
+
+          if (typeof xmlData === 'string' && xmlData.includes('<FT>')) {
+            // 简单解析 XML（提取关键信息）
+            const ftMatch = xmlData.match(/<FT>(.*?)<\/FT>/s);
+            if (ftMatch) {
+              const ftContent = ftMatch[1];
+
+              // 提取各种玩法的限额
+              const parseLimit = (tag: string, name: string) => {
+                const regex = new RegExp(`<${tag}><max>([^<]+)<\\/max><min>([^<]+)<\\/min><\\/${tag}>`);
+                const match = ftContent.match(regex);
+                if (match) {
+                  return `${name}：最高 ${match[1]}，最低 ${match[2]}`;
+                }
+                return null;
+              };
+
+              const limits = [
+                parseLimit('DT', '单式'),
+                parseLimit('M', '独赢'),
+                parseLimit('R', '让球'),
+                parseLimit('RDT', '让球单式'),
+                parseLimit('RE', '滚球'),
+              ].filter(Boolean);
+
+              limitsInfo = limits.join('\n');
+            }
+          }
+
           Modal.info({
-            title: '账号额度设置',
-            width: 600,
+            title: '账号额度设置（足球）',
+            width: 500,
             content: (
-              <pre style={{ maxHeight: '400px', overflow: 'auto', fontSize: '12px' }}>
-                {JSON.stringify(response.data, null, 2)}
-              </pre>
+              <div>
+                {limitsInfo ? (
+                  <pre style={{ fontSize: '14px', lineHeight: '1.8' }}>
+                    {limitsInfo}
+                  </pre>
+                ) : (
+                  <pre style={{ maxHeight: '400px', overflow: 'auto', fontSize: '12px' }}>
+                    {typeof response.data === 'string' ? response.data : JSON.stringify(response.data, null, 2)}
+                  </pre>
+                )}
+              </div>
             ),
           });
         } else {

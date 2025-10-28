@@ -473,17 +473,45 @@ const AccountsPage: React.FC = () => {
       const response = await crownApi.getTodayWagers(account.id);
 
       if (response.success) {
+        const data = response.data;
+        const count = data?.count || 0;
+        const wagers = data?.wagers || [];
+        const amountGold = data?.amout_gold || '0';
+
         message.success({ content: `成功获取账号 ${account.username} 的下注记录`, key, duration: 2 });
 
         // 显示查账结果
         Modal.info({
-          title: `账号 ${account.username} 的下注记录`,
+          title: `账号 ${account.username} 的今日下注记录`,
           width: 800,
           content: (
             <div>
-              <pre style={{ maxHeight: '400px', overflow: 'auto', fontSize: '12px' }}>
-                {JSON.stringify(response.data, null, 2)}
-              </pre>
+              <div style={{ marginBottom: '16px' }}>
+                <Text strong>下注笔数：</Text>
+                <Text>{count} 笔</Text>
+                <Divider type="vertical" />
+                <Text strong>下注金额：</Text>
+                <Text>{amountGold}</Text>
+              </div>
+              {wagers.length > 0 ? (
+                <div style={{ maxHeight: '400px', overflow: 'auto' }}>
+                  {wagers.map((wager: any, index: number) => (
+                    <div key={index} style={{
+                      padding: '12px',
+                      border: '1px solid #d9d9d9',
+                      borderRadius: '4px',
+                      marginBottom: '8px',
+                      backgroundColor: '#fafafa'
+                    }}>
+                      <pre style={{ fontSize: '12px', margin: 0 }}>
+                        {JSON.stringify(wager, null, 2)}
+                      </pre>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Empty description="今日暂无下注记录" />
+              )}
             </div>
           ),
         });
