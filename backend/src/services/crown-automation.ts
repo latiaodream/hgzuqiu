@@ -5923,20 +5923,21 @@ export class CrownAutomationService {
         console.error('⚠️ 持久化会话信息失败:', dbError);
       }
 
-      // 获取余额
+      // 获取余额和信用额度
       if (uid) {
         try {
           const balanceData = await apiClient.getBalance(uid);
           if (balanceData) {
-            const effectiveBalance = balanceData.balance || balanceData.credit || 0;
-            console.log(`💰 余额同步成功: ${effectiveBalance}`);
+            const balance = balanceData.balance || 0;
+            const credit = balanceData.credit || 0;
+            console.log(`💰 余额同步成功: 余额=${balance}, 信用额度=${credit}`);
 
-            // 更新数据库余额
+            // 更新数据库余额和信用额度
             await query(
               `UPDATE crown_accounts
-               SET balance = $1, updated_at = CURRENT_TIMESTAMP
-               WHERE id = $2`,
-              [effectiveBalance, account.id]
+               SET balance = $1, credit = $2, updated_at = CURRENT_TIMESTAMP
+               WHERE id = $3`,
+              [balance, credit, account.id]
             );
           }
         } catch (balanceError) {
