@@ -219,25 +219,9 @@ router.post('/', async (req: any, res) => {
         // 获取初始化类型，默认为 'full'
         const initType = accountData.init_type || 'full';
 
-        // 根据初始化类型验证必填字段
-        if (initType === 'full') {
-            // 完整初始化：需要原始账号和初始化账号
-            if (!accountData.original_username || !accountData.initialized_username) {
-                return res.status(400).json({
-                    success: false,
-                    error: '完整初始化需要提供原始账号和初始化账号'
-                });
-            }
-        } else if (initType === 'password_only') {
-            // 只改密码：需要原始账号
-            if (!accountData.original_username) {
-                return res.status(400).json({
-                    success: false,
-                    error: '修改密码需要提供原始账号'
-                });
-            }
-        }
-        // initType === 'none' 时不需要额外验证
+        // 🔥 新逻辑：不再验证 original_username 和 initialized_username
+        // 因为现在登录时会自动初始化，不需要用户手动填写这些字段
+        // initType 只是用来标记账号的初始化方式，实际初始化在登录时自动完成
 
         const result = await query(`
             INSERT INTO crown_accounts (
