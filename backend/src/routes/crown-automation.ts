@@ -13,11 +13,13 @@ const buildAccountAccess = (user: any, options?: { includeDisabled?: boolean }) 
     if (user.role === 'admin') {
         // 管理员可访问全部账号
     } else if (user.role === 'agent') {
+        // 代理可以访问自己创建的账号 + 下属员工创建的账号
         clause += ` AND (ca.user_id = $${params.length + 2} OR ca.user_id IN (SELECT id FROM users WHERE agent_id = $${params.length + 2}))`;
         params.push(user.id);
     } else {
-        clause += ` AND ca.user_id = $${params.length + 2}`;
-        params.push(user.id);
+        // 员工可以访问同一代理下的所有账号（共享账号池）
+        clause += ` AND ca.agent_id = $${params.length + 2}`;
+        params.push(user.agent_id);
     }
 
     return { clause, params };

@@ -244,6 +244,7 @@ router.post('/', async (req: any, res) => {
     try {
         const userId = req.user.id;
         const userRole = req.user.role;
+        const agentId = req.user.agent_id; // 获取代理ID，用于金币扣费
         const betData: BetCreateRequest = req.body;
 
         console.log('📝 收到下注请求:', JSON.stringify(betData, null, 2));
@@ -517,13 +518,17 @@ router.post('/', async (req: any, res) => {
                 }
 
                 // 创建金币流水记录(消耗) - 仅当下注成功时
+                // 金币从代理账户扣除（如果是员工下注）或从自己账户扣除（如果是代理下注）
                 if (betResult.success) {
                     const transactionId = `BET${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
+
+                    // 确定扣费用户：员工下注扣代理金币，代理下注扣自己金币
+                    const chargeUserId = (userRole === 'staff' && agentId) ? agentId : userId;
 
                     // 获取当前余额
                     const balanceResult = await query(
                         'SELECT COALESCE(SUM(amount), 0) as balance FROM coin_transactions WHERE user_id = $1',
-                        [userId]
+                        [chargeUserId]
                     );
                     const currentBalance = parseFloat(balanceResult.rows[0].balance);
 
@@ -533,12 +538,12 @@ router.post('/', async (req: any, res) => {
                             description, amount, balance_before, balance_after
                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     `, [
-                        userId,
+                        chargeUserId,  // 扣代理的金币（如果是员工）或自己的金币（如果是代理）
                         accountId,
                         createdRecord.id,
                         transactionId,
                         '消耗',
-                        `下注消耗 - ${betData.bet_type} ${betData.bet_option}`,
+                        `下注消耗 - ${betData.bet_type} ${betData.bet_option}${userRole === 'staff' ? ` (员工: ${req.user.username})` : ''}`,
                         -betData.bet_amount,
                         currentBalance,
                         currentBalance - betData.bet_amount
@@ -954,27 +959,38 @@ router.put('/:id/status', async (req: any, res) => {
         `, [status, result, payout || 0, profitLoss, official_bet_id, betId, userId]);
 
         // 如果是结算且有派彩，创建返还流水
+        // 派彩返还到代理账户（如果是员工下注）或自己账户（如果是代理下注）
         if (status === 'settled' && payout > 0) {
             const transactionId = `PAYOUT${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
-            
+
+            // 查询下注用户的角色和代理ID
+            const userInfo = await query(
+                'SELECT role, agent_id, username FROM users WHERE id = $1',
+                [bet.user_id]
+            );
+
+            const betUser = userInfo.rows[0];
+            // 确定返还用户：员工下注返还给代理，代理下注返还给自己
+            const returnUserId = (betUser.role === 'staff' && betUser.agent_id) ? betUser.agent_id : bet.user_id;
+
             const balanceResult = await query(
                 'SELECT COALESCE(SUM(amount), 0) as balance FROM coin_transactions WHERE user_id = $1',
-                [userId]
+                [returnUserId]
             );
             const currentBalance = parseFloat(balanceResult.rows[0].balance);
-            
+
             await query(`
                 INSERT INTO coin_transactions (
                     user_id, account_id, bet_id, transaction_id, transaction_type,
                     description, amount, balance_before, balance_after
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             `, [
-                userId,
+                returnUserId,  // 返还给代理（如果是员工）或自己（如果是代理）
                 bet.account_id,
                 betId,
                 transactionId,
                 '返还',
-                `下注派彩 - ${bet.bet_type} ${bet.bet_option}`,
+                `下注派彩 - ${bet.bet_type} ${bet.bet_option}${betUser.role === 'staff' ? ` (员工: ${betUser.username})` : ''}`,
                 payout,
                 currentBalance,
                 currentBalance + payout

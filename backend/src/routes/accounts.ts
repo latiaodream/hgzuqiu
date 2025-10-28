@@ -94,14 +94,15 @@ router.get('/', async (req: any, res) => {
             `;
             params = [userId];
         } else {
-            // 员工只能查看自己的账号
+            // 员工可以查看同一代理下的所有账号（共享账号池）
             sql = `
-                SELECT ca.*, g.name as group_name
+                SELECT ca.*, g.name as group_name, u.username as owner_username
                 FROM crown_accounts ca
                 JOIN groups g ON ca.group_id = g.id
-                WHERE ca.user_id = $1
+                JOIN users u ON ca.user_id = u.id
+                WHERE ca.agent_id = $1
             `;
-            params = [userId];
+            params = [agentId];
         }
 
         if (group_id) {
@@ -295,19 +296,37 @@ router.post('/', async (req: any, res) => {
 router.put('/:id', async (req: any, res) => {
     try {
         const userId = req.user.id;
+        const userRole = req.user.role;
+        const agentId = req.user.agent_id;
         const accountId = parseInt(req.params.id);
         const updateData = req.body;
 
-        // 检查账号是否属于当前用户
-        const accountCheck = await query(
-            'SELECT id FROM crown_accounts WHERE id = $1 AND user_id = $2',
-            [accountId, userId]
-        );
+        // 检查账号权限
+        let accountCheck;
+        if (userRole === 'admin') {
+            // 管理员可以编辑所有账号
+            accountCheck = await query(
+                'SELECT id FROM crown_accounts WHERE id = $1',
+                [accountId]
+            );
+        } else if (userRole === 'agent') {
+            // 代理可以编辑自己代理下的所有账号
+            accountCheck = await query(
+                'SELECT id FROM crown_accounts WHERE id = $1 AND agent_id = $2',
+                [accountId, userId]
+            );
+        } else {
+            // 员工可以编辑同一代理下的所有账号（共享账号池）
+            accountCheck = await query(
+                'SELECT id FROM crown_accounts WHERE id = $1 AND agent_id = $2',
+                [accountId, agentId]
+            );
+        }
 
         if (accountCheck.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                error: '账号不存在'
+                error: '账号不存在或无权限'
             });
         }
 
