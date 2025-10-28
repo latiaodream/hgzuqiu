@@ -296,14 +296,6 @@ const AccountsPage: React.FC = () => {
       }
       setInitializingAccount(null);
       await loadAccounts();
-
-      if (accountForLogin) {
-        try {
-          await handleLoginAccount(accountForLogin);
-        } catch (loginErr) {
-          console.warn('自动登录新凭证失败:', loginErr);
-        }
-      }
     } catch (error) {
       let msg = '初始化账号失败';
       if ((error as AxiosError)?.isAxiosError) {
@@ -644,7 +636,6 @@ const AccountsPage: React.FC = () => {
               <AccountCard
                 key={account.id}
                 account={account}
-                pendingCredentials={initializeCredentials[account.id]}
                 onEdit={handleEditAccount}
                 onDelete={handleDeleteAccount}
                 onToggleStatus={handleToggleAccountStatus}
