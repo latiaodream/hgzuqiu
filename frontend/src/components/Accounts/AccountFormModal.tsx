@@ -92,10 +92,8 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
         form.resetFields();
         setProxyEnabled(false);
         setInitType('full');
-        // 设置默认值
+        // 设置默认值（不包括账号和密码，由用户填写原始账号密码）
         form.setFieldsValue({
-          username: generateAccountUsername(),
-          password: generateAccountPassword(),
           init_type: 'full',
           game_type: '足球',
           source: '自有',
