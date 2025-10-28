@@ -6239,9 +6239,40 @@ export class CrownAutomationService {
     const uid = this.apiUids.get(accountId);
     if (uid) {
       try {
-        const apiClient = this.apiClients.get(accountId);
-        if (apiClient) {
+        // 查询账号配置（包括 Cookie）
+        const accountResult = await query(
+          `SELECT username, device_type, user_agent, proxy_enabled, proxy_type, proxy_host, proxy_port, proxy_username, proxy_password, api_cookies
+           FROM crown_accounts WHERE id = $1`,
+          [accountId]
+        );
+
+        if (accountResult.rows.length > 0) {
+          const account = accountResult.rows[0];
+
+          // 创建 API 客户端
+          const apiClient = new CrownApiClient({
+            baseUrl: this.activeBaseUrl,
+            deviceType: account.device_type || 'iPhone 14',
+            userAgent: account.user_agent,
+            proxy: {
+              enabled: account.proxy_enabled || false,
+              type: account.proxy_type,
+              host: account.proxy_host,
+              port: account.proxy_port,
+              username: account.proxy_username,
+              password: account.proxy_password,
+            },
+          });
+
+          // 恢复 Cookie
+          if (account.api_cookies) {
+            apiClient.setCookies(account.api_cookies);
+          }
+
+          // 获取余额
           const balanceData = await apiClient.getBalance(uid);
+          await apiClient.close();
+
           if (balanceData) {
             return {
               balance: balanceData.balance,
