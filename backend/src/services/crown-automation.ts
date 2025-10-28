@@ -6368,59 +6368,6 @@ export class CrownAutomationService {
                 try { await fs.writeFile('matches-latest.xml', xml); } catch {}
                 const matches = this.parseMatchesFromXml(xml);
                 console.log(`✅ 纯 API 抓取赛事成功，数量: ${matches.length}`);
-
-                // 为每场比赛获取更多盘口（限制前 20 场，避免请求过多）
-                const matchesToEnrich = matches.slice(0, 20);
-                console.log(`📊 开始获取 ${matchesToEnrich.length} 场比赛的更多盘口...`);
-
-                for (const match of matchesToEnrich) {
-                  try {
-                    const gid = match.gid;
-                    const lid = match.raw?.LID || match.raw?.lid;
-
-                    if (!gid || !lid) {
-                      console.log(`⚠️ 比赛 ${match.home} vs ${match.away} 缺少 gid 或 lid，跳过`);
-                      continue;
-                    }
-
-                    // 调用 get_game_more API
-                    const moreXml = await apiClient.getGameMore({
-                      gid: String(gid),
-                      lid: String(lid),
-                      gtype: params.gtype,
-                      showtype: params.showtype,
-                      ltype: params.ltype,
-                      isRB: params.showtype === 'live' ? 'Y' : 'N',
-                    });
-
-                    if (moreXml) {
-                      // 解析更多盘口
-                      const { handicapLines, overUnderLines } = this.parseMoreMarketsFromXml(moreXml);
-
-                      // 合并到原有的盘口数据中
-                      if (handicapLines.length > 0) {
-                        match.markets.full.handicapLines = handicapLines;
-                        match.markets.handicap = handicapLines[0]; // 主盘口
-                      }
-
-                      if (overUnderLines.length > 0) {
-                        match.markets.full.overUnderLines = overUnderLines;
-                        match.markets.ou = overUnderLines[0]; // 主盘口
-                      }
-
-                      console.log(`  ✅ ${match.home} vs ${match.away}: ${handicapLines.length} 个让球盘口, ${overUnderLines.length} 个大小球盘口`);
-                    }
-
-                    // 添加延迟，避免请求过快
-                    await new Promise(resolve => setTimeout(resolve, 100));
-
-                  } catch (error) {
-                    console.error(`  ❌ 获取比赛 ${match.home} vs ${match.away} 的更多盘口失败:`, error);
-                    // 继续处理下一场比赛
-                  }
-                }
-
-                console.log(`✅ 完成获取更多盘口`);
                 return { matches, xml };
               }
             } finally {
