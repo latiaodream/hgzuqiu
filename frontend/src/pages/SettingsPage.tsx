@@ -14,58 +14,49 @@ import {
 } from 'antd';
 import { LockOutlined, UserOutlined, MailOutlined, DollarOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
-import { authApi, accountApi } from '../services/api';
-import type { CrownAccount } from '../types';
+import { authApi } from '../services/api';
 
-interface BalanceStats {
-  cny_balance: number;
-  usd_balance: number;
-  total_accounts: number;
+interface UserCoins {
+  balance: number;
+  currency: string;
 }
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [balanceLoading, setBalanceLoading] = useState(true);
-  const [balanceStats, setBalanceStats] = useState<BalanceStats>({
-    cny_balance: 0,
-    usd_balance: 0,
-    total_accounts: 0,
+  const [coinsLoading, setCoinsLoading] = useState(true);
+  const [userCoins, setUserCoins] = useState<UserCoins>({
+    balance: 0,
+    currency: 'CNY',
   });
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [form] = Form.useForm();
 
   useEffect(() => {
-    loadBalanceStats();
+    loadUserCoins();
   }, []);
 
-  const loadBalanceStats = async () => {
+  const loadUserCoins = async () => {
     try {
-      setBalanceLoading(true);
-      const response = await accountApi.getAccounts();
+      setCoinsLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3001/api/coins/balance', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (response.success && response.data) {
-        const accounts = response.data as CrownAccount[];
-
-        // 计算CNY和USD的总余额
-        const cnyBalance = accounts
-          .filter(acc => acc.currency === 'CNY')
-          .reduce((sum, acc) => sum + Number(acc.balance || 0), 0);
-
-        const usdBalance = accounts
-          .filter(acc => acc.currency === 'USD')
-          .reduce((sum, acc) => sum + Number(acc.balance || 0), 0);
-
-        setBalanceStats({
-          cny_balance: cnyBalance,
-          usd_balance: usdBalance,
-          total_accounts: accounts.length,
+      const data = await response.json();
+      if (data.success && data.data) {
+        setUserCoins({
+          balance: data.data.balance || 0,
+          currency: data.data.currency || 'CNY',
         });
       }
     } catch (error: any) {
-      console.error('加载余额统计失败:', error);
+      console.error('加载金币余额失败:', error);
     } finally {
-      setBalanceLoading(false);
+      setCoinsLoading(false);
     }
   };
 
@@ -80,9 +71,16 @@ const SettingsPage: React.FC = () => {
       });
 
       if (response.success) {
-        message.success('密码修改成功');
+        message.success('密码修改成功，请重新登录', 2);
         setPasswordModalVisible(false);
         form.resetFields();
+
+        // 延迟2秒后自动退出登录
+        setTimeout(() => {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }, 2000);
       } else {
         message.error(response.error || '密码修改失败');
       }
@@ -150,12 +148,11 @@ const SettingsPage: React.FC = () => {
               </Descriptions.Item>
               <Descriptions.Item label="金币">
                 <DollarOutlined style={{ marginRight: 8 }} />
-                {balanceLoading ? (
+                {coinsLoading ? (
                   <Spin size="small" />
                 ) : (
                   <>
-                    CNY(信用):{balanceStats.cny_balance.toLocaleString()}{' '}
-                    USD(信用):{balanceStats.usd_balance.toLocaleString()}
+                    ¥{userCoins.balance.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </>
                 )}
               </Descriptions.Item>
@@ -165,32 +162,14 @@ const SettingsPage: React.FC = () => {
 
         {/* 金币统计卡片 */}
         <Col xs={24} lg={8}>
-          <Card title="金币统计" loading={balanceLoading}>
+          <Card title="金币余额" loading={coinsLoading}>
             <Statistic
-              title="CNY 总额度"
-              value={balanceStats.cny_balance}
+              title="当前金币"
+              value={userCoins.balance}
               precision={2}
               prefix="¥"
-              suffix="CNY"
               valueStyle={{ color: '#3f8600' }}
             />
-            <div style={{ marginTop: 16 }}>
-              <Statistic
-                title="USD 总额度"
-                value={balanceStats.usd_balance}
-                precision={2}
-                prefix="$"
-                suffix="USD"
-                valueStyle={{ color: '#1890ff' }}
-              />
-            </div>
-            <div style={{ marginTop: 16 }}>
-              <Statistic
-                title="账号数量"
-                value={balanceStats.total_accounts}
-                suffix="个"
-              />
-            </div>
           </Card>
         </Col>
       </Row>

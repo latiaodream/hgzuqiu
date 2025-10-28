@@ -309,6 +309,22 @@ export const coinApi = {
     summary: any;
   }>> =>
     apiClient.get('/coins/analytics', { params: { period } }).then(res => res.data),
+
+  // 充值
+  recharge: (data: {
+    target_user_id: number;
+    amount: number;
+    description?: string;
+  }): Promise<ApiResponse<CoinTransaction & { new_balance?: number }>> =>
+    apiClient.post('/coins/recharge', data).then(res => res.data),
+
+  // 转账
+  transfer: (data: {
+    target_user_id: number;
+    amount: number;
+    description?: string;
+  }): Promise<ApiResponse<CoinTransaction & { sender_new_balance?: number; receiver_new_balance?: number }>> =>
+    apiClient.post('/coins/transfer', data).then(res => res.data),
 };
 
 // 皇冠自动化API

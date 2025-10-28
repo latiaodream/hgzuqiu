@@ -186,6 +186,7 @@ export interface Match {
 export interface Bet {
   id: number;
   user_id: number;
+  user_username?: string;
   account_id: number;
   account_username?: string;
   account_display_name?: string;
@@ -197,6 +198,7 @@ export interface Bet {
   bet_type: string;
   bet_option: string;
   bet_amount: number;
+  virtual_bet_amount?: number;
   odds: number;
   official_odds?: number;
   single_limit: number;
@@ -204,8 +206,11 @@ export interface Bet {
   quantity: number;
   status: 'pending' | 'confirmed' | 'settled' | 'cancelled';
   result?: string;
+  result_score?: string;
+  result_text?: string;
   payout?: number;
   profit_loss?: number;
+  virtual_profit_loss?: number;
   official_bet_id?: string;
   confirmed_at?: string;
   settled_at?: string;

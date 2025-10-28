@@ -13,6 +13,7 @@ import {
   Modal,
   Form,
   Tag,
+  InputNumber,
 } from 'antd';
 import {
   PlusOutlined,
@@ -21,10 +22,11 @@ import {
   ReloadOutlined,
   UserOutlined,
   TeamOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { User, StaffCreateRequest, StaffUpdateRequest, TablePagination } from '../types';
-import { staffApi, accountApi } from '../services/api';
+import { staffApi, accountApi, coinApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import dayjs from 'dayjs';
 
@@ -33,23 +35,39 @@ const { Search } = Input;
 
 interface StaffWithStats extends User {
   account_count: number;
+  coin_balance?: number;
 }
 
 const StaffPage: React.FC = () => {
-  const { isAgent } = useAuth();
+  const { isAgent, isAdmin } = useAuth();
   const [staffList, setStaffList] = useState<StaffWithStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [pagination, setPagination] = useState<TablePagination>({
     current: 1,
     pageSize: 20,
     total: 0,
   });
 
+  // 监听窗口大小变化
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // 模态框状态
   const [formModalVisible, setFormModalVisible] = useState(false);
   const [editingStaff, setEditingStaff] = useState<User | null>(null);
   const [form] = Form.useForm();
+
+  // 充值模态框状态
+  const [rechargeModalVisible, setRechargeModalVisible] = useState(false);
+  const [rechargeTarget, setRechargeTarget] = useState<User | null>(null);
+  const [rechargeForm] = Form.useForm();
 
   useEffect(() => {
     loadStaffList();
@@ -59,7 +77,7 @@ const StaffPage: React.FC = () => {
     try {
       setLoading(true);
 
-      // 获取员工列表
+      // 获取员工列表（后端已经包含 credit_limit 和 coin_balance）
       const staffResponse = await staffApi.getStaffList();
       if (staffResponse.success && staffResponse.data) {
         // 获取账号列表来统计每个员工的账号数量
@@ -67,11 +85,13 @@ const StaffPage: React.FC = () => {
         const accounts = accountsResponse.success ? accountsResponse.data || [] : [];
 
         // 计算每个员工的账号数量
-        const staffWithStats = staffResponse.data.map(staff => {
+        const staffWithStats = staffResponse.data.map((staff: any) => {
           const accountCount = accounts.filter(acc => acc.user_id === staff.id).length;
+
           return {
             ...staff,
             account_count: accountCount,
+            // credit_limit 和 coin_balance 已经从后端返回
           };
         });
 
@@ -174,13 +194,50 @@ const StaffPage: React.FC = () => {
     }
   };
 
+  const handleRecharge = (staff: User) => {
+    setRechargeTarget(staff);
+    rechargeForm.resetFields();
+    setRechargeModalVisible(true);
+  };
+
+  const handleRechargeSubmit = async () => {
+    if (!rechargeTarget) return;
+
+    try {
+      const values = await rechargeForm.validateFields();
+      setLoading(true);
+
+      const response = await coinApi.recharge({
+        target_user_id: rechargeTarget.id,
+        amount: values.amount,
+        description: values.description || `充值 ${values.amount} 金币给员工 ${rechargeTarget.username}`,
+      });
+
+      if (response.success) {
+        message.success(`充值成功！对方新余额：¥${response.data?.new_balance || 0}`);
+        setRechargeModalVisible(false);
+        loadStaffList();
+      }
+    } catch (error: any) {
+      console.error('充值失败:', error);
+      if (error.errorFields) {
+        message.error('请检查表单填写');
+      } else {
+        message.error(error.response?.data?.error || '充值失败');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 表格列定义
   const columns: ColumnsType<StaffWithStats> = [
     {
       title: 'ID',
       dataIndex: 'id',
       key: 'id',
-      width: 80,
+      width: 60,
+      responsive: ['md'] as any,
     },
     {
       title: '用户名',
@@ -190,16 +247,40 @@ const StaffPage: React.FC = () => {
       onFilter: (value, record) =>
         record.username.toLowerCase().includes((value as string).toLowerCase()) ||
         record.email.toLowerCase().includes((value as string).toLowerCase()),
+      render: (username: string, record) => (
+        <div>
+          <div style={{ fontWeight: 500 }}>{username}</div>
+          {isMobile && (
+            <>
+              <div style={{ fontSize: '12px', color: '#999' }}>{record.email}</div>
+              <Space size={4} style={{ marginTop: 4 }} wrap>
+                <Tag color="blue" style={{ fontSize: '11px', margin: 0 }}>员工</Tag>
+                <Tag color={record.account_count > 0 ? 'green' : 'default'} style={{ fontSize: '11px', margin: 0 }}>
+                  账号: {record.account_count}
+                </Tag>
+                <Tag color="orange" style={{ fontSize: '11px', margin: 0 }}>
+                  额度: {record.credit_limit ? Number(record.credit_limit).toFixed(0) : '0'}
+                </Tag>
+                <Tag color="gold" style={{ fontSize: '11px', margin: 0 }}>
+                  ¥{record.coin_balance ? Number(record.coin_balance).toFixed(2) : '0.00'}
+                </Tag>
+              </Space>
+            </>
+          )}
+        </div>
+      ),
     },
     {
       title: '邮箱',
       dataIndex: 'email',
       key: 'email',
+      responsive: ['md'] as any,
     },
     {
       title: '角色',
       dataIndex: 'role',
       key: 'role',
+      responsive: ['lg'] as any,
       render: (role: string) => (
         <Tag color="blue">员工</Tag>
       ),
@@ -208,6 +289,7 @@ const StaffPage: React.FC = () => {
       title: '皇冠账号数量',
       dataIndex: 'account_count',
       key: 'account_count',
+      responsive: ['md'] as any,
       render: (count: number) => (
         <Tag color={count > 0 ? 'green' : 'default'} icon={<TeamOutlined />}>
           {count}
@@ -215,31 +297,56 @@ const StaffPage: React.FC = () => {
       ),
     },
     {
-      title: '信用额度',
+      title: '皇冠额度',
       dataIndex: 'credit_limit',
       key: 'credit_limit',
+      responsive: ['md'] as any,
       render: (credit_limit: number) => (
-        <span>{credit_limit ? credit_limit.toLocaleString() : '0'}</span>
+        <span style={{ fontWeight: 500 }}>
+          {credit_limit ? Number(credit_limit).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+        </span>
+      ),
+    },
+    {
+      title: '金币余额',
+      dataIndex: 'coin_balance',
+      key: 'coin_balance',
+      responsive: ['md'] as any,
+      render: (balance: number) => (
+        <Tag color="gold" icon={<DollarOutlined />}>
+          ¥{balance ? Number(balance).toFixed(2) : '0.00'}
+        </Tag>
       ),
     },
     {
       title: '创建时间',
       dataIndex: 'created_at',
       key: 'created_at',
+      responsive: ['lg'] as any,
       render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm'),
     },
     {
       title: '操作',
       key: 'action',
-      fixed: 'right',
-      width: 180,
+      fixed: isMobile ? false : 'right',
+      width: isMobile ? 100 : 240,
       render: (_, record) => (
-        <Space size="small">
+        <Space size="small" direction={isMobile ? 'vertical' : 'horizontal'}>
+          <Button
+            type="primary"
+            size="small"
+            icon={<DollarOutlined />}
+            onClick={() => handleRecharge(record)}
+            style={isMobile ? { width: '100%' } : {}}
+          >
+            充值
+          </Button>
           <Button
             type="link"
             size="small"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            style={isMobile ? { width: '100%', padding: '4px 8px' } : {}}
           >
             编辑
           </Button>
@@ -259,6 +366,7 @@ const StaffPage: React.FC = () => {
               size="small"
               danger
               icon={<DeleteOutlined />}
+              style={isMobile ? { width: '100%', padding: '4px 8px' } : {}}
             >
               删除
             </Button>
@@ -278,37 +386,41 @@ const StaffPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card>
+    <div style={{ padding: isMobile ? 0 : '24px' }}>
+      <Card style={isMobile ? { margin: 0, borderRadius: 0 } : {}}>
         <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-          <Col>
-            <Title level={3} style={{ margin: 0 }}>
+          <Col xs={24} sm={12}>
+            <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
               <UserOutlined /> 员工管理
             </Title>
           </Col>
-          <Col>
-            <Space>
+          <Col xs={24} sm={12} style={{ marginTop: isMobile ? 12 : 0 }}>
+            <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: '100%' }}>
               <Search
                 placeholder="搜索用户名或邮箱"
                 allowClear
-                style={{ width: 250 }}
+                style={{ width: isMobile ? '100%' : 250 }}
                 onChange={(e) => setSearchText(e.target.value)}
                 onSearch={setSearchText}
               />
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={loadStaffList}
-                loading={loading}
-              >
-                刷新
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleCreate}
-              >
-                添加员工
-              </Button>
+              <Space style={{ width: isMobile ? '100%' : 'auto' }}>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={loadStaffList}
+                  loading={loading}
+                  style={isMobile ? { flex: 1 } : {}}
+                >
+                  {isMobile ? '' : '刷新'}
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleCreate}
+                  style={isMobile ? { flex: 1 } : {}}
+                >
+                  {isMobile ? '添加' : '添加员工'}
+                </Button>
+              </Space>
             </Space>
           </Col>
         </Row>
@@ -318,11 +430,14 @@ const StaffPage: React.FC = () => {
           dataSource={staffList}
           rowKey="id"
           loading={loading}
+          scroll={isMobile ? { x: 'max-content' } : undefined}
           pagination={{
             ...pagination,
-            showSizeChanger: true,
-            showQuickJumper: true,
+            showSizeChanger: !isMobile,
+            showQuickJumper: !isMobile,
             showTotal: (total) => `共 ${total} 条`,
+            simple: isMobile,
+            pageSize: isMobile ? 10 : pagination.pageSize,
             onChange: (page, pageSize) => {
               setPagination(prev => ({ ...prev, current: page, pageSize }));
             },
@@ -340,7 +455,8 @@ const StaffPage: React.FC = () => {
           form.resetFields();
         }}
         confirmLoading={loading}
-        width={500}
+        width={isMobile ? '100%' : 500}
+        style={isMobile ? { top: 0, paddingBottom: 0, maxWidth: '100vw' } : {}}
       >
         <Form
           form={form}
@@ -378,6 +494,53 @@ const StaffPage: React.FC = () => {
             ]}
           >
             <Input.Password placeholder={editingStaff ? '留空则不修改密码' : '请输入密码'} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 充值模态框 */}
+      <Modal
+        title={`充值金币 - ${rechargeTarget?.username || ''}`}
+        open={rechargeModalVisible}
+        onOk={handleRechargeSubmit}
+        onCancel={() => {
+          setRechargeModalVisible(false);
+          rechargeForm.resetFields();
+        }}
+        confirmLoading={loading}
+        width={isMobile ? '100%' : 500}
+        style={isMobile ? { top: 0, paddingBottom: 0, maxWidth: '100vw' } : {}}
+      >
+        <Form
+          form={rechargeForm}
+          layout="vertical"
+          autoComplete="off"
+        >
+          <Form.Item
+            label="充值金额"
+            name="amount"
+            rules={[
+              { required: true, message: '请输入充值金额' },
+              { type: 'number', min: 0.01, message: '充值金额必须大于0' },
+            ]}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              placeholder="请输入充值金额"
+              min={0.01}
+              precision={2}
+              addonBefore="¥"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="备注"
+            name="description"
+          >
+            <Input.TextArea
+              placeholder="选填，例如：月度充值、活动奖励等"
+              rows={3}
+            />
           </Form.Item>
         </Form>
       </Modal>
