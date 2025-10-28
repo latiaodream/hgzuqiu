@@ -7191,11 +7191,13 @@ export class CrownAutomationService {
       const loginResult = await apiClient.login(account.username, account.password);
       console.log(`🔧 登录结果:`, loginResult);
 
-      if (!loginResult.success) {
-        console.error(`❌ 登录失败: ${loginResult.message}`);
+      // 检查登录是否成功（status: '200', msg: '100' 表示成功）
+      if (loginResult.status !== '200' || loginResult.msg !== '100') {
+        const errorMsg = loginResult.code_message || `status: ${loginResult.status}, msg: ${loginResult.msg}`;
+        console.error(`❌ 登录失败: ${errorMsg}`);
         return {
           success: false,
-          message: `登录失败: ${loginResult.message}`
+          message: `登录失败: ${errorMsg}`
         };
       }
 
