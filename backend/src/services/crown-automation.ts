@@ -7214,6 +7214,8 @@ export class CrownAutomationService {
         headers: {
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          'Referer': `${apiClient.getBaseUrl()}/app/member/`,
+          'Upgrade-Insecure-Requests': '1',
         }
       });
 
