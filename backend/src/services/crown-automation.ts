@@ -7199,6 +7199,8 @@ export class CrownAutomationService {
 
       // 获取限额页面的 HTML
       const limitsPageUrl = `${apiClient.getBaseUrl()}/app/member/account/account_wager_limit.php`;
+      console.log(`📄 限额页面 URL: ${limitsPageUrl}`);
+
       const response = await apiClient.fetch(limitsPageUrl, {
         method: 'GET',
         headers: {
@@ -7206,6 +7208,8 @@ export class CrownAutomationService {
           'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
         }
       });
+
+      console.log(`📥 限额页面响应状态: ${response.status}, OK: ${response.ok}`);
 
       if (!response.ok) {
         return {
@@ -7215,11 +7219,13 @@ export class CrownAutomationService {
       }
 
       const html = await response.text();
+      console.log(`📄 限额页面 HTML 长度: ${html.length} 字符`);
 
       // 解析 HTML 提取限额数据
       const limits = this.parseLimitsFromHtml(html);
 
       if (!limits) {
+        console.error(`❌ 无法解析限额数据，HTML 前 500 字符:`, html.substring(0, 500));
         return {
           success: false,
           message: '无法从页面中解析限额数据'
