@@ -127,6 +127,23 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
         proxy_enabled: proxyEnabled,
       };
 
+      // 根据初始化类型处理账号字段
+      const initType = values.init_type || 'none';
+
+      if (initType === 'none') {
+        // 不需要初始化：username 就是最终账号
+        requestData.original_username = undefined;
+        requestData.initialized_username = undefined;
+      } else if (initType === 'password_only') {
+        // 仅修改密码：username 是原始账号
+        requestData.original_username = values.username;
+        requestData.initialized_username = undefined;
+      } else if (initType === 'full') {
+        // 完整初始化：username 是初始化后账号，original_username 是原始账号
+        requestData.initialized_username = values.username;
+        // original_username 已经在 values 中
+      }
+
       // 如果未启用代理，清空代理相关字段
       if (!proxyEnabled) {
         requestData.proxy_type = undefined;
@@ -213,20 +230,13 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
             setProxyEnabled(allValues.proxy_enabled);
           }
 
-          // 智能判断初始化类型
-          if ('original_username' in changedValues || 'initialized_username' in changedValues) {
+          // 智能判断初始化类型（根据是否填写原始账号）
+          if ('original_username' in changedValues) {
             if (!userHasSelectedInitType) {
               const originalUsername = allValues.original_username;
-              const initializedUsername = allValues.initialized_username;
 
-              let autoInitType: InitType = 'none';
-              if (originalUsername && initializedUsername) {
-                autoInitType = 'full';
-              } else if (originalUsername && !initializedUsername) {
-                autoInitType = 'password_only';
-              } else {
-                autoInitType = 'none';
-              }
+              // 如果填写了原始账号，说明是完整初始化
+              let autoInitType: InitType = originalUsername ? 'full' : 'none';
 
               form.setFieldsValue({ init_type: autoInitType });
               setInitType(autoInitType);
@@ -237,6 +247,11 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
           if ('init_type' in changedValues) {
             setInitType(changedValues.init_type);
             setUserHasSelectedInitType(true);
+
+            // 清空原始账号字段（如果不是 full 类型）
+            if (changedValues.init_type !== 'full') {
+              form.setFieldsValue({ original_username: undefined });
+            }
           }
         }}
       >
@@ -296,14 +311,27 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     <Col xs={24} sm={12}>
                       <Form.Item
                         name="username"
-                        label="账号"
+                        label={
+                          initType === 'none' ? '账号' :
+                          initType === 'password_only' ? '原始账号' :
+                          '初始化后账号'
+                        }
+                        tooltip={
+                          initType === 'none' ? '直接使用的账号' :
+                          initType === 'password_only' ? '首次登录时的账号（不会修改）' :
+                          '修改后使用的账号'
+                        }
                         rules={[
                           { required: true, message: '请输入账号' },
                           { min: 3, message: '账号至少3个字符' },
                         ]}
                       >
                         <Input
-                          placeholder="请输入皇冠账号"
+                          placeholder={
+                            initType === 'none' ? '请输入皇冠账号' :
+                            initType === 'password_only' ? '请输入原始账号' :
+                            '请输入初始化后的账号'
+                          }
                           suffix={(
                             <Tooltip title="重新生成">
                               <ReloadOutlined
@@ -414,49 +442,50 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     </Col>
                   </Row>
 
-                  {initType !== 'none' && (
+                  {initType === 'full' && (
+                    <>
+                      <Alert
+                        message="提示"
+                        description="完整初始化：需要提供原始账号。上方的账号是修改后使用的账号。"
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                      />
+                      <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="original_username"
+                            label="原始账号"
+                            tooltip="首次登录时使用的账号"
+                            rules={[
+                              { required: true, message: '请输入原始账号' }
+                            ]}
+                          >
+                            <Input placeholder="请输入原始账号" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </>
+                  )}
+
+                  {initType === 'password_only' && (
                     <Alert
                       message="提示"
-                      description={
-                        initType === 'full'
-                          ? '完整初始化需要提供原始账号和初始化后的账号'
-                          : '仅修改密码需要提供原始账号'
-                      }
+                      description="仅修改密码：上方的账号是原始账号（不会修改），只会修改密码。"
                       type="info"
                       showIcon
                       style={{ marginBottom: 16 }}
                     />
                   )}
 
-                  {(initType === 'password_only' || initType === 'full') && (
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item
-                          name="original_username"
-                          label="原始账号"
-                          tooltip="首次登录时使用的账号"
-                          rules={[
-                            { required: true, message: '请输入原始账号' }
-                          ]}
-                        >
-                          <Input placeholder="请输入原始账号" />
-                        </Form.Item>
-                      </Col>
-                      {initType === 'full' && (
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="initialized_username"
-                            label="初始化账号"
-                            tooltip="修改后使用的账号"
-                            rules={[
-                              { required: true, message: '请输入初始化后的账号' }
-                            ]}
-                          >
-                            <Input placeholder="请输入初始化后的账号" />
-                          </Form.Item>
-                        </Col>
-                      )}
-                    </Row>
+                  {initType === 'none' && (
+                    <Alert
+                      message="提示"
+                      description="不需要初始化：账号和密码都不需要修改，直接使用。"
+                      type="success"
+                      showIcon
+                      style={{ marginBottom: 16 }}
+                    />
                   )}
 
                   <Divider orientation="left" style={{ fontSize: '14px', fontWeight: 500 }}>
