@@ -463,35 +463,84 @@ const AccountsPage: React.FC = () => {
     }
   };
 
-  // 查账 - 查询账号下注历史记录
+  // 查账 - 查询账号下注历史记录（最近7天）
   const handleCheckHistory = async (account: CrownAccount) => {
     const key = `check-history-${account.id}`;
     try {
-      message.loading({ content: `正在获取账号 ${account.username} 的下注记录...`, key, duration: 0 });
+      message.loading({ content: `正在获取账号 ${account.username} 的下注记录（最近7天）...`, key, duration: 0 });
 
-      // 获取今日下注记录
-      const response = await crownApi.getTodayWagers(account.id);
+      // 计算一周前的日期
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 7);
+
+      // 格式化日期为 YYYY-MM-DD
+      const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      const response = await crownApi.getHistory(account.id, {
+        gtype: 'ALL',
+        isAll: 'N',
+        startdate: formatDate(startDate),
+        enddate: formatDate(endDate),
+        filter: 'Y'
+      });
 
       if (response.success) {
         const data = response.data;
-        const count = data?.count || 0;
-        const wagers = data?.wagers || [];
-        const amountGold = data?.amout_gold || '0';
+
+        // 解析返回的数据
+        let wagers: any[] = [];
+        let totalAmount = 0;
+
+        if (data && typeof data === 'object') {
+          // 如果返回的是数组
+          if (Array.isArray(data)) {
+            wagers = data;
+          }
+          // 如果返回的是对象，尝试提取 wagers 字段
+          else if (data.wagers && Array.isArray(data.wagers)) {
+            wagers = data.wagers;
+          }
+          // 如果有其他字段包含下注记录
+          else {
+            // 尝试从对象中提取所有可能的下注记录
+            Object.keys(data).forEach(key => {
+              if (Array.isArray(data[key])) {
+                wagers = [...wagers, ...data[key]];
+              }
+            });
+          }
+
+          // 计算总金额
+          wagers.forEach((wager: any) => {
+            if (wager.gold || wager.amount || wager.bet_amount) {
+              totalAmount += parseFloat(wager.gold || wager.amount || wager.bet_amount || 0);
+            }
+          });
+        }
 
         message.success({ content: `成功获取账号 ${account.username} 的下注记录`, key, duration: 2 });
 
         // 显示查账结果
         Modal.info({
-          title: `账号 ${account.username} 的今日下注记录`,
+          title: `账号 ${account.username} 的下注记录（最近7天）`,
           width: 800,
           content: (
             <div>
               <div style={{ marginBottom: '16px' }}>
+                <Text strong>查询时间：</Text>
+                <Text>{formatDate(startDate)} 至 {formatDate(endDate)}</Text>
+                <br />
                 <Text strong>下注笔数：</Text>
-                <Text>{count} 笔</Text>
+                <Text>{wagers.length} 笔</Text>
                 <Divider type="vertical" />
-                <Text strong>下注金额：</Text>
-                <Text>{amountGold}</Text>
+                <Text strong>下注总额：</Text>
+                <Text>{totalAmount.toLocaleString()}</Text>
               </div>
               {wagers.length > 0 ? (
                 <div style={{ maxHeight: '400px', overflow: 'auto' }}>
@@ -510,7 +559,7 @@ const AccountsPage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <Empty description="今日暂无下注记录" />
+                <Empty description="最近7天暂无下注记录" />
               )}
             </div>
           ),
