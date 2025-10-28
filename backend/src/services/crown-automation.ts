@@ -6502,15 +6502,18 @@ export class CrownAutomationService {
           };
         }
 
-        // 执行下注
+        // 执行下注（使用最新获取到的赔率）
+        const latestOdds = oddsResult.ioratio || betRequest.odds.toString();
         console.log('💰 执行下注...');
+        console.log(`   使用赔率: ${latestOdds} (原始赔率: ${betRequest.odds})`);
+
         const betResult = await apiClient.placeBet({
           gid: crownMatchId,
           gtype: 'FT',
           wtype,
           rtype,
           chose_team,
-          ioratio: betRequest.odds.toString(),
+          ioratio: latestOdds,
           gold: betRequest.amount.toString(),
         });
 
@@ -6522,12 +6525,17 @@ export class CrownAutomationService {
             success: true,
             message: '下注成功',
             betId: betResult.ticket_id,
-            actualOdds: parseFloat(betResult.ioratio || betRequest.odds.toString()),
+            actualOdds: parseFloat(betResult.ioratio || latestOdds),
           };
         } else {
+          // 如果是赔率变化错误，返回更详细的错误信息
+          let errorMessage = betResult.msg || '下注失败';
+          if (betResult.code === '555' && betResult.errormsg === '1X006') {
+            errorMessage = `赔率已变化 (原: ${betRequest.odds}, 新: ${latestOdds})，请重新下注`;
+          }
           return {
             success: false,
-            message: betResult.msg || '下注失败',
+            message: errorMessage,
           };
         }
       } finally {
