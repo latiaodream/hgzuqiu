@@ -50,6 +50,7 @@ CREATE TABLE crown_accounts (
     discount DECIMAL(3,2) DEFAULT 1.00, -- 折扣：0.8, 0.85, 1.0
     note VARCHAR(50), -- 备注：高、中、低
     balance DECIMAL(15,2) DEFAULT 0, -- 余额
+    credit DECIMAL(15,2) DEFAULT 0, -- 信用额度
     stop_profit_limit DECIMAL(15,2) DEFAULT 0, -- 止盈金额
 
     -- 设备信息

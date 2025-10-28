@@ -537,16 +537,17 @@ router.get('/balance/:accountId', async (req: any, res) => {
 
         const financial = await getCrownAutomation().getAccountFinancialSummary(accountId);
 
-        if (financial.balance !== null) {
+        // 更新余额和信用额度到数据库
+        if (financial.balance !== null || financial.credit !== null) {
             await query(
                 `UPDATE crown_accounts
-                 SET balance = $1, updated_at = CURRENT_TIMESTAMP
-                 WHERE id = $2`,
-                [financial.balance, accountId]
+                 SET balance = $1, credit = $2, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $3`,
+                [financial.balance ?? 0, financial.credit ?? 0, accountId]
             );
         }
 
-        const success = financial.balance !== null;
+        const success = financial.credit !== null;
 
         res.json({
             success,

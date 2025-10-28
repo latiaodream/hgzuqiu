@@ -78,6 +78,7 @@ export interface CrownAccount {
     discount: number;
     note?: string;
     balance: number;
+    credit: number;
     stop_profit_limit: number;
     device_type?: string;
     user_agent?: string;

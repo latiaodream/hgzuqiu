@@ -138,9 +138,9 @@ const AccountCard: React.FC<AccountCardProps> = ({
           <Text style={{ color: account.proxy_enabled ? '#52c41a' : '#999' }}>
             {account.proxy_enabled ? '有' : '无'}
           </Text>
-          <Text strong>余额:</Text>
+          <Text strong>信用额度:</Text>
           <Text>{(() => {
-            const raw: any = (account as any).balance;
+            const raw: any = (account as any).credit;
             const num = typeof raw === 'number' ? raw : (raw ? parseFloat(String(raw)) : NaN);
             return Number.isFinite(num) ? num.toLocaleString() : '-';
           })()}</Text>

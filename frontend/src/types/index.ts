@@ -73,7 +73,8 @@ export interface CrownAccount {
   note: string;
   stop_profit_limit?: number;
   device_type: string;
-  balance?: number; // 额度/余额（从皇冠拉取并回写）
+  balance?: number; // 余额（从皇冠拉取并回写）
+  credit?: number; // 信用额度（从皇冠拉取并回写）
 
   // 代理设置
   proxy_enabled: boolean;
