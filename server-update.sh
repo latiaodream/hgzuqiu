@@ -81,7 +81,7 @@ cd backend
 
 # 安装依赖
 echo "   安装依赖..."
-npm install --production
+npm install
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓${NC} 后端依赖安装成功"
 else
@@ -124,7 +124,7 @@ cd ../frontend
 
 # 安装依赖
 echo "   安装依赖..."
-npm install --production
+npm install
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓${NC} 前端依赖安装成功"
 else
