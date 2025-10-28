@@ -1124,6 +1124,128 @@ export class CrownApiClient {
   }
 
   /**
+   * 获取账号额度设置（包含限额信息）
+   * @param gtype 游戏类型，默认 'FT'（足球）
+   */
+  async getAccountSettings(gtype: string = 'FT'): Promise<any> {
+    console.log(`📊 获取账号额度设置 (gtype=${gtype})...`);
+
+    if (!this.uid) {
+      throw new Error('未登录，无法获取账号设置');
+    }
+
+    const params = new URLSearchParams({
+      uid: this.uid,
+      ver: this.version,
+      langx: 'zh-cn',
+      p: 'get_account_set',
+      gtype: gtype,
+    });
+
+    try {
+      const response = await this.httpClient.post('/transform.php', params.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': this.cookies,
+        },
+      });
+
+      console.log('✅ 账号设置响应:', JSON.stringify(response.data).substring(0, 500));
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ 获取账号设置失败:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取账号下注历史记录
+   * @param params 查询参数
+   */
+  async getHistoryData(params: {
+    gtype?: string;
+    isAll?: string;
+    startdate?: string;
+    enddate?: string;
+    filter?: string;
+  } = {}): Promise<any> {
+    console.log(`📜 获取下注历史记录...`);
+
+    if (!this.uid) {
+      throw new Error('未登录，无法获取历史记录');
+    }
+
+    const requestParams = new URLSearchParams({
+      p: 'get_history_data',
+      uid: this.uid,
+      langx: 'zh-cn',
+      gtype: params.gtype || 'ALL',
+      isAll: params.isAll || 'N',
+      startdate: params.startdate || '',
+      enddate: params.enddate || '',
+      filter: params.filter || 'Y',
+    });
+
+    try {
+      const response = await this.httpClient.post('/transform.php', requestParams.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': this.cookies,
+        },
+      });
+
+      console.log('✅ 历史记录响应:', JSON.stringify(response.data).substring(0, 500));
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ 获取历史记录失败:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取今日下注记录
+   * @param params 查询参数
+   */
+  async getTodayWagers(params: {
+    gtype?: string;
+    chk_cw?: string;
+  } = {}): Promise<any> {
+    console.log(`📋 获取今日下注记录...`);
+
+    if (!this.uid) {
+      throw new Error('未登录，无法获取今日下注');
+    }
+
+    const timestamp = Date.now();
+    const requestParams = new URLSearchParams({
+      p: 'get_today_wagers',
+      uid: this.uid,
+      langx: 'zh-cn',
+      LS: 'g',
+      selGtype: params.gtype || 'ALL',
+      chk_cw: params.chk_cw || 'N',
+      ts: timestamp.toString(),
+      format: 'json',
+      db_slow: 'N',
+    });
+
+    try {
+      const response = await this.httpClient.post('/transform.php', requestParams.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': this.cookies,
+        },
+      });
+
+      console.log('✅ 今日下注响应:', JSON.stringify(response.data).substring(0, 500));
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ 获取今日下注失败:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 通用 fetch 方法（用于获取 HTML 页面等）
    */
   async fetch(url: string, options: any = {}): Promise<any> {

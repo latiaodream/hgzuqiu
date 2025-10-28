@@ -19,7 +19,7 @@ import {
   Alert,
 } from 'antd';
 import type { CrownAccount, Group, CrownAccountCreateRequest, InitType } from '../../types';
-import { accountApi, groupApi } from '../../services/api';
+import { accountApi, groupApi, crownApi } from '../../services/api';
 import { ReloadOutlined, CheckCircleOutlined, KeyOutlined, SyncOutlined } from '@ant-design/icons';
 import { generateAccountPassword, generateAccountUsername } from '../../utils/credentials';
 
@@ -86,26 +86,35 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
       }
 
       setFetchingLimits(true);
-      message.loading({ content: '正在登录皇冠获取限额信息...', key: 'fetchLimits', duration: 0 });
+      message.loading({ content: '正在获取账号额度设置...', key: 'fetchLimits', duration: 0 });
 
       // 如果是编辑模式且账号已存在，使用账号ID
       if (account?.id) {
-        const response = await accountApi.fetchLimits(account.id);
+        const response = await crownApi.getAccountSettings(account.id, 'FT');
 
         if (response.success && response.data) {
-          form.setFieldsValue({
-            football_prematch_limit: response.data.football.prematch,
-            football_live_limit: response.data.football.live,
-            basketball_prematch_limit: response.data.basketball.prematch,
-            basketball_live_limit: response.data.basketball.live,
+          // 解析返回的数据，提取限额信息
+          // 注意：实际返回的数据结构可能需要根据 API 响应调整
+          console.log('账号设置响应:', response.data);
+          message.success({ content: '额度设置获取成功！', key: 'fetchLimits' });
+
+          // TODO: 根据实际返回的数据结构解析限额信息
+          // 暂时显示原始数据
+          Modal.info({
+            title: '账号额度设置',
+            width: 600,
+            content: (
+              <pre style={{ maxHeight: '400px', overflow: 'auto', fontSize: '12px' }}>
+                {JSON.stringify(response.data, null, 2)}
+              </pre>
+            ),
           });
-          message.success({ content: '限额信息获取成功！', key: 'fetchLimits' });
         } else {
-          message.error({ content: response.error || '获取限额信息失败', key: 'fetchLimits' });
+          message.error({ content: response.error || '获取额度设置失败', key: 'fetchLimits' });
         }
       } else {
         // 新增模式：需要先创建临时账号或使用其他方式
-        message.warning({ content: '请先保存账号后再获取限额信息', key: 'fetchLimits' });
+        message.warning({ content: '请先保存账号后再获取额度设置', key: 'fetchLimits' });
       }
     } catch (error) {
       console.error('获取限额信息失败:', error);
@@ -203,30 +212,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
       if (response.success) {
         message.success(account ? '账号更新成功' : '账号创建成功');
 
-        // 如果是新增模式，自动获取限额
-        if (!account && response.data?.id) {
-          try {
-            message.loading({ content: '正在自动获取限额信息...', key: 'autoFetchLimits', duration: 0 });
-            const limitsResponse = await accountApi.fetchLimits(response.data.id);
-
-            if (limitsResponse.success) {
-              message.success({ content: '限额信息已自动获取并保存', key: 'autoFetchLimits' });
-            } else {
-              message.warning({
-                content: `账号创建成功，但限额获取失败: ${limitsResponse.error || '未知错误'}`,
-                key: 'autoFetchLimits',
-                duration: 5
-              });
-            }
-          } catch (error) {
-            console.error('自动获取限额失败:', error);
-            message.warning({
-              content: '账号创建成功，但限额获取失败，请稍后手动获取',
-              key: 'autoFetchLimits',
-              duration: 5
-            });
-          }
-        }
+        // 新增模式不自动获取限额，需要账号登录后才能获取
 
         onSubmit();
       }

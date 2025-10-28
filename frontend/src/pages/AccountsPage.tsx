@@ -464,9 +464,34 @@ const AccountsPage: React.FC = () => {
 
   // 查账 - 查询账号下注历史记录
   const handleCheckHistory = async (account: CrownAccount) => {
-    message.info(`查账功能开发中，账号：${account.username}`);
-    // TODO: 实现查账功能
-    // 需要调用后端 API 获取账号的下注历史记录
+    const key = `check-history-${account.id}`;
+    try {
+      message.loading({ content: `正在获取账号 ${account.username} 的下注记录...`, key, duration: 0 });
+
+      // 获取今日下注记录
+      const response = await crownApi.getTodayWagers(account.id);
+
+      if (response.success) {
+        message.success({ content: `成功获取账号 ${account.username} 的下注记录`, key, duration: 2 });
+
+        // 显示查账结果
+        Modal.info({
+          title: `账号 ${account.username} 的下注记录`,
+          width: 800,
+          content: (
+            <div>
+              <pre style={{ maxHeight: '400px', overflow: 'auto', fontSize: '12px' }}>
+                {JSON.stringify(response.data, null, 2)}
+              </pre>
+            </div>
+          ),
+        });
+      } else {
+        message.error({ content: response.error || '获取下注记录失败', key, duration: 3 });
+      }
+    } catch (error: any) {
+      message.error({ content: error.response?.data?.error || '获取下注记录失败', key, duration: 3 });
+    }
   };
 
   // 初始化账号

@@ -1295,6 +1295,249 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
   }
 });
 
+// 获取账号额度设置
+router.get('/account-settings/:accountId', async (req: any, res) => {
+    try {
+        const accountId = parseInt(req.params.accountId);
+        const { gtype = 'FT' } = req.query;
+
+        // 验证账号是否属于当前用户
+        const access = buildAccountAccess(req.user, { includeDisabled: true });
+        const accountResult = await query(
+            `SELECT ca.* FROM crown_accounts ca WHERE ca.id = $1${access.clause}`,
+            [accountId, ...access.params]
+        );
+
+        if (accountResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: '账号不存在'
+            });
+        }
+
+        const account = accountResult.rows[0];
+
+        // 检查账号是否在线
+        if (!getCrownAutomation().isAccountOnline(accountId)) {
+            return res.status(400).json({
+                success: false,
+                error: '账号未登录，无法获取额度设置'
+            });
+        }
+
+        // 获取 UID
+        const uid = getCrownAutomation().getApiUid(accountId);
+        if (!uid) {
+            return res.status(400).json({
+                success: false,
+                error: '账号未登录或 UID 不存在'
+            });
+        }
+
+        // 创建 API 客户端
+        const { CrownApiClient } = await import('../services/crown-api-client');
+        const apiClient = new CrownApiClient({
+            baseUrl: account.base_url || 'https://hga038.com',
+            deviceType: account.device_type,
+            userAgent: account.user_agent,
+            proxy: account.proxy_enabled ? {
+                enabled: true,
+                type: account.proxy_type,
+                host: account.proxy_host,
+                port: account.proxy_port,
+                username: account.proxy_username,
+                password: account.proxy_password,
+            } : { enabled: false },
+        });
+
+        // 恢复 Cookie 和 UID
+        if (account.api_cookies) {
+            apiClient.setCookies(account.api_cookies);
+        }
+        apiClient.setUid(uid);
+
+        // 获取账号设置
+        const settings = await apiClient.getAccountSettings(gtype as string);
+
+        res.json({
+            success: true,
+            data: settings
+        });
+
+    } catch (error) {
+        console.error('获取账号额度设置错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取额度设置失败'
+        });
+    }
+});
+
+// 获取账号下注历史
+router.get('/history/:accountId', async (req: any, res) => {
+    try {
+        const accountId = parseInt(req.params.accountId);
+        const { gtype, isAll, startdate, enddate, filter } = req.query;
+
+        // 验证账号是否属于当前用户
+        const access = buildAccountAccess(req.user, { includeDisabled: true });
+        const accountResult = await query(
+            `SELECT ca.* FROM crown_accounts ca WHERE ca.id = $1${access.clause}`,
+            [accountId, ...access.params]
+        );
+
+        if (accountResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: '账号不存在'
+            });
+        }
+
+        const account = accountResult.rows[0];
+
+        // 检查账号是否在线
+        if (!getCrownAutomation().isAccountOnline(accountId)) {
+            return res.status(400).json({
+                success: false,
+                error: '账号未登录，无法获取历史记录'
+            });
+        }
+
+        // 获取 UID
+        const uid = getCrownAutomation().getApiUid(accountId);
+        if (!uid) {
+            return res.status(400).json({
+                success: false,
+                error: '账号未登录或 UID 不存在'
+            });
+        }
+
+        // 创建 API 客户端
+        const { CrownApiClient } = await import('../services/crown-api-client');
+        const apiClient = new CrownApiClient({
+            baseUrl: account.base_url || 'https://hga038.com',
+            deviceType: account.device_type,
+            userAgent: account.user_agent,
+            proxy: account.proxy_enabled ? {
+                enabled: true,
+                type: account.proxy_type,
+                host: account.proxy_host,
+                port: account.proxy_port,
+                username: account.proxy_username,
+                password: account.proxy_password,
+            } : { enabled: false },
+        });
+
+        // 恢复 Cookie 和 UID
+        if (account.api_cookies) {
+            apiClient.setCookies(account.api_cookies);
+        }
+        apiClient.setUid(uid);
+
+        // 获取历史记录
+        const history = await apiClient.getHistoryData({
+            gtype: gtype as string,
+            isAll: isAll as string,
+            startdate: startdate as string,
+            enddate: enddate as string,
+            filter: filter as string,
+        });
+
+        res.json({
+            success: true,
+            data: history
+        });
+
+    } catch (error) {
+        console.error('获取账号历史记录错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取历史记录失败'
+        });
+    }
+});
+
+// 获取账号今日下注
+router.get('/today-wagers/:accountId', async (req: any, res) => {
+    try {
+        const accountId = parseInt(req.params.accountId);
+        const { gtype, chk_cw } = req.query;
+
+        // 验证账号是否属于当前用户
+        const access = buildAccountAccess(req.user, { includeDisabled: true });
+        const accountResult = await query(
+            `SELECT ca.* FROM crown_accounts ca WHERE ca.id = $1${access.clause}`,
+            [accountId, ...access.params]
+        );
+
+        if (accountResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: '账号不存在'
+            });
+        }
+
+        const account = accountResult.rows[0];
+
+        // 检查账号是否在线
+        if (!getCrownAutomation().isAccountOnline(accountId)) {
+            return res.status(400).json({
+                success: false,
+                error: '账号未登录，无法获取今日下注'
+            });
+        }
+
+        // 获取 UID
+        const uid = getCrownAutomation().getApiUid(accountId);
+        if (!uid) {
+            return res.status(400).json({
+                success: false,
+                error: '账号未登录或 UID 不存在'
+            });
+        }
+
+        // 创建 API 客户端
+        const { CrownApiClient } = await import('../services/crown-api-client');
+        const apiClient = new CrownApiClient({
+            baseUrl: account.base_url || 'https://hga038.com',
+            deviceType: account.device_type,
+            userAgent: account.user_agent,
+            proxy: account.proxy_enabled ? {
+                enabled: true,
+                type: account.proxy_type,
+                host: account.proxy_host,
+                port: account.proxy_port,
+                username: account.proxy_username,
+                password: account.proxy_password,
+            } : { enabled: false },
+        });
+
+        // 恢复 Cookie 和 UID
+        if (account.api_cookies) {
+            apiClient.setCookies(account.api_cookies);
+        }
+        apiClient.setUid(uid);
+
+        // 获取今日下注
+        const wagers = await apiClient.getTodayWagers({
+            gtype: gtype as string,
+            chk_cw: chk_cw as string,
+        });
+
+        res.json({
+            success: true,
+            data: wagers
+        });
+
+    } catch (error) {
+        console.error('获取今日下注错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取今日下注失败'
+        });
+    }
+});
+
 // 获取账号限额信息
 router.post('/fetch-limits/:accountId', async (req: any, res) => {
     try {

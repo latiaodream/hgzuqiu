@@ -412,6 +412,21 @@ export const crownApi = {
     params?: { gtype?: string; showtype?: string; rtype?: string; ltype?: string; sorttype?: string }
   ): Promise<ApiResponse> =>
     apiClient.post(`/crown-automation/matches/sync/${accountId}`, undefined, { params, timeout: 120000 }).then(res => res.data),
+
+  // 获取账号额度设置
+  getAccountSettings: (accountId: number, gtype?: string): Promise<ApiResponse> =>
+    apiClient.get(`/crown-automation/account-settings/${accountId}`, { params: { gtype }, timeout: 30000 }).then(res => res.data),
+
+  // 获取账号下注历史
+  getHistory: (
+    accountId: number,
+    params?: { gtype?: string; isAll?: string; startdate?: string; enddate?: string; filter?: string }
+  ): Promise<ApiResponse> =>
+    apiClient.get(`/crown-automation/history/${accountId}`, { params, timeout: 60000 }).then(res => res.data),
+
+  // 获取账号今日下注
+  getTodayWagers: (accountId: number, params?: { gtype?: string; chk_cw?: string }): Promise<ApiResponse> =>
+    apiClient.get(`/crown-automation/today-wagers/${accountId}`, { params, timeout: 30000 }).then(res => res.data),
 };
 
 export default apiClient;
