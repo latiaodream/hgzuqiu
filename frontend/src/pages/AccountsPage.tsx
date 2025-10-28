@@ -24,11 +24,9 @@ import { generateAccountUsername, generateAccountPassword } from '../utils/crede
 import AccountFormModal from '../components/Accounts/AccountFormModal';
 import AccountDetailModal from '../components/Accounts/AccountDetailModal';
 import AccountCard from '../components/Accounts/AccountCard';
-import AccountInitializeModal from '../components/Accounts/AccountInitializeModal';
 import type { AxiosError } from 'axios';
 
 const { Title, Text } = Typography;
-const INIT_CREDENTIAL_STORAGE_KEY = 'crown_init_credentials';
 const { Search } = Input;
 
 const AccountsPage: React.FC = () => {
@@ -54,39 +52,6 @@ const AccountsPage: React.FC = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [editingAccount, setEditingAccount] = useState<CrownAccount | null>(null);
   const [viewingAccount, setViewingAccount] = useState<CrownAccount | null>(null);
-  const [initializeModalVisible, setInitializeModalVisible] = useState(false);
-  const [initializingAccount, setInitializingAccount] = useState<CrownAccount | null>(null);
-  const [initializeCredentials, setInitializeCredentials] = useState<Record<number, { username: string; password: string }>>(() => {
-    try {
-      const raw = localStorage.getItem(INIT_CREDENTIAL_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') {
-          return parsed as Record<number, { username: string; password: string }>;
-        }
-      }
-    } catch (storageError) {
-      console.warn('无法从本地存储读取初始化凭证缓存:', storageError);
-    }
-    return {};
-  });
-
-  const syncInitializeCredentials = useCallback((updater: (prev: Record<number, { username: string; password: string }>) => Record<number, { username: string; password: string }>) => {
-    setInitializeCredentials((prev) => {
-      const next = updater(prev);
-      try {
-        const keys = Object.keys(next);
-        if (keys.length > 0) {
-          localStorage.setItem(INIT_CREDENTIAL_STORAGE_KEY, JSON.stringify(next));
-        } else {
-          localStorage.removeItem(INIT_CREDENTIAL_STORAGE_KEY);
-        }
-      } catch (storageError) {
-        console.warn('无法写入初始化凭证缓存:', storageError);
-      }
-      return next;
-    });
-  }, []);
 
   useEffect(() => {
     loadGroups();
@@ -156,159 +121,7 @@ const AccountsPage: React.FC = () => {
     setDetailModalVisible(true);
   };
 
-  const getOrCreateInitializeCredentials = (account: CrownAccount) => {
-    const existing = initializeCredentials[account.id];
-    if (existing) {
-      return existing;
-    }
-    const created = {
-      username: generateAccountUsername(),
-      password: generateAccountPassword(),
-    };
-    syncInitializeCredentials((prev) => {
-      if (prev[account.id]) {
-        return prev;
-      }
-      return {
-        ...prev,
-        [account.id]: created,
-      };
-    });
-    return created;
-  };
 
-
-
-  const handleInitializeCredentialsChange = (accountId: number, values: Partial<{ username: string; password: string }>) => {
-    if (!values.username && !values.password) {
-      return;
-    }
-    syncInitializeCredentials((prev) => {
-      const current = prev[accountId] ?? {
-        username: values.username ?? generateAccountUsername(),
-        password: values.password ?? generateAccountPassword(),
-      };
-      return {
-        ...prev,
-        [accountId]: {
-          ...current,
-          ...values,
-        },
-      };
-    });
-  };
-
-  const handleInitializeCredentialRegenerate = (accountId: number, field: 'username' | 'password') => {
-    syncInitializeCredentials((prev) => {
-      const current = prev[accountId] ?? {
-        username: generateAccountUsername(),
-        password: generateAccountPassword(),
-      };
-      const nextValue = field === 'username' ? generateAccountUsername() : generateAccountPassword();
-      return {
-        ...prev,
-        [accountId]: {
-          ...current,
-          [field]: nextValue,
-        },
-      };
-    });
-  };
-
-  const handleInitializeConfirm = async ({ username, password }: { username: string; password: string }) => {
-    if (!initializingAccount) {
-      const error = new Error('未找到需要初始化的账号');
-      message.error(error.message);
-      throw error;
-    }
-
-    const key = `initialize-${initializingAccount.id}`;
-    message.loading({
-      content: `正在初始化账号 ${initializingAccount.username} ...\n请稍候，过程可能需要 1-2 分钟。`,
-      key,
-      duration: 0,
-    });
-
-    try {
-      const response = await crownApi.initializeAccount(initializingAccount.id, { username, password });
-
-      if (!response.success) {
-        throw new Error(response.error || '初始化账号失败');
-      }
-
-      let accountForLogin: CrownAccount | null = null;
-      if (response.data) {
-        const updatedUsername = response.data?.username?.trim?.() || response.data?.username || initializingAccount.username;
-        const originalUsername = initializingAccount.original_username || initializingAccount.username;
-        const updatedPassword = response.data?.password ?? initializingAccount.password;
-
-        accountForLogin = {
-          ...initializingAccount,
-          username: updatedUsername,
-          original_username: originalUsername,
-          initialized_username: updatedUsername,
-          password: updatedPassword,
-        };
-
-        setAccounts((prev) => prev.map((account) => {
-          if (!initializingAccount || account.id !== initializingAccount.id) {
-            return account;
-          }
-
-          return {
-            ...account,
-            username: updatedUsername,
-            original_username: originalUsername,
-            initialized_username: updatedUsername,
-            password: updatedPassword,
-          };
-        }));
-      }
-
-      const successContent = (
-        <div>
-          <strong>{response.message || '账号初始化完成'}</strong>
-          {response.data?.username && response.data?.password && (
-            <div style={{ marginTop: 6 }}>
-              <span>新账号：</span>
-              <Text copyable={{ text: response.data.username }}>{response.data.username}</Text>
-              <span style={{ marginLeft: 12 }}>新密码：</span>
-              <Text copyable={{ text: response.data.password }}>{response.data.password}</Text>
-            </div>
-          )}
-        </div>
-      );
-
-      message.success({
-        content: successContent,
-        key,
-        duration: 5,
-      });
-      setInitializeModalVisible(false);
-      if (initializingAccount) {
-        syncInitializeCredentials((prev) => {
-          if (!prev[initializingAccount.id]) {
-            return prev;
-          }
-          const next = { ...prev };
-          delete next[initializingAccount.id];
-          return next;
-        });
-      }
-      setInitializingAccount(null);
-      await loadAccounts();
-    } catch (error) {
-      let msg = '初始化账号失败';
-      if ((error as AxiosError)?.isAxiosError) {
-        const axiosErr = error as AxiosError<{ error?: string; message?: string }>;
-        msg = axiosErr.response?.data?.error || axiosErr.response?.data?.message || axiosErr.message || msg;
-      } else if (error instanceof Error) {
-        msg = error.message;
-      }
-      message.error({ content: msg, key });
-      throw (error instanceof Error ? error : new Error(msg));
-    }
-  };
 
   const handleDeleteAccount = async (id: number) => {
     try {
@@ -572,14 +385,6 @@ const AccountsPage: React.FC = () => {
     }
   };
 
-  // 初始化账号
-  const handleInitializeAccount = (account: CrownAccount) => {
-    setInitializingAccount(account);
-    setInitializeModalVisible(true);
-  };
-
-
-
   const handleRefreshAllBalances = async () => {
     const onlineAccounts = accounts.filter(account => account.is_online);
 
@@ -810,7 +615,6 @@ const AccountsPage: React.FC = () => {
                 onLogout={handleLogoutAccount}
                 onRefresh={handleRefreshBalance}
                 onCheckHistory={handleCheckHistory}
-                onInitialize={handleInitializeAccount}
               />
             ))}
           </div>
@@ -845,26 +649,6 @@ const AccountsPage: React.FC = () => {
         onEdit={(account) => {
           setDetailModalVisible(false);
           handleEditAccount(account);
-        }}
-        pendingCredentials={viewingAccount ? initializeCredentials[viewingAccount.id] : undefined}
-      />
-
-      <AccountInitializeModal
-        open={initializeModalVisible}
-        account={initializingAccount}
-        credentials={initializingAccount ? initializeCredentials[initializingAccount.id] : undefined}
-        onCancel={() => {
-          setInitializeModalVisible(false);
-          setInitializingAccount(null);
-        }}
-        onSubmit={handleInitializeConfirm}
-        onCredentialsChange={(values) => {
-          if (!initializingAccount) return;
-          handleInitializeCredentialsChange(initializingAccount.id, values);
-        }}
-        onRegenerate={(field) => {
-          if (!initializingAccount) return;
-          handleInitializeCredentialRegenerate(initializingAccount.id, field);
         }}
       />
     </div>

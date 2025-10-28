@@ -24,7 +24,6 @@ interface AccountCardProps {
   onRefresh?: (account: CrownAccount) => void;
   onLogin?: (account: CrownAccount) => void;
   onLogout?: (account: CrownAccount) => void;
-  onInitialize?: (account: CrownAccount) => void;
   onCheckHistory?: (account: CrownAccount) => void;
 }
 
@@ -36,7 +35,6 @@ const AccountCard: React.FC<AccountCardProps> = ({
   onRefresh,
   onLogin,
   onLogout,
-  onInitialize,
   onCheckHistory,
 }) => {
   const formatDiscount = (value?: number) => {
@@ -227,14 +225,6 @@ const AccountCard: React.FC<AccountCardProps> = ({
               onClick={() => onCheckHistory?.(account)}
             >
               查账
-            </Button>
-            <Button
-              type="text"
-              size="small"
-              icon={<PlayCircleOutlined />}
-              onClick={() => onInitialize?.(account)}
-            >
-              初始化
             </Button>
             <Button type="text" size="small" onClick={() => onEdit(account)}>
               编辑

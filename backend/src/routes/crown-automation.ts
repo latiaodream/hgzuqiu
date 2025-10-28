@@ -163,7 +163,7 @@ router.post('/login/:accountId', async (req: any, res) => {
             });
         }
 
-        const account = accountResult.rows[0];
+        let account = accountResult.rows[0];
 
         // 检查账号是否已经在线
         if (getCrownAutomation().isAccountOnline(accountId)) {
@@ -172,6 +172,73 @@ router.post('/login/:accountId', async (req: any, res) => {
                 message: '账号已在线',
                 data: { accountId, status: 'online' }
             } as ApiResponse);
+        }
+
+        // 🔥 新增：检查是否需要初始化
+        const needsInitialization =
+            (account.init_type === 'password_only' || account.init_type === 'full') &&
+            !account.initialized_username;
+
+        if (needsInitialization) {
+            console.log(`🔄 账号需要初始化 (init_type=${account.init_type})，先执行初始化...`);
+
+            // 生成新的账号和密码
+            const generateUsername = () => {
+                const prefix = 'hg';
+                const randomNum = Math.floor(Math.random() * 900000) + 100000;
+                return `${prefix}${randomNum}`;
+            };
+
+            const generatePassword = () => {
+                const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                let password = '';
+                for (let i = 0; i < 8; i++) {
+                    password += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return password;
+            };
+
+            const newUsername = account.init_type === 'full' ? generateUsername() : account.username;
+            const newPassword = generatePassword();
+
+            console.log(`📝 生成新凭证: username=${newUsername}, password=${newPassword}`);
+
+            // 执行初始化
+            const automation = getCrownAutomation();
+            const initResult = await automation.initializeAccountWithApi(account, {
+                username: newUsername,
+                password: newPassword,
+            });
+
+            if (!initResult.success) {
+                console.error('❌ 初始化失败:', initResult.message);
+                return res.status(400).json({
+                    success: false,
+                    error: `初始化失败: ${initResult.message}`
+                });
+            }
+
+            console.log(`✅ 初始化成功: ${initResult.updatedCredentials.username}`);
+
+            // 更新数据库
+            const originalUsername = account.original_username || account.username;
+            await query(
+                `UPDATE crown_accounts
+                 SET username = $1,
+                     password = $2,
+                     original_username = COALESCE(original_username, $4),
+                     initialized_username = $1,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $3`,
+                [initResult.updatedCredentials.username, initResult.updatedCredentials.password, accountId, originalUsername]
+            );
+
+            // 重新查询账号信息
+            const updatedAccountResult = await query(
+                `SELECT ca.* FROM crown_accounts ca WHERE ca.id = $1`,
+                [accountId]
+            );
+            account = updatedAccountResult.rows[0];
         }
 
         // 执行登录（使用纯 API 方式）
