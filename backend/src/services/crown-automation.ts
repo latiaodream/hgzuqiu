@@ -6233,15 +6233,9 @@ export class CrownAutomationService {
     return [];
   }
 
-  // 公共方法：获取账号财务摘要（占位实现）
+  // 公共方法：获取账号财务摘要
   async getAccountFinancialSummary(accountId: number): Promise<FinancialSnapshot> {
-    console.warn(`⚠️ getAccountFinancialSummary 方法尚未完整实现 (accountId=${accountId})`);
-    return {
-      balance: null,
-      credit: null,
-      balanceSource: 'not_implemented',
-      creditSource: 'not_implemented'
-    };
+    return await this.getAccountFinancialSnapshot(accountId);
   }
 
   // 公共方法：获取外部IP（占位实现）
@@ -6250,10 +6244,10 @@ export class CrownAutomationService {
     return null;
   }
 
-  // 公共方法：获取账号信用额度（占位实现）
+  // 公共方法：获取账号信用额度
   async getAccountCredit(accountId: number): Promise<number | null> {
-    console.warn(`⚠️ getAccountCredit 方法尚未完整实现 (accountId=${accountId})`);
-    return null;
+    const financial = await this.getAccountFinancialSnapshot(accountId);
+    return financial.credit;
   }
 
   async fetchMatchesSystem(opts?: {
