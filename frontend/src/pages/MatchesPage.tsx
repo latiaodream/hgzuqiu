@@ -312,7 +312,12 @@ const MatchesPage: React.FC = () => {
     return (
       <div className="odds-stack-grid">
         {lines.map((data, index) => {
+          // 调试：打印原始数据
+          if (index === 0) {
+            console.log('🔍 让球盘口原始数据:', { line: data.line, type: typeof data.line });
+          }
           const formattedLine = formatHandicapLine(data.line);
+          console.log('🔍 格式化后:', { original: data.line, formatted: formattedLine });
           return (
             <div key={index} className="odds-row">
               {data.home && (
