@@ -6829,6 +6829,11 @@ export class CrownAutomationService {
     return (now - apiLoginTime) < apiSessionTtl;
   }
 
+  // 公共方法：获取账号的 API UID
+  getApiUid(accountId: number): string | undefined {
+    return this.apiUids.get(accountId);
+  }
+
   // 公共方法：获取活跃会话数量
   getActiveSessionCount(): number {
     let count = 0;

@@ -10,6 +10,7 @@ import {
   FileTextOutlined,
   PlayCircleOutlined,
   StopOutlined,
+  CrownOutlined,
 } from '@ant-design/icons';
 import type { CrownAccount } from '../../types';
 
