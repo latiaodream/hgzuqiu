@@ -21,6 +21,8 @@ interface AccountCardProps {
   onDelete: (id: number) => void;
   onToggleStatus: (account: CrownAccount) => void;
   onRefresh?: (account: CrownAccount) => void;
+  onLogin?: (account: CrownAccount) => void;
+  onLogout?: (account: CrownAccount) => void;
 }
 
 const AccountCard: React.FC<AccountCardProps> = ({
@@ -29,6 +31,8 @@ const AccountCard: React.FC<AccountCardProps> = ({
   onDelete,
   onToggleStatus,
   onRefresh,
+  onLogin,
+  onLogout,
 }) => {
   const formatDiscount = (value?: number) => {
     if (!value || value <= 0) {
@@ -183,7 +187,32 @@ const AccountCard: React.FC<AccountCardProps> = ({
       <div className="account-card-actions">
         <div className="account-card-actions-center">
           <Space>
-            <Button type="text" size="small" onClick={() => onRefresh?.(account)}>
+            {account.is_online ? (
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DisconnectOutlined />}
+                onClick={() => onLogout?.(account)}
+              >
+                登出
+              </Button>
+            ) : (
+              <Button
+                type="text"
+                size="small"
+                icon={<WifiOutlined />}
+                onClick={() => onLogin?.(account)}
+              >
+                登录
+              </Button>
+            )}
+            <Button
+              type="text"
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={() => onRefresh?.(account)}
+            >
               刷新
             </Button>
             <Button type="text" size="small" onClick={() => onEdit(account)}>

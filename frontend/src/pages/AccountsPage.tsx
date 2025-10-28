@@ -411,6 +411,57 @@ const AccountsPage: React.FC = () => {
     }
   };
 
+  // 单个账号登录（API 方式）
+  const handleLoginAccount = async (account: CrownAccount) => {
+    const key = `login-${account.id}`;
+    try {
+      message.loading({ content: `正在登录账号 ${account.username}...`, key, duration: 0 });
+      const response = await crownApi.loginAccount(account.id);
+      if (response.success) {
+        message.success({ content: `账号 ${account.username} 登录成功`, key, duration: 2 });
+        await loadAccounts();
+      } else {
+        message.error({ content: response.error || '登录失败', key, duration: 3 });
+      }
+    } catch (error: any) {
+      message.error({ content: error.response?.data?.error || '登录失败', key, duration: 3 });
+    }
+  };
+
+  // 单个账号登出
+  const handleLogoutAccount = async (account: CrownAccount) => {
+    const key = `logout-${account.id}`;
+    try {
+      message.loading({ content: `正在登出账号 ${account.username}...`, key, duration: 0 });
+      const response = await crownApi.logoutAccount(account.id);
+      if (response.success) {
+        message.success({ content: `账号 ${account.username} 已登出`, key, duration: 2 });
+        await loadAccounts();
+      } else {
+        message.error({ content: response.error || '登出失败', key, duration: 3 });
+      }
+    } catch (error: any) {
+      message.error({ content: error.response?.data?.error || '登出失败', key, duration: 3 });
+    }
+  };
+
+  // 单个账号刷新余额
+  const handleRefreshBalance = async (account: CrownAccount) => {
+    const key = `refresh-${account.id}`;
+    try {
+      message.loading({ content: `正在刷新账号 ${account.username} 的余额...`, key, duration: 0 });
+      const response = await crownApi.getAccountBalance(account.id);
+      if (response.success) {
+        message.success({ content: `账号 ${account.username} 余额刷新成功`, key, duration: 2 });
+        await loadAccounts();
+      } else {
+        message.error({ content: response.error || '刷新余额失败', key, duration: 3 });
+      }
+    } catch (error: any) {
+      message.error({ content: error.response?.data?.error || '刷新余额失败', key, duration: 3 });
+    }
+  };
+
 
 
   const handleRefreshAllBalances = async () => {
@@ -639,33 +690,9 @@ const AccountsPage: React.FC = () => {
                 onEdit={handleEditAccount}
                 onDelete={handleDeleteAccount}
                 onToggleStatus={handleToggleAccountStatus}
-                onRefresh={async (account) => {
-                  const key = `refresh-${account.id}`;
-                  message.loading({ content: `正在刷新余额 (${account.username})...`, key });
-                  try {
-                    const response = await crownApi.getAccountBalance(account.id);
-                    const balanceData = (response as any)?.data || {};
-                    if (response.success) {
-                      if (balanceData.balance_source) {
-                        console.debug(`余额来源: ${balanceData.balance_source}`);
-                      }
-                      message.success(`余额已刷新 (${account.username})`);
-                      loadAccounts();
-                    } else {
-                      const reason = response.error || response.message || '刷新失败';
-                      if (balanceData.credit) {
-                        message.error(`刷新余额失败 (${account.username})：${reason}，仅取得额度 ${balanceData.credit}`);
-                      } else {
-                        message.error(`刷新余额失败 (${account.username})：${reason}`);
-                      }
-                    }
-                  } catch (e) {
-                    const reason = e instanceof Error ? e.message : '刷新失败';
-                    message.error(`刷新余额失败 (${account.username})：${reason}`);
-                  } finally {
-                    message.destroy(key);
-                  }
-                }}
+                onLogin={handleLoginAccount}
+                onLogout={handleLogoutAccount}
+                onRefresh={handleRefreshBalance}
               />
             ))}
           </div>
