@@ -6373,12 +6373,18 @@ export class CrownAutomationService {
                 const matchesToEnrich = matches.slice(0, 10);
                 console.log(`📊 开始获取 ${matchesToEnrich.length} 场比赛的更多盘口...`);
 
+                let successCount = 0;
+                let skipCount = 0;
+
                 for (const match of matchesToEnrich) {
                   try {
                     const gid = match.gid;
                     const lid = match.raw?.LID || match.raw?.lid;
 
-                    if (!gid || !lid) continue;
+                    if (!gid || !lid) {
+                      skipCount++;
+                      continue;
+                    }
 
                     // 调用 get_game_more API
                     const moreXml = await apiClient.getGameMore({
@@ -6395,17 +6401,22 @@ export class CrownAutomationService {
                       const { handicapLines, overUnderLines } = this.parseMoreMarketsFromXml(moreXml);
 
                       // 合并到原有的盘口数据中
-                      if (handicapLines.length > 0) {
-                        match.markets.full.handicapLines = handicapLines;
-                        match.markets.handicap = handicapLines[0];
-                      }
+                      if (handicapLines.length > 0 || overUnderLines.length > 0) {
+                        if (handicapLines.length > 0) {
+                          match.markets.full.handicapLines = handicapLines;
+                          match.markets.handicap = handicapLines[0];
+                        }
 
-                      if (overUnderLines.length > 0) {
-                        match.markets.full.overUnderLines = overUnderLines;
-                        match.markets.ou = overUnderLines[0];
-                      }
+                        if (overUnderLines.length > 0) {
+                          match.markets.full.overUnderLines = overUnderLines;
+                          match.markets.ou = overUnderLines[0];
+                        }
 
-                      console.log(`  ✅ ${match.home} vs ${match.away}: ${handicapLines.length} 让球, ${overUnderLines.length} 大小`);
+                        console.log(`  ✅ ${match.home} vs ${match.away}: ${handicapLines.length} 让球, ${overUnderLines.length} 大小`);
+                        successCount++;
+                      } else {
+                        skipCount++;
+                      }
                     }
 
                     // 延迟 50ms，避免请求过快
@@ -6413,10 +6424,11 @@ export class CrownAutomationService {
 
                   } catch (error) {
                     console.error(`  ❌ 获取 ${match.home} vs ${match.away} 更多盘口失败`);
+                    skipCount++;
                   }
                 }
 
-                console.log(`✅ 完成获取更多盘口`);
+                console.log(`✅ 完成获取更多盘口 (成功: ${successCount}, 跳过: ${skipCount})`);
                 return { matches, xml };
               }
             } finally {
@@ -7096,6 +7108,13 @@ export class CrownAutomationService {
       const { XMLParser } = require('fast-xml-parser');
       const parser = new XMLParser({ ignoreAttributes: false });
       const parsed = parser.parse(xml);
+
+      // 检查盘口是否关闭
+      const allClose = parsed?.serverresponse?.all_close;
+      if (allClose === 'Y') {
+        console.log('⚠️ 盘口已关闭，跳过');
+        return { handicapLines: [], overUnderLines: [] };
+      }
 
       const games = parsed?.serverresponse?.game;
       if (!games) {
