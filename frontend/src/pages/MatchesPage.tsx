@@ -177,6 +177,16 @@ const MatchesPage: React.FC = () => {
     return Number.isFinite(parsed) ? parsed : null;
   };
 
+  // 格式化盘口数字，添加 + 或 - 符号
+  const formatHandicapLine = (line?: string): string => {
+    if (!line) return '';
+    const num = parseFloat(line);
+    if (isNaN(num)) return line;
+    if (num === 0) return '+0';
+    if (num > 0) return `+${line}`;
+    return line; // 负数已经有 - 符号
+  };
+
   const getScoreParts = (score: string) => {
     if (!score) return { home: '-', away: '-' };
     const cleaned = String(score).replace(/[^0-9:.-]/g, '');
@@ -293,7 +303,7 @@ const MatchesPage: React.FC = () => {
     return (
       <div className="odds-stack-grid">
         {lines.map((data, index) => {
-          const lineLabel = data.line ? data.line : '';
+          const formattedLine = formatHandicapLine(data.line);
           return (
             <div key={index} className="odds-row">
               {data.home && (
@@ -301,12 +311,12 @@ const MatchesPage: React.FC = () => {
                   className="odds-item-left"
                   onClick={() => openBetModal(match, {
                     bet_type: '让球',
-                    bet_option: `${match.home || '主队'} ${lineLabel ? `(${lineLabel})` : ''}`,
+                    bet_option: `${match.home || '主队'} ${formattedLine ? `(${formattedLine})` : ''}`,
                     odds: data.home as string,
-                    label: `[让球] ${(match.home || '主队')} ${lineLabel ? `(${lineLabel})` : ''} @${data.home}`,
+                    label: `[让球] ${(match.home || '主队')} ${formattedLine ? `(${formattedLine})` : ''} @${data.home}`,
                   })}
                 >
-                  <span className="odds-team">{match.home || '主'} {lineLabel}</span>
+                  <span className="odds-team">{match.home || '主'} {formattedLine}</span>
                   <span className="odds-value">{data.home}</span>
                 </div>
               )}
@@ -315,12 +325,12 @@ const MatchesPage: React.FC = () => {
                   className="odds-item-right"
                   onClick={() => openBetModal(match, {
                     bet_type: '让球',
-                    bet_option: `${match.away || '客队'} ${lineLabel ? `(${lineLabel})` : ''}`,
+                    bet_option: `${match.away || '客队'} ${formattedLine ? `(${formattedLine})` : ''}`,
                     odds: data.away as string,
-                    label: `[让球] ${(match.away || '客队')} ${lineLabel ? `(${lineLabel})` : ''} @${data.away}`,
+                    label: `[让球] ${(match.away || '客队')} ${formattedLine ? `(${formattedLine})` : ''} @${data.away}`,
                   })}
                 >
-                  <span className="odds-team">{match.away || '客'} {lineLabel}</span>
+                  <span className="odds-team">{match.away || '客'} {formattedLine}</span>
                   <span className="odds-value">{data.away}</span>
                 </div>
               )}
@@ -337,7 +347,7 @@ const MatchesPage: React.FC = () => {
     return (
       <div className="odds-stack-grid">
         {lines.map((data, index) => {
-          const lineLabel = data.line ? data.line : '';
+          const formattedLine = formatHandicapLine(data.line);
           return (
             <div key={index} className="odds-row">
               {data.over && (
@@ -345,12 +355,12 @@ const MatchesPage: React.FC = () => {
                   className="odds-item-left"
                   onClick={() => openBetModal(match, {
                     bet_type: '大小球',
-                    bet_option: `大球${lineLabel ? `(${lineLabel})` : ''}`,
+                    bet_option: `大球${formattedLine ? `(${formattedLine})` : ''}`,
                     odds: data.over as string,
-                    label: `[大小] 大球${lineLabel ? `(${lineLabel})` : ''} @${data.over}`,
+                    label: `[大小] 大球${formattedLine ? `(${formattedLine})` : ''} @${data.over}`,
                   })}
                 >
-                  <span className="odds-team">大 {lineLabel}</span>
+                  <span className="odds-team">大 {formattedLine}</span>
                   <span className="odds-value">{data.over}</span>
                 </div>
               )}
@@ -359,12 +369,12 @@ const MatchesPage: React.FC = () => {
                   className="odds-item-right"
                   onClick={() => openBetModal(match, {
                     bet_type: '大小球',
-                    bet_option: `小球${lineLabel ? `(${lineLabel})` : ''}`,
+                    bet_option: `小球${formattedLine ? `(${formattedLine})` : ''}`,
                     odds: data.under as string,
-                    label: `[大小] 小球${lineLabel ? `(${lineLabel})` : ''} @${data.under}`,
+                    label: `[大小] 小球${formattedLine ? `(${formattedLine})` : ''} @${data.under}`,
                   })}
                 >
-                  <span className="odds-team">小 {lineLabel}</span>
+                  <span className="odds-team">小 {formattedLine}</span>
                   <span className="odds-value">{data.under}</span>
                 </div>
               )}
