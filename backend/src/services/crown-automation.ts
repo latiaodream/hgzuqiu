@@ -6077,7 +6077,8 @@ export class CrownAutomationService {
 
       // 尝试执行简单的页面操作来检查会话
       const isAlive = await page.evaluate(() => {
-        return document.readyState === 'complete';
+        const doc = (globalThis as any).document;
+        return doc && doc.readyState === 'complete';
       }).catch(() => false);
 
       return isAlive;
