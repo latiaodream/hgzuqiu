@@ -81,6 +81,11 @@ CREATE TABLE crown_accounts (
     status VARCHAR(20) DEFAULT 'active', -- active, disabled, error
     error_message TEXT,
 
+    -- API 会话信息（用于纯 API 登录方式）
+    api_uid VARCHAR(255), -- 皇冠 API 返回的用户 UID
+    api_login_time BIGINT, -- API 登录时间戳（毫秒）
+    api_cookies TEXT, -- API 登录后的 Cookie
+
     -- 时间戳
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
