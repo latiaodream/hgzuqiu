@@ -1129,6 +1129,9 @@ export class CrownApiClient {
   async fetch(url: string, options: any = {}): Promise<any> {
     const fullUrl = url.startsWith('http') ? url : `${this.baseUrl}${url}`;
 
+    console.log(`🔧 fetch() - 当前 Cookie: ${this.cookies || '(无)'}`);
+    console.log(`🔧 fetch() - 当前 UID: ${this.uid || '(无)'}`);
+
     const config: any = {
       method: options.method || 'GET',
       url: fullUrl,
@@ -1144,6 +1147,7 @@ export class CrownApiClient {
 
     try {
       const response = await this.httpClient.request(config);
+      console.log(`🔧 fetch() - 响应状态: ${response.status}`);
       return {
         ok: response.status >= 200 && response.status < 300,
         status: response.status,
@@ -1151,6 +1155,7 @@ export class CrownApiClient {
         json: async () => response.data,
       };
     } catch (error: any) {
+      console.error(`🔧 fetch() - 请求失败:`, error.message);
       return {
         ok: false,
         status: error.response?.status || 500,
