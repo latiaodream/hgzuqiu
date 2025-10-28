@@ -181,7 +181,6 @@ const MatchesPage: React.FC = () => {
   const formatHandicapLine = (line?: string): string => {
     if (!line) return '';
 
-    // 移除可能存在的空格和特殊字符
     const cleanLine = String(line).trim();
 
     // 如果已经有 + 或 - 符号，直接返回
@@ -189,6 +188,20 @@ const MatchesPage: React.FC = () => {
       return cleanLine;
     }
 
+    // 处理带斜杠的盘口 (例如: "0 / 0.5", "2.5 / 3")
+    if (cleanLine.includes('/')) {
+      const parts = cleanLine.split('/').map(p => p.trim());
+      const formattedParts = parts.map(part => {
+        const num = parseFloat(part);
+        if (isNaN(num)) return part;
+        if (num === 0) return '+0';
+        if (num > 0) return `+${part}`;
+        return part;
+      });
+      return formattedParts.join(' / ');
+    }
+
+    // 处理单个数字
     const num = parseFloat(cleanLine);
     if (isNaN(num)) return cleanLine;
     if (num === 0) return '+0';
@@ -312,12 +325,7 @@ const MatchesPage: React.FC = () => {
     return (
       <div className="odds-stack-grid">
         {lines.map((data, index) => {
-          // 调试：打印原始数据
-          if (index === 0) {
-            console.log('🔍 让球盘口原始数据:', { line: data.line, type: typeof data.line });
-          }
           const formattedLine = formatHandicapLine(data.line);
-          console.log('🔍 格式化后:', { original: data.line, formatted: formattedLine });
           return (
             <div key={index} className="odds-row">
               {data.home && (
