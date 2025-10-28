@@ -1043,25 +1043,6 @@ router.get('/matches-system', async (req: any, res) => {
     }
 });
 
-// 测试：获取比赛的所有玩法
-router.get('/test-game-more', async (req: any, res) => {
-    try {
-        const { gid, lid } = req.query as any;
-
-        if (!gid || !lid) {
-            return res.status(400).json({ success: false, error: '缺少 gid 或 lid 参数' });
-        }
-
-        const automation = getCrownAutomation();
-        const xml = await automation.testGetGameMore(gid, lid);
-
-        res.json({ success: true, data: { xml } });
-    } catch (error) {
-        console.error('测试获取更多玩法错误:', error);
-        res.status(500).json({ success: false, error: '获取失败' });
-    }
-});
-
 // 抓取赛事并落库到 matches 表
 router.post('/matches/sync/:accountId', async (req: any, res) => {
     try {
