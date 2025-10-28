@@ -7203,9 +7203,10 @@ export class CrownAutomationService {
 
       console.log(`✅ 登录成功，正在获取限额页面...`);
       console.log(`🔧 API 客户端 baseUrl: ${apiClient.getBaseUrl()}`);
+      console.log(`🔧 登录 UID: ${loginResult.uid}`);
 
-      // 获取限额页面的 HTML
-      const limitsPageUrl = `${apiClient.getBaseUrl()}/app/member/account/account_wager_limit.php`;
+      // 获取限额页面的 HTML（需要带上 UID 参数）
+      const limitsPageUrl = `${apiClient.getBaseUrl()}/app/member/account/account_wager_limit.php?uid=${loginResult.uid}&langx=zh-cn`;
       console.log(`📄 限额页面 URL: ${limitsPageUrl}`);
 
       const response = await apiClient.fetch(limitsPageUrl, {
