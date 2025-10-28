@@ -7201,44 +7201,42 @@ export class CrownAutomationService {
         };
       }
 
-      console.log(`✅ 登录成功，正在获取限额页面...`);
+      console.log(`✅ 登录成功，正在获取首页限额信息...`);
       console.log(`🔧 API 客户端 baseUrl: ${apiClient.getBaseUrl()}`);
       console.log(`🔧 登录 UID: ${loginResult.uid}`);
 
-      // 获取限额页面的 HTML（需要带上 UID 参数）
-      const limitsPageUrl = `${apiClient.getBaseUrl()}/app/member/account/account_wager_limit.php?uid=${loginResult.uid}&langx=zh-cn`;
-      console.log(`📄 限额页面 URL: ${limitsPageUrl}`);
+      // 限额信息直接在首页显示，获取首页 HTML
+      const homePageUrl = `${apiClient.getBaseUrl()}/`;
+      console.log(`📄 首页 URL: ${homePageUrl}`);
 
-      const response = await apiClient.fetch(limitsPageUrl, {
+      const response = await apiClient.fetch(homePageUrl, {
         method: 'GET',
         headers: {
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-          'Referer': `${apiClient.getBaseUrl()}/app/member/`,
-          'Upgrade-Insecure-Requests': '1',
         }
       });
 
-      console.log(`📥 限额页面响应状态: ${response.status}, OK: ${response.ok}`);
+      console.log(`📥 首页响应状态: ${response.status}, OK: ${response.ok}`);
 
       if (!response.ok) {
         return {
           success: false,
-          message: `获取限额页面失败: HTTP ${response.status}`
+          message: `获取首页失败: HTTP ${response.status}`
         };
       }
 
       const html = await response.text();
-      console.log(`📄 限额页面 HTML 长度: ${html.length} 字符`);
+      console.log(`📄 首页 HTML 长度: ${html.length} 字符`);
 
       // 解析 HTML 提取限额数据
       const limits = this.parseLimitsFromHtml(html);
 
       if (!limits) {
-        console.error(`❌ 无法解析限额数据，HTML 前 500 字符:`, html.substring(0, 500));
+        console.error(`❌ 无法解析限额数据，HTML 前 1000 字符:`, html.substring(0, 1000));
         return {
           success: false,
-          message: '无法从页面中解析限额数据'
+          message: '无法从首页中解析限额数据'
         };
       }
 
