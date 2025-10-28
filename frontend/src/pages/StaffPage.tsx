@@ -84,29 +84,16 @@ const StaffPage: React.FC = () => {
         const accountsResponse = await accountApi.getAccounts();
         const accounts = accountsResponse.success ? accountsResponse.data || [] : [];
 
-        // 计算每个员工的账号数量和金币余额
-        const staffWithStats = await Promise.all(
-          staffResponse.data.map(async (staff: any) => {
-            const accountCount = accounts.filter(acc => acc.user_id === staff.id).length;
+        // 计算每个员工的账号数量
+        const staffWithStats = staffResponse.data.map((staff: any) => {
+          const accountCount = accounts.filter(acc => acc.user_id === staff.id).length;
 
-            // 获取员工的金币余额
-            let coinBalance = 0;
-            try {
-              const balanceResponse = await coinApi.getUserBalance(staff.id);
-              if (balanceResponse.success && balanceResponse.data) {
-                coinBalance = balanceResponse.data.balance || 0;
-              }
-            } catch (error) {
-              console.error(`获取员工 ${staff.username} 金币余额失败:`, error);
-            }
-
-            return {
-              ...staff,
-              account_count: accountCount,
-              coin_balance: coinBalance,
-            };
-          })
-        );
+          return {
+            ...staff,
+            account_count: accountCount,
+            // 员工下注扣的是代理的金币，所以不需要显示员工的金币余额
+          };
+        });
 
         setStaffList(staffWithStats);
         setPagination(prev => ({
@@ -274,9 +261,6 @@ const StaffPage: React.FC = () => {
                 <Tag color="orange" style={{ fontSize: '11px', margin: 0 }}>
                   额度: {record.credit_limit ? Number(record.credit_limit).toFixed(0) : '0'}
                 </Tag>
-                <Tag color="gold" style={{ fontSize: '11px', margin: 0 }}>
-                  ¥{record.coin_balance ? Number(record.coin_balance).toFixed(2) : '0.00'}
-                </Tag>
               </Space>
             </>
           )}
@@ -318,17 +302,6 @@ const StaffPage: React.FC = () => {
         <span style={{ fontWeight: 500 }}>
           {credit_limit ? Number(credit_limit).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
         </span>
-      ),
-    },
-    {
-      title: '金币余额',
-      dataIndex: 'coin_balance',
-      key: 'coin_balance',
-      responsive: ['md'] as any,
-      render: (balance: number) => (
-        <Tag color="gold" icon={<DollarOutlined />}>
-          ¥{balance ? Number(balance).toFixed(2) : '0.00'}
-        </Tag>
       ),
     },
     {
