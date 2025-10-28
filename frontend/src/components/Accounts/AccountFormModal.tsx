@@ -94,57 +94,82 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
 
         if (response.success && response.data) {
           console.log('账号设置响应:', response.data);
-          message.success({ content: '额度设置获取成功！', key: 'fetchLimits' });
 
-          // 解析 XML 数据
+          // 解析 XML 数据并自动填充到表单
           const xmlData = response.data;
-          let limitsInfo = '';
 
           if (typeof xmlData === 'string' && xmlData.includes('<FT>')) {
-            // 简单解析 XML（提取关键信息）
+            // 解析足球限额
             const ftMatch = xmlData.match(/<FT>(.*?)<\/FT>/s);
             if (ftMatch) {
               const ftContent = ftMatch[1];
 
-              // 提取各种玩法的限额
-              const parseLimit = (tag: string, name: string) => {
-                const regex = new RegExp(`<${tag}><max>([^<]+)<\\/max><min>([^<]+)<\\/min><\\/${tag}>`);
+              // 提取限额值的辅助函数
+              const extractMax = (tag: string): number => {
+                const regex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
                 const match = ftContent.match(regex);
                 if (match) {
-                  return `${name}：最高 ${match[1]}，最低 ${match[2]}`;
+                  // 移除逗号并转换为数字
+                  return parseInt(match[1].replace(/,/g, ''), 10);
                 }
-                return null;
+                return 0;
               };
 
-              const limits = [
-                parseLimit('DT', '单式'),
-                parseLimit('M', '独赢'),
-                parseLimit('R', '让球'),
-                parseLimit('RDT', '让球单式'),
-                parseLimit('RE', '滚球'),
-              ].filter(Boolean);
+              // 根据官方表格映射：
+              // - 让球 (R) → 单场最高 → football_prematch_limit
+              // - 滚球 (RE) → 单场最高 → football_live_limit
+              const footballPrematchLimit = extractMax('R');
+              const footballLiveLimit = extractMax('RE');
 
-              limitsInfo = limits.join('\n');
+              // 填充到表单
+              form.setFieldsValue({
+                football_prematch_limit: footballPrematchLimit,
+                football_live_limit: footballLiveLimit,
+              });
+
+              message.success({
+                content: `足球限额已自动填充：早盘 ${footballPrematchLimit.toLocaleString()}，滚球 ${footballLiveLimit.toLocaleString()}`,
+                key: 'fetchLimits',
+                duration: 3
+              });
             }
           }
 
-          Modal.info({
-            title: '账号额度设置（足球）',
-            width: 500,
-            content: (
-              <div>
-                {limitsInfo ? (
-                  <pre style={{ fontSize: '14px', lineHeight: '1.8' }}>
-                    {limitsInfo}
-                  </pre>
-                ) : (
-                  <pre style={{ maxHeight: '400px', overflow: 'auto', fontSize: '12px' }}>
-                    {typeof response.data === 'string' ? response.data : JSON.stringify(response.data, null, 2)}
-                  </pre>
-                )}
-              </div>
-            ),
-          });
+          // 获取篮球限额
+          const bkResponse = await crownApi.getAccountSettings(account.id, 'BK');
+          if (bkResponse.success && bkResponse.data) {
+            const bkXmlData = bkResponse.data;
+
+            if (typeof bkXmlData === 'string' && bkXmlData.includes('<BK>')) {
+              const bkMatch = bkXmlData.match(/<BK>(.*?)<\/BK>/s);
+              if (bkMatch) {
+                const bkContent = bkMatch[1];
+
+                const extractMax = (tag: string): number => {
+                  const regex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
+                  const match = bkContent.match(regex);
+                  if (match) {
+                    return parseInt(match[1].replace(/,/g, ''), 10);
+                  }
+                  return 0;
+                };
+
+                const basketballPrematchLimit = extractMax('R');
+                const basketballLiveLimit = extractMax('RE');
+
+                form.setFieldsValue({
+                  basketball_prematch_limit: basketballPrematchLimit,
+                  basketball_live_limit: basketballLiveLimit,
+                });
+
+                message.success({
+                  content: `篮球限额已自动填充：早盘 ${basketballPrematchLimit.toLocaleString()}，滚球 ${basketballLiveLimit.toLocaleString()}`,
+                  key: 'fetchLimits',
+                  duration: 3
+                });
+              }
+            }
+          }
         } else {
           message.error({ content: response.error || '获取额度设置失败', key: 'fetchLimits' });
         }
