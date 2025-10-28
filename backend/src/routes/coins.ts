@@ -168,6 +168,62 @@ router.get('/balance', async (req: any, res) => {
     }
 });
 
+// 获取指定用户的余额（管理员和代理可以查看下属的余额）
+router.get('/balance/:userId', async (req: any, res) => {
+    try {
+        const currentUserId = req.user.id;
+        const currentUserRole = req.user.role;
+        const targetUserId = parseInt(req.params.userId);
+
+        // 权限验证
+        if (currentUserRole === 'admin') {
+            // 管理员可以查看任何人的余额
+        } else if (currentUserRole === 'agent') {
+            // 代理可以查看自己和自己员工的余额
+            if (targetUserId !== currentUserId) {
+                const targetUserResult = await query(
+                    'SELECT agent_id FROM users WHERE id = $1',
+                    [targetUserId]
+                );
+                if (targetUserResult.rows.length === 0 || targetUserResult.rows[0].agent_id !== currentUserId) {
+                    return res.status(403).json({
+                        success: false,
+                        error: '您没有权限查看该用户的余额'
+                    });
+                }
+            }
+        } else {
+            // 员工只能查看自己的余额
+            if (targetUserId !== currentUserId) {
+                return res.status(403).json({
+                    success: false,
+                    error: '您没有权限查看该用户的余额'
+                });
+            }
+        }
+
+        const result = await query(
+            'SELECT COALESCE(SUM(amount), 0) as balance FROM coin_transactions WHERE user_id = $1',
+            [targetUserId]
+        );
+
+        res.json({
+            success: true,
+            data: {
+                balance: parseFloat(result.rows[0].balance),
+                currency: 'CNY'
+            }
+        } as ApiResponse);
+
+    } catch (error) {
+        console.error('获取用户余额错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取用户余额失败'
+        });
+    }
+});
+
 // 获取金币统计分析
 router.get('/analytics', async (req: any, res) => {
     try {

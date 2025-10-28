@@ -77,23 +77,36 @@ const StaffPage: React.FC = () => {
     try {
       setLoading(true);
 
-      // 获取员工列表（后端已经包含 credit_limit 和 coin_balance）
+      // 获取员工列表（后端已经包含 credit_limit）
       const staffResponse = await staffApi.getStaffList();
       if (staffResponse.success && staffResponse.data) {
         // 获取账号列表来统计每个员工的账号数量
         const accountsResponse = await accountApi.getAccounts();
         const accounts = accountsResponse.success ? accountsResponse.data || [] : [];
 
-        // 计算每个员工的账号数量
-        const staffWithStats = staffResponse.data.map((staff: any) => {
-          const accountCount = accounts.filter(acc => acc.user_id === staff.id).length;
+        // 计算每个员工的账号数量和金币余额
+        const staffWithStats = await Promise.all(
+          staffResponse.data.map(async (staff: any) => {
+            const accountCount = accounts.filter(acc => acc.user_id === staff.id).length;
 
-          return {
-            ...staff,
-            account_count: accountCount,
-            // credit_limit 和 coin_balance 已经从后端返回
-          };
-        });
+            // 获取员工的金币余额
+            let coinBalance = 0;
+            try {
+              const balanceResponse = await coinApi.getUserBalance(staff.id);
+              if (balanceResponse.success && balanceResponse.data) {
+                coinBalance = balanceResponse.data.balance || 0;
+              }
+            } catch (error) {
+              console.error(`获取员工 ${staff.username} 金币余额失败:`, error);
+            }
+
+            return {
+              ...staff,
+              account_count: accountCount,
+              coin_balance: coinBalance,
+            };
+          })
+        );
 
         setStaffList(staffWithStats);
         setPagination(prev => ({

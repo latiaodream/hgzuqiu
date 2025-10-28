@@ -309,6 +309,10 @@ export const coinApi = {
   getBalance: (): Promise<ApiResponse<{ balance: number; currency: string }>> =>
     apiClient.get('/coins/balance').then(res => res.data),
 
+  // 获取指定用户的余额
+  getUserBalance: (userId: number): Promise<ApiResponse<{ balance: number; currency: string }>> =>
+    apiClient.get(`/coins/balance/${userId}`).then(res => res.data),
+
   // 获取分析数据
   getAnalytics: (period?: string): Promise<ApiResponse<{
     period: string;

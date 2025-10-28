@@ -91,10 +91,21 @@ const AgentsPage: React.FC = () => {
               staff.parent_id === agent.id || staff.agent_id === agent.id
             ).length;
 
+            // 获取代理的金币余额
+            let coinBalance = 0;
+            try {
+              const balanceResponse = await coinApi.getUserBalance(agent.id);
+              if (balanceResponse.success && balanceResponse.data) {
+                coinBalance = balanceResponse.data.balance || 0;
+              }
+            } catch (error) {
+              console.error(`获取代理 ${agent.username} 金币余额失败:`, error);
+            }
+
             return {
               ...agent,
               staff_count: staffCount,
-              coin_balance: undefined,
+              coin_balance: coinBalance,
             };
           })
         );
