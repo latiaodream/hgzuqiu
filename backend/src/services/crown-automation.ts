@@ -6024,6 +6024,7 @@ export class CrownAutomationService {
       discount: 1,
       note: '',
       balance: 0,
+      credit: 0,
       stop_profit_limit: 0,
       device_type: device,
       user_agent: undefined,
