@@ -6269,6 +6269,9 @@ export class CrownAutomationService {
             apiClient.setCookies(account.api_cookies);
           }
 
+          // 获取最新版本号（必须先调用）
+          await apiClient.getVersion();
+
           // 获取余额
           const balanceData = await apiClient.getBalance(uid);
           await apiClient.close();
