@@ -6038,6 +6038,7 @@ export class CrownAutomationService {
       basketball_prematch_limit: 0,
       basketball_live_limit: 0,
       is_enabled: true,
+      init_type: 'full' as const,
       is_online: true,
       last_login_at: nowIso,
       status: 'active',
@@ -6612,89 +6613,6 @@ export class CrownAutomationService {
     }
 
     return snapshot;
-  }
-
-  private resolveBetSuffix(betRequest: BetRequest): string | null {
-    const betType = betRequest.betType || betRequest.bet_type || '';
-    const betOption = betRequest.betOption || betRequest.bet_option || '';
-
-    const normalizeToken = (value?: string) => (value || '')
-      .replace(/[\s\n\r]+/g, '')
-      .replace(/（/g, '(')
-      .replace(/）/g, ')')
-      .toLowerCase();
-
-    const optionTokens = betOption
-      .split(/\s+/)
-      .map(normalizeToken)
-      .filter(Boolean);
-
-    const typeTokens = betType
-      .split(/\s|&|\/|、/)
-      .map(normalizeToken)
-      .filter(Boolean);
-
-    const candidates = [
-      ...typeTokens.map(t => `_${t}`),
-      ...optionTokens.map(o => `_${o}`),
-      ...typeTokens.flatMap(t => optionTokens.map(o => `_${t}_${o}`)),
-      ...optionTokens.flatMap(o => typeTokens.map(t => `_${o}_${t}`)),
-    ];
-
-    return candidates[0] || null;
-  }
-
-  private async detectBettingNotice(page: Page): Promise<string | null> {
-    try {
-      const notice = await page.evaluate(() => {
-        const doc = (globalThis as any).document;
-        const noticeEl = doc?.querySelector?.('#notice, .notice, [id*="notice"], [class*="notice"]');
-        if (noticeEl) {
-          const text = (noticeEl.textContent || noticeEl.innerText || '').trim();
-          if (text) {
-            return text;
-          }
-        }
-        return null;
-      }).catch(() => null);
-
-      return notice;
-    } catch {
-      return null;
-    }
-  }
-
-  private async detectBettingNoticeInContext(ctx: Page | Frame): Promise<string | null> {
-    try {
-      const notice = await ctx.evaluate(() => {
-        const doc = (globalThis as any).document;
-        const noticeEl = doc?.querySelector?.('#notice, .notice, [id*="notice"], [class*="notice"]');
-        if (noticeEl) {
-          const text = (noticeEl.textContent || noticeEl.innerText || '').trim();
-          if (text) {
-            return text;
-          }
-        }
-        return null;
-      }).catch(() => null);
-
-      return notice;
-    } catch {
-      return null;
-    }
-  }
-
-  private async ensureFootballTodayView(page: Page, accountId: number): Promise<void> {
-    // Implementation removed - Playwright only
-  }
-
-  private async reloadBettingList(page: Page, accountId: number): Promise<void> {
-    // Implementation removed - Playwright only
-  }
-
-  private randomDelay(min: number, max: number): Promise<void> {
-    const delay = Math.floor(Math.random() * (max - min + 1)) + min;
-    return new Promise(resolve => setTimeout(resolve, delay));
   }
 
   // 辅助方法：解析环境变量为时间间隔（毫秒）

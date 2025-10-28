@@ -198,6 +198,7 @@ export interface Bet {
   bet_option: string;
   bet_amount: number;
   odds: number;
+  official_odds?: number;
   single_limit: number;
   interval_seconds: number;
   quantity: number;
