@@ -6378,17 +6378,17 @@ export class CrownAutomationService {
 
                 for (const match of matchesToEnrich) {
                   try {
-                    const gid = match.gid;
+                    const ecid = match.ecid;  // 使用 ecid 而不是 gid
                     const lid = match.raw?.LID || match.raw?.lid;
 
-                    if (!gid || !lid) {
+                    if (!ecid || !lid) {
                       skipCount++;
                       continue;
                     }
 
                     // 调用 get_game_more API
                     const moreXml = await apiClient.getGameMore({
-                      gid: String(gid),
+                      gid: String(ecid),  // 传入 ecid 作为 gid 参数
                       lid: String(lid),
                       gtype: params.gtype,
                       showtype: params.showtype,
@@ -7047,6 +7047,7 @@ export class CrownAutomationService {
       const matches = allGames.map((game: any) => {
         const gid = pickString(game, ['GID']);
         const gidm = pickString(game, ['GIDM']);
+        const ecid = pickString(game, ['ECID']);  // 添加 ecid 解析
         const league = pickString(game, ['LEAGUE']);
         const home = pickString(game, ['TEAM_H', 'TEAM_H_E', 'TEAM_H_TW']);
         const away = pickString(game, ['TEAM_C', 'TEAM_C_E', 'TEAM_C_TW']);
@@ -7072,6 +7073,7 @@ export class CrownAutomationService {
         return {
           gid,
           gidm,
+          ecid,  // 添加 ecid 字段
           league,
           home,
           away,
