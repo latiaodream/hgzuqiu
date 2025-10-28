@@ -547,6 +547,11 @@ export class CrownApiClient {
   async getBalance(uid: string): Promise<{ balance: number; credit: number } | null> {
     console.log(`💰 开始获取余额，UID: ${uid}`);
 
+    // 确保有最新的版本号
+    if (!this.version || this.version === '2025-10-16-fix342_120') {
+      await this.getVersion();
+    }
+
     const params = new URLSearchParams({
       p: 'get_member_data',
       ver: this.version,
