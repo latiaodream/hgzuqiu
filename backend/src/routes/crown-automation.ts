@@ -1293,3 +1293,69 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
     try { res.status(500).end(); } catch {}
   }
 });
+
+// 获取账号限额信息
+router.post('/fetch-limits/:accountId', async (req: any, res) => {
+    try {
+        const accountId = parseInt(req.params.accountId);
+
+        // 验证账号是否属于当前用户
+        const access = buildAccountAccess(req.user, { includeDisabled: false });
+        const accountResult = await query(
+            `SELECT ca.* FROM crown_accounts ca WHERE ca.id = $1${access.clause}`,
+            [accountId, ...access.params]
+        );
+
+        if (accountResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: '账号不存在或已禁用'
+            });
+        }
+
+        const account = accountResult.rows[0];
+
+        // 获取限额信息
+        const limitsResult = await getCrownAutomation().fetchAccountLimits(account);
+
+        if (limitsResult.success) {
+            // 更新数据库中的限额信息
+            await query(
+                `UPDATE crown_accounts
+                 SET football_prematch_limit = $1,
+                     football_live_limit = $2,
+                     basketball_prematch_limit = $3,
+                     basketball_live_limit = $4,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $5`,
+                [
+                    limitsResult.limits.football.prematch,
+                    limitsResult.limits.football.live,
+                    limitsResult.limits.basketball.prematch,
+                    limitsResult.limits.basketball.live,
+                    accountId
+                ]
+            );
+
+            res.json({
+                success: true,
+                message: '限额信息获取成功',
+                data: limitsResult.limits
+            } as ApiResponse);
+        } else {
+            res.status(400).json({
+                success: false,
+                error: limitsResult.message || '获取限额信息失败'
+            });
+        }
+
+    } catch (error) {
+        console.error('获取账号限额错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取限额信息失败'
+        });
+    }
+});
+
+export default router;

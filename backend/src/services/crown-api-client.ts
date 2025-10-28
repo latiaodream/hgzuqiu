@@ -1110,5 +1110,49 @@ export class CrownApiClient {
     this.uid = uid;
     console.log('✅ 已设置 UID:', this.uid);
   }
+
+  /**
+   * 获取基础 URL
+   */
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
+  /**
+   * 通用 fetch 方法（用于获取 HTML 页面等）
+   */
+  async fetch(url: string, options: any = {}): Promise<any> {
+    const fullUrl = url.startsWith('http') ? url : `${this.baseUrl}${url}`;
+
+    const config: any = {
+      method: options.method || 'GET',
+      url: fullUrl,
+      headers: {
+        ...this.httpClient.defaults.headers,
+        ...options.headers,
+      },
+    };
+
+    if (options.body) {
+      config.data = options.body;
+    }
+
+    try {
+      const response = await this.httpClient.request(config);
+      return {
+        ok: response.status >= 200 && response.status < 300,
+        status: response.status,
+        text: async () => response.data,
+        json: async () => response.data,
+      };
+    } catch (error: any) {
+      return {
+        ok: false,
+        status: error.response?.status || 500,
+        text: async () => error.response?.data || '',
+        json: async () => ({}),
+      };
+    }
+  }
 }
 

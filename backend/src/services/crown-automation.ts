@@ -7013,6 +7013,148 @@ export class CrownAutomationService {
     }
     return markets;
   }
+
+  /**
+   * 获取账号限额信息
+   */
+  async fetchAccountLimits(account: CrownAccount): Promise<{
+    success: boolean;
+    message?: string;
+    limits?: {
+      football: {
+        prematch: number;
+        live: number;
+      };
+      basketball: {
+        prematch: number;
+        live: number;
+      };
+    };
+  }> {
+    try {
+      console.log(`🔍 开始获取账号 ${account.username} 的限额信息...`);
+
+      // 使用 API 客户端登录
+      const apiClient = new CrownApiClient();
+      const loginResult = await apiClient.login(account.username, account.password);
+
+      if (!loginResult.success) {
+        return {
+          success: false,
+          message: `登录失败: ${loginResult.message}`
+        };
+      }
+
+      console.log(`✅ 登录成功，正在获取限额页面...`);
+
+      // 获取限额页面的 HTML
+      const limitsPageUrl = `${apiClient.getBaseUrl()}/app/member/account/account_wager_limit.php`;
+      const response = await apiClient.fetch(limitsPageUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        }
+      });
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: `获取限额页面失败: HTTP ${response.status}`
+        };
+      }
+
+      const html = await response.text();
+
+      // 解析 HTML 提取限额数据
+      const limits = this.parseLimitsFromHtml(html);
+
+      if (!limits) {
+        return {
+          success: false,
+          message: '无法从页面中解析限额数据'
+        };
+      }
+
+      console.log(`✅ 成功获取限额信息:`, limits);
+
+      return {
+        success: true,
+        limits
+      };
+
+    } catch (error) {
+      console.error('❌ 获取限额信息失败:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : '获取限额信息失败'
+      };
+    }
+  }
+
+  /**
+   * 从 HTML 中解析限额数据
+   */
+  private parseLimitsFromHtml(html: string): {
+    football: { prematch: number; live: number };
+    basketball: { prematch: number; live: number };
+  } | null {
+    try {
+      // 查找足球限额表格
+      const footballMatch = html.match(/足球[\s\S]*?<table[\s\S]*?<\/table>/i);
+      if (!footballMatch) {
+        console.error('❌ 未找到足球限额表格');
+        return null;
+      }
+
+      const footballTable = footballMatch[0];
+
+      // 提取足球赛前限额（让球、大小、单双的单注最高）
+      const footballPrematchMatch = footballTable.match(/让球,\s*大小,\s*单双[\s\S]*?<td[^>]*>([0-9,]+)<\/td>[\s\S]*?<td[^>]*>([0-9,]+)<\/td>/i);
+
+      // 提取足球滚球限额（滚球让球、滚球大小、滚球单双的单注最高）
+      const footballLiveMatch = footballTable.match(/滚球让球,\s*滚球大小,\s*滚球单双[\s\S]*?<td[^>]*>([0-9,]+)<\/td>[\s\S]*?<td[^>]*>([0-9,]+)<\/td>/i);
+
+      // 查找篮球限额表格
+      const basketballMatch = html.match(/篮球[\s\S]*?<table[\s\S]*?<\/table>/i);
+      if (!basketballMatch) {
+        console.error('❌ 未找到篮球限额表格');
+        return null;
+      }
+
+      const basketballTable = basketballMatch[0];
+
+      // 提取篮球赛前限额
+      const basketballPrematchMatch = basketballTable.match(/让球,\s*大小,\s*单双[\s\S]*?<td[^>]*>([0-9,]+)<\/td>[\s\S]*?<td[^>]*>([0-9,]+)<\/td>/i);
+
+      // 提取篮球滚球限额
+      const basketballLiveMatch = basketballTable.match(/滚球让球,\s*滚球大小,\s*滚球单双[\s\S]*?<td[^>]*>([0-9,]+)<\/td>[\s\S]*?<td[^>]*>([0-9,]+)<\/td>/i);
+
+      // 解析数值（移除逗号并转换为数字）
+      const parseLimit = (value: string | undefined): number => {
+        if (!value) return 100000; // 默认值
+        return parseInt(value.replace(/,/g, ''), 10) || 100000;
+      };
+
+      const limits = {
+        football: {
+          prematch: footballPrematchMatch ? parseLimit(footballPrematchMatch[2]) : 100000,
+          live: footballLiveMatch ? parseLimit(footballLiveMatch[2]) : 100000,
+        },
+        basketball: {
+          prematch: basketballPrematchMatch ? parseLimit(basketballPrematchMatch[2]) : 100000,
+          live: basketballLiveMatch ? parseLimit(basketballLiveMatch[2]) : 100000,
+        }
+      };
+
+      console.log('📊 解析的限额数据:', limits);
+      return limits;
+
+    } catch (error) {
+      console.error('❌ 解析限额数据失败:', error);
+      return null;
+    }
+  }
 }
 
 // 延迟创建单例实例

@@ -215,6 +215,13 @@ export const accountApi = {
   // 账号优选
   autoSelect: (params?: { match_id?: number; limit?: number }): Promise<ApiResponse<AccountSelectionResponse>> =>
     apiClient.get('/accounts/auto-select', { params }).then(res => res.data),
+
+  // 获取账号限额
+  fetchLimits: (accountId: number): Promise<ApiResponse<{
+    football: { prematch: number; live: number };
+    basketball: { prematch: number; live: number };
+  }>> =>
+    apiClient.post(`/crown-automation/fetch-limits/${accountId}`).then(res => res.data),
 };
 
 // 比赛API
