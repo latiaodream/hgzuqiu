@@ -7119,14 +7119,20 @@ export class CrownAutomationService {
       const games = parsed?.serverresponse?.game;
       if (!games) {
         console.log('⚠️ get_game_more XML 中没有 game 数据');
+        console.log('📋 完整响应:', JSON.stringify(parsed?.serverresponse, null, 2).substring(0, 500));
         return { handicapLines: [], overUnderLines: [] };
       }
 
       const gameArray = Array.isArray(games) ? games : [games];
+      console.log(`🔍 找到 ${gameArray.length} 个 game 元素`);
+
       const handicapLines: any[] = [];
       const overUnderLines: any[] = [];
 
-      for (const game of gameArray) {
+      for (let i = 0; i < gameArray.length; i++) {
+        const game = gameArray[i];
+        console.log(`  🎮 Game ${i + 1}:`, JSON.stringify(game, null, 2).substring(0, 300));
+
         // 提取让球盘口
         const handicapLine = this.pickString(game, ['RATIO_RE', 'ratio_re']);
         const handicapHome = this.pickString(game, ['IOR_REH', 'ior_REH']);
@@ -7138,6 +7144,7 @@ export class CrownAutomationService {
             home: handicapHome,
             away: handicapAway,
           });
+          console.log(`    ✅ 让球: ${handicapLine} (${handicapHome} / ${handicapAway})`);
         }
 
         // 提取大小球盘口
@@ -7153,6 +7160,7 @@ export class CrownAutomationService {
             over: ouOver,
             under: ouUnder,
           });
+          console.log(`    ✅ 大小: ${ouLine} (${ouOver} / ${ouUnder})`);
         }
       }
 
