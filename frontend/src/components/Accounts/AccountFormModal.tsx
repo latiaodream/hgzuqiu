@@ -67,7 +67,6 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const [newGroupName, setNewGroupName] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [initType, setInitType] = useState<InitType>('full');
-  const [userHasSelectedInitType, setUserHasSelectedInitType] = useState(false);
 
   const regenerateCredential = useCallback((field: 'username' | 'password') => {
     const value = field === 'username' ? generateAccountUsername() : generateAccountPassword();
@@ -88,13 +87,11 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
         });
         setProxyEnabled(account.proxy_enabled);
         setInitType(account.init_type || 'full');
-        setUserHasSelectedInitType(false);
       } else {
         // 新增模式
         form.resetFields();
         setProxyEnabled(false);
         setInitType('full');
-        setUserHasSelectedInitType(false);
         // 设置默认值
         form.setFieldsValue({
           username: generateAccountUsername(),
@@ -130,18 +127,19 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
       // 根据初始化类型处理账号字段
       const initType = values.init_type || 'none';
 
+      // username 和 password 始终是原始账号和密码
+      requestData.original_username = values.username;
+
       if (initType === 'none') {
-        // 不需要初始化：username 就是最终账号
-        requestData.original_username = undefined;
+        // 不需要初始化：不需要生成新账号和密码
         requestData.initialized_username = undefined;
       } else if (initType === 'password_only') {
-        // 仅修改密码：username 是原始账号
-        requestData.original_username = values.username;
+        // 仅修改密码：不需要生成新账号，但需要生成新密码
         requestData.initialized_username = undefined;
       } else if (initType === 'full') {
-        // 完整初始化：username 是初始化后账号，original_username 是原始账号
-        requestData.initialized_username = values.username;
-        // original_username 已经在 values 中
+        // 完整初始化：需要生成新账号和新密码
+        // initialized_username 由后端自动生成
+        requestData.initialized_username = undefined;
       }
 
       // 如果未启用代理，清空代理相关字段
@@ -230,28 +228,9 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
             setProxyEnabled(allValues.proxy_enabled);
           }
 
-          // 智能判断初始化类型（根据是否填写原始账号）
-          if ('original_username' in changedValues) {
-            if (!userHasSelectedInitType) {
-              const originalUsername = allValues.original_username;
-
-              // 如果填写了原始账号，说明是完整初始化
-              let autoInitType: InitType = originalUsername ? 'full' : 'none';
-
-              form.setFieldsValue({ init_type: autoInitType });
-              setInitType(autoInitType);
-            }
-          }
-
-          // 用户手动选择初始化类型
+          // 用户选择初始化类型
           if ('init_type' in changedValues) {
             setInitType(changedValues.init_type);
-            setUserHasSelectedInitType(true);
-
-            // 清空原始账号字段（如果不是 full 类型）
-            if (changedValues.init_type !== 'full') {
-              form.setFieldsValue({ original_username: undefined });
-            }
           }
         }}
       >
@@ -311,40 +290,14 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     <Col xs={24} sm={12}>
                       <Form.Item
                         name="username"
-                        label={
-                          initType === 'none' ? '账号' :
-                          initType === 'password_only' ? '原始账号' :
-                          '初始化后账号'
-                        }
-                        tooltip={
-                          initType === 'none' ? '直接使用的账号' :
-                          initType === 'password_only' ? '首次登录时的账号（不会修改）' :
-                          '修改后使用的账号'
-                        }
+                        label="原始账号"
+                        tooltip="皇冠账号的原始用户名"
                         rules={[
-                          { required: true, message: '请输入账号' },
+                          { required: true, message: '请输入原始账号' },
                           { min: 3, message: '账号至少3个字符' },
                         ]}
                       >
-                        <Input
-                          placeholder={
-                            initType === 'none' ? '请输入皇冠账号' :
-                            initType === 'password_only' ? '请输入原始账号' :
-                            '请输入初始化后的账号'
-                          }
-                          suffix={(
-                            <Tooltip title="重新生成">
-                              <ReloadOutlined
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  regenerateCredential('username');
-                                }}
-                                style={{ cursor: 'pointer', color: '#1677FF' }}
-                              />
-                            </Tooltip>
-                          )}
-                        />
+                        <Input placeholder="请输入原始账号" />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -353,25 +306,14 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     <Col xs={24} sm={12}>
                       <Form.Item
                         name="password"
-                        label="密码"
-                        rules={[{ required: true, message: '请输入密码' }]}
+                        label="原始密码"
+                        tooltip="皇冠账号的原始密码"
+                        rules={[{ required: true, message: '请输入原始密码' }]}
                       >
                         <Input
-                          placeholder="请输入密码"
+                          placeholder="请输入原始密码"
                           type="password"
                           autoComplete="new-password"
-                          suffix={(
-                            <Tooltip title="重新生成">
-                              <ReloadOutlined
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  regenerateCredential('password');
-                                }}
-                                style={{ cursor: 'pointer', color: '#1677FF' }}
-                              />
-                            </Tooltip>
-                          )}
                         />
                       </Form.Item>
                     </Col>
@@ -379,6 +321,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                       <Form.Item
                         name="passcode"
                         label="简易密码"
+                        tooltip="可选，四位简易登录密码"
                       >
                         <Input placeholder="可选，四位简易登录密码" maxLength={4} />
                       </Form.Item>
@@ -390,6 +333,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                       <Form.Item
                         name="display_name"
                         label="显示名称"
+                        tooltip="可选，用于在系统中显示的名称"
                       >
                         <Input placeholder="可选，用于显示的名称" />
                       </Form.Item>
@@ -405,7 +349,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                       <Form.Item
                         name="init_type"
                         label="初始化类型"
-                        tooltip="选择账号的初始化方式，系统会根据您填写的字段自动判断"
+                        tooltip="选择账号的初始化方式"
                       >
                         <Radio.Group>
                           <Space direction="vertical" size="middle">
@@ -415,7 +359,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                                 <span style={{ fontWeight: 500 }}>不需要初始化</span>
                               </Space>
                               <div style={{ fontSize: '12px', color: '#999', marginLeft: 24, marginTop: 4 }}>
-                                账号和密码都不需要修改，直接使用
+                                直接使用原始账号和密码登录
                               </div>
                             </Radio>
                             <Radio value="password_only">
@@ -424,7 +368,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                                 <span style={{ fontWeight: 500 }}>仅修改密码</span>
                               </Space>
                               <div style={{ fontSize: '12px', color: '#999', marginLeft: 24, marginTop: 4 }}>
-                                保持账号不变，只修改密码
+                                保持账号不变，系统自动生成新密码
                               </div>
                             </Radio>
                             <Radio value="full">
@@ -433,7 +377,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                                 <span style={{ fontWeight: 500 }}>完整初始化</span>
                               </Space>
                               <div style={{ fontSize: '12px', color: '#999', marginLeft: 24, marginTop: 4 }}>
-                                修改账号和密码（默认）
+                                系统自动生成新账号和新密码
                               </div>
                             </Radio>
                           </Space>
@@ -442,47 +386,31 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     </Col>
                   </Row>
 
-                  {initType === 'full' && (
-                    <>
-                      <Alert
-                        message="提示"
-                        description="完整初始化：需要提供原始账号。上方的账号是修改后使用的账号。"
-                        type="info"
-                        showIcon
-                        style={{ marginBottom: 16 }}
-                      />
-                      <Row gutter={16}>
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="original_username"
-                            label="原始账号"
-                            tooltip="首次登录时使用的账号"
-                            rules={[
-                              { required: true, message: '请输入原始账号' }
-                            ]}
-                          >
-                            <Input placeholder="请输入原始账号" />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                    </>
+                  {initType === 'none' && (
+                    <Alert
+                      message="不需要初始化"
+                      description="系统将直接使用您填写的原始账号和密码登录，不做任何修改。"
+                      type="success"
+                      showIcon
+                      style={{ marginBottom: 16 }}
+                    />
                   )}
 
                   {initType === 'password_only' && (
                     <Alert
-                      message="提示"
-                      description="仅修改密码：上方的账号是原始账号（不会修改），只会修改密码。"
+                      message="仅修改密码"
+                      description="系统将使用原始账号和密码登录后，自动生成并修改为新密码。账号保持不变。"
                       type="info"
                       showIcon
                       style={{ marginBottom: 16 }}
                     />
                   )}
 
-                  {initType === 'none' && (
+                  {initType === 'full' && (
                     <Alert
-                      message="提示"
-                      description="不需要初始化：账号和密码都不需要修改，直接使用。"
-                      type="success"
+                      message="完整初始化"
+                      description="系统将使用原始账号和密码登录后，自动生成新账号和新密码并完成修改。"
+                      type="warning"
                       showIcon
                       style={{ marginBottom: 16 }}
                     />
