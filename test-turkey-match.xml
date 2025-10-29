@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<serverresponse>
+  <code>617</code>
+  <game id="gid8270001" master="Y">
+    <gtype>FT</gtype>
+    <gid>8270001</gid>
+    <league>土耳其杯</league>
+    <team_h>危斯尔贝尔格</team_h>
+    <team_c>贝伊奥卢尼洛洛尔</team_c>
+    
+    <!-- 让球数据 -->
+    <!-- 根据截图：第1行 +0.5，第2行 +0 / +0.5 -->
+    <sw_RE>Y</sw_RE>
+    <ratio_re>0 / 0.5</ratio_re>
+    <ior_REH>0.53</ior_REH>
+    <ior_REC>1.29</ior_REC>
+    
+    <!-- ROUH 系列让球（额外盘口1） -->
+    <sw_ROUH>Y</sw_ROUH>
+    <ratio_rouho>0.5</ratio_rouho>
+    <ratio_rouhu>0.5</ratio_rouhu>
+    <ior_ROUHO>0.77</ior_ROUHO>
+    <ior_ROUHU>1.05</ior_ROUHU>
+    
+    <!-- 大小球数据 -->
+    <!-- 根据截图：第1行 +1 / +1.5，第2行 +0.5 -->
+    <sw_ROU>Y</sw_ROU>
+    <ratio_rouo>1 / 1.5</ratio_rouo>
+    <ratio_rouu>1 / 1.5</ratio_rouu>
+    <ior_ROUH>0.97</ior_ROUH>
+    <ior_ROUC>0.94</ior_ROUC>
+    
+    <!-- ROUC 系列大小球（额外盘口） -->
+    <sw_ROUC>Y</sw_ROUC>
+    <ratio_rouco>0.5</ratio_rouco>
+    <ratio_roucu>0.5</ratio_roucu>
+    <ior_ROUCO>0.94</ior_ROUCO>
+    <ior_ROUCU>0.97</ior_ROUCU>
+  </game>
+</serverresponse>
+
