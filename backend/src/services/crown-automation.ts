@@ -6403,14 +6403,23 @@ export class CrownAutomationService {
 
                       // 合并到原有的盘口数据中
                       if (handicapLines.length > 0 || overUnderLines.length > 0) {
+                        // 确保 markets.full 对象存在
+                        if (!match.markets.full) {
+                          match.markets.full = {};
+                        }
+
                         if (handicapLines.length > 0) {
                           match.markets.full.handicapLines = handicapLines;
+                          // 同时更新单数字段，保持向后兼容
                           match.markets.handicap = handicapLines[0];
+                          match.markets.full.handicap = handicapLines[0];
                         }
 
                         if (overUnderLines.length > 0) {
                           match.markets.full.overUnderLines = overUnderLines;
+                          // 同时更新单数字段，保持向后兼容
                           match.markets.ou = overUnderLines[0];
+                          match.markets.full.ou = overUnderLines[0];
                         }
 
                         console.log(`  ✅ ${match.home} vs ${match.away}: ${handicapLines.length} 让球, ${overUnderLines.length} 大小`);
