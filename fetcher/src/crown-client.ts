@@ -251,6 +251,60 @@ export class CrownClient {
   }
 
   /**
+   * 解析赛事 XML
+   */
+  private parseMatches(xml: string): any[] {
+    const matches: any[] = [];
+
+    try {
+      // 提取所有 <game> 标签
+      const gameRegex = /<game[^>]*>([\s\S]*?)<\/game>/gi;
+      let match;
+
+      while ((match = gameRegex.exec(xml)) !== null) {
+        const gameXml = match[0];
+        const game: any = {};
+
+        // 提取标签内容
+        const extractTag = (tag: string) => {
+          const regex = new RegExp(`<${tag}>([^<]*)<\/${tag}>`, 'i');
+          const m = gameXml.match(regex);
+          return m ? m[1] : '';
+        };
+
+        // 提取基本信息
+        game.gid = extractTag('gid');
+        game.datetime = extractTag('datetime');
+        game.league = extractTag('league');
+        game.gnum_h = extractTag('gnum_h');
+        game.gnum_c = extractTag('gnum_c');
+        game.team_h = extractTag('team_h');
+        game.team_c = extractTag('team_c');
+        game.strong = extractTag('strong');
+        game.score_h = extractTag('score_h');
+        game.score_c = extractTag('score_c');
+
+        // 提取赔率
+        game.ratio_re = extractTag('ratio_re');
+        game.ior_REH = extractTag('ior_REH');
+        game.ior_REC = extractTag('ior_REC');
+        game.ratio_rouo = extractTag('ratio_rouo');
+        game.ratio_rouu = extractTag('ratio_rouu');
+        game.ior_ROUH = extractTag('ior_ROUH');
+        game.ior_ROUC = extractTag('ior_ROUC');
+
+        if (game.gid) {
+          matches.push(game);
+        }
+      }
+    } catch (error) {
+      console.error('❌ 解析赛事失败:', error);
+    }
+
+    return matches;
+  }
+
+  /**
    * 抓取赛事列表
    */
   async fetchMatches(): Promise<FetchResult> {
@@ -278,13 +332,12 @@ export class CrownClient {
 
       const xml = response.data;
 
-      // 简单解析 XML（提取比赛数量）
-      const gameMatches = xml.match(/<game[^>]*>/gi);
-      const matchCount = gameMatches ? gameMatches.length : 0;
+      // 解析赛事
+      const matches = this.parseMatches(xml);
 
       return {
         success: true,
-        matches: [], // 这里可以解析详细数据，暂时只返回数量
+        matches,
         timestamp: Date.now(),
       };
     } catch (error: any) {
