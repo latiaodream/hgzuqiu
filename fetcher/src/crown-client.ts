@@ -482,6 +482,9 @@ export class CrownClient {
       // 解析赛事
       const matches = this.parseMatches(xml);
 
+      // 为前10场比赛获取更多盘口
+      await this.enrichMatches(matches.slice(0, 10));
+
       return {
         success: true,
         matches,
@@ -490,6 +493,195 @@ export class CrownClient {
     } catch (error: any) {
       console.error('❌ 抓取失败:', error.message);
       return { success: false, matches: [], timestamp: Date.now(), error: error.message };
+    }
+  }
+
+  /**
+   * 获取更多盘口信息
+   */
+  private async enrichMatches(matches: any[]): Promise<void> {
+    for (const match of matches) {
+      try {
+        const ecid = match.ecid;
+        const lid = match.raw?.LID || match.raw?.lid || match.raw?.['@_LID'];
+
+        if (!ecid || !lid) continue;
+
+        const moreXml = await this.getGameMore({
+          gid: String(ecid),
+          lid: String(lid),
+          gtype: 'ft',
+          showtype: 'live',
+          ltype: '3',
+          isRB: 'Y',
+        });
+
+        if (moreXml) {
+          const { handicapLines, overUnderLines, halfHandicapLines, halfOverUnderLines } = this.parseMoreMarkets(moreXml);
+
+          if (!match.markets.full) {
+            match.markets.full = {};
+          }
+          if (!match.markets.half) {
+            match.markets.half = {};
+          }
+
+          // 全场盘口
+          if (handicapLines.length > 0) {
+            match.markets.full.handicapLines = handicapLines;
+            match.markets.handicap = handicapLines[0];
+            match.markets.full.handicap = handicapLines[0];
+          }
+
+          if (overUnderLines.length > 0) {
+            match.markets.full.overUnderLines = overUnderLines;
+            match.markets.ou = overUnderLines[0];
+            match.markets.full.ou = overUnderLines[0];
+          }
+
+          // 半场盘口
+          if (halfHandicapLines.length > 0) {
+            match.markets.half.handicapLines = halfHandicapLines;
+            match.markets.half.handicap = halfHandicapLines[0];
+          }
+
+          if (halfOverUnderLines.length > 0) {
+            match.markets.half.overUnderLines = halfOverUnderLines;
+            match.markets.half.ou = halfOverUnderLines[0];
+          }
+        }
+
+        // 延迟50ms避免请求过快
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+      } catch (error) {
+        // 忽略单个比赛的错误
+      }
+    }
+  }
+
+  /**
+   * 获取比赛的所有玩法和盘口
+   */
+  private async getGameMore(params: {
+    gid: string;
+    lid: string;
+    gtype: string;
+    showtype: string;
+    ltype: string;
+    isRB: string;
+  }): Promise<string | null> {
+    try {
+      if (!this.uid) return null;
+
+      const timestamp = Date.now().toString();
+
+      const requestParams = new URLSearchParams({
+        uid: this.uid,
+        ver: this.version,
+        langx: 'zh-cn',
+        p: 'get_game_more',
+        gtype: params.gtype,
+        showtype: params.showtype,
+        ltype: params.ltype,
+        isRB: params.isRB,
+        lid: params.lid,
+        specialClick: '',
+        mode: 'NORMAL',
+        from: 'game_more',
+        filter: 'Main',
+        ts: timestamp,
+        ecid: params.gid,
+      });
+
+      const response = await this.client.post(`/transform.php?ver=${this.version}`, requestParams.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+
+      return response.data;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * 解析 get_game_more 返回的多个盘口
+   */
+  private parseMoreMarkets(xml: string): {
+    handicapLines: any[];
+    overUnderLines: any[];
+    halfHandicapLines: any[];
+    halfOverUnderLines: any[];
+  } {
+    try {
+      const { XMLParser } = require('fast-xml-parser');
+      const parser = new XMLParser({ ignoreAttributes: false });
+      const parsed = parser.parse(xml);
+
+      const games = parsed?.serverresponse?.game;
+      if (!games) {
+        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+      }
+
+      const gameArray = Array.isArray(games) ? games : [games];
+
+      const handicapLines: any[] = [];
+      const overUnderLines: any[] = [];
+      const halfHandicapLines: any[] = [];
+      const halfOverUnderLines: any[] = [];
+
+      const pickString = (source: any, candidateKeys: string[], fallback = ''): string => {
+        if (!source) return fallback;
+        for (const key of candidateKeys) {
+          if (source[key] !== undefined && source[key] !== null && source[key] !== '') {
+            return String(source[key]).trim();
+          }
+          const attrKey = `@_${key}`;
+          if (source[attrKey] !== undefined && source[attrKey] !== null && source[attrKey] !== '') {
+            return String(source[attrKey]).trim();
+          }
+        }
+        return fallback;
+      };
+
+      for (const game of gameArray) {
+        // 全场让球
+        const handicapLine = pickString(game, ['RATIO_RE', 'ratio_re']);
+        const handicapHome = pickString(game, ['IOR_REH', 'ior_REH']);
+        const handicapAway = pickString(game, ['IOR_REC', 'ior_REC']);
+        if (handicapLine && (handicapHome || handicapAway)) {
+          handicapLines.push({ line: handicapLine, home: handicapHome, away: handicapAway });
+        }
+
+        // 全场大小球
+        const ouLine = pickString(game, ['RATIO_ROUO', 'ratio_rouo', 'RATIO_ROUU', 'ratio_rouu']);
+        const ouOver = pickString(game, ['IOR_ROUC', 'ior_ROUC']);
+        const ouUnder = pickString(game, ['IOR_ROUH', 'ior_ROUH']);
+        if (ouLine && (ouOver || ouUnder)) {
+          overUnderLines.push({ line: ouLine, over: ouOver, under: ouUnder });
+        }
+
+        // 半场让球
+        const halfHandicapLine = pickString(game, ['RATIO_HRE', 'ratio_hre']);
+        const halfHandicapHome = pickString(game, ['IOR_HREH', 'ior_HREH']);
+        const halfHandicapAway = pickString(game, ['IOR_HREC', 'ior_HREC']);
+        if (halfHandicapLine && (halfHandicapHome || halfHandicapAway)) {
+          halfHandicapLines.push({ line: halfHandicapLine, home: halfHandicapHome, away: halfHandicapAway });
+        }
+
+        // 半场大小球
+        const halfOuLine = pickString(game, ['RATIO_HROUO', 'ratio_hrouo', 'RATIO_HROUU', 'ratio_hrouu']);
+        const halfOuOver = pickString(game, ['IOR_HROUC', 'ior_HROUC']);
+        const halfOuUnder = pickString(game, ['IOR_HROUH', 'ior_HROUH']);
+        if (halfOuLine && (halfOuOver || halfOuUnder)) {
+          halfOverUnderLines.push({ line: halfOuLine, over: halfOuOver, under: halfOuUnder });
+        }
+      }
+
+      return { handicapLines, overUnderLines, halfHandicapLines, halfOverUnderLines };
+    } catch (error) {
+      console.error('❌ 解析更多盘口失败:', error);
+      return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
     }
   }
 }
