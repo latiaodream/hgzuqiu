@@ -326,8 +326,7 @@ const MatchesPage: React.FC = () => {
       <div className="odds-stack-grid">
         {lines.map((data, index) => {
           const formattedLine = formatHandicapLine(data.line);
-          // 第一行显示队名，其他行只显示盘口数字
-          const showTeamName = index === 0;
+          // 所有行都显示队名
           return (
             <div key={index} className="odds-row">
               {data.home && (
@@ -341,7 +340,7 @@ const MatchesPage: React.FC = () => {
                   })}
                 >
                   <span className="odds-team">
-                    {showTeamName ? (match.home || '主') : ''} {formattedLine}
+                    {match.home || '主'} {formattedLine}
                   </span>
                   <span className="odds-value">{data.home}</span>
                 </div>
@@ -357,7 +356,7 @@ const MatchesPage: React.FC = () => {
                   })}
                 >
                   <span className="odds-team">
-                    {showTeamName ? (match.away || '客') : ''} {formattedLine}
+                    {match.away || '客'} {formattedLine}
                   </span>
                   <span className="odds-value">{data.away}</span>
                 </div>
