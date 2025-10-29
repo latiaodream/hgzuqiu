@@ -7149,19 +7149,11 @@ export class CrownAutomationService {
         const game = gameArray[i];
         console.log(`  🎮 Game ${i + 1}:`, JSON.stringify(game, null, 2).substring(0, 300));
 
-        // 只解析 master="Y" 的 game 元素（主盘口）
-        // 忽略半场、角球等其他盘口，避免重复数据
-        const isMaster = this.pickString(game, ['@_master', 'master']) === 'Y';
-        if (!isMaster) {
-          console.log(`    ⏭️ 跳过非主盘口 (master != Y)`);
-          continue;
-        }
-
         // 提取让球盘口
-        // 皇冠 API 有三组让球数据：
-        // 1. RE 系列（主盘口）：ratio_re, ior_REH（主队）, ior_REC（客队）
-        // 2. ROUH 系列（额外盘口1）：ratio_rouho/ratio_rouhu, ior_ROUHO（主队）, ior_ROUHU（客队）
-        // 3. ROUC 系列（额外盘口2）：ratio_rouco/ratio_roucu, ior_ROUCO（主队）, ior_ROUCU（客队）
+        // 皇冠 API 只有一组让球数据：RE 系列
+        // ratio_re: 盘口值
+        // ior_REH: 主队赔率
+        // ior_REC: 客队赔率
 
         // 提取 RE 系列（主让球盘口）
         const handicapLine = this.pickString(game, ['RATIO_RE', 'ratio_re']);
@@ -7177,40 +7169,13 @@ export class CrownAutomationService {
           console.log(`    ✅ 让球: ${handicapLine} (${handicapHome} / ${handicapAway})`);
         }
 
-        // 提取 ROUH 系列（额外让球盘口1）
-        const handicapLineH = this.pickString(game, ['ratio_rouho', 'RATIO_ROUHO', 'ratio_rouhu', 'RATIO_ROUHU']);
-        const handicapHomeH = this.pickString(game, ['ior_ROUHO', 'IOR_ROUHO']);
-        const handicapAwayH = this.pickString(game, ['ior_ROUHU', 'IOR_ROUHU']);
-
-        if (handicapLineH && handicapLineH !== handicapLine && (handicapHomeH || handicapAwayH)) {
-          handicapLines.push({
-            line: handicapLineH,
-            home: handicapHomeH,
-            away: handicapAwayH,
-          });
-          console.log(`    ✅ 让球(H): ${handicapLineH} (${handicapHomeH} / ${handicapAwayH})`);
-        }
-
-        // 提取 ROUC 系列（额外让球盘口2）
-        const handicapLineC = this.pickString(game, ['ratio_rouco', 'RATIO_ROUCO', 'ratio_roucu', 'RATIO_ROUCU']);
-        const handicapHomeC = this.pickString(game, ['ior_ROUCO', 'IOR_ROUCO']);
-        const handicapAwayC = this.pickString(game, ['ior_ROUCU', 'IOR_ROUCU']);
-
-        if (handicapLineC && handicapLineC !== handicapLine && handicapLineC !== handicapLineH && (handicapHomeC || handicapAwayC)) {
-          handicapLines.push({
-            line: handicapLineC,
-            home: handicapHomeC,
-            away: handicapAwayC,
-          });
-          console.log(`    ✅ 让球(C): ${handicapLineC} (${handicapHomeC} / ${handicapAwayC})`);
-        }
-
         // 提取大小球盘口
-        // 皇冠 API 只有一组大小球数据：ROU 系列
-        // ratio_rouo/ratio_rouu: 盘口值
-        // ior_ROUH: 小球（Under）赔率
-        // ior_ROUC: 大球（Over）赔率
-        // 注意：ROUH/ROUC 在让球中是额外盘口，在大小球中才是主盘口
+        // 皇冠 API 有三组大小球数据：
+        // 1. ROU 系列（主盘口）：ratio_rouo/ratio_rouu, ior_ROUH（小球）, ior_ROUC（大球）
+        // 2. ROUH 系列（额外盘口1）：ratio_rouho/ratio_rouhu, ior_ROUHO, ior_ROUHU
+        // 3. ROUC 系列（额外盘口2）：ratio_rouco/ratio_roucu, ior_ROUCO, ior_ROUCU
+        // 注意：在 ROU 系列中，ROUH=小球，ROUC=大球
+        //      在 ROUH/ROUC 系列中，需要根据官方网站确认哪个是大球哪个是小球
 
         // 提取 ROU 系列（主大小球盘口）
         const ouLineMain = this.pickString(game, ['ratio_rouo', 'RATIO_ROUO', 'ratio_rouu', 'RATIO_ROUU']);
@@ -7224,6 +7189,34 @@ export class CrownAutomationService {
             under: ouUnderMain,
           });
           console.log(`    ✅ 大小: ${ouLineMain} (大:${ouOverMain} / 小:${ouUnderMain})`);
+        }
+
+        // 提取 ROUH 系列（额外大小球盘口1）
+        const ouLineH = this.pickString(game, ['ratio_rouho', 'RATIO_ROUHO', 'ratio_rouhu', 'RATIO_ROUHU']);
+        const ouOverH = this.pickString(game, ['ior_ROUHO', 'IOR_ROUHO']);
+        const ouUnderH = this.pickString(game, ['ior_ROUHU', 'IOR_ROUHU']);
+
+        if (ouLineH && ouLineH !== ouLineMain && (ouOverH || ouUnderH)) {
+          overUnderLines.push({
+            line: ouLineH,
+            over: ouOverH,
+            under: ouUnderH,
+          });
+          console.log(`    ✅ 大小(H): ${ouLineH} (大:${ouOverH} / 小:${ouUnderH})`);
+        }
+
+        // 提取 ROUC 系列（额外大小球盘口2）
+        const ouLineC = this.pickString(game, ['ratio_rouco', 'RATIO_ROUCO', 'ratio_roucu', 'RATIO_ROUCU']);
+        const ouOverC = this.pickString(game, ['ior_ROUCO', 'IOR_ROUCO']);
+        const ouUnderC = this.pickString(game, ['ior_ROUCU', 'IOR_ROUCU']);
+
+        if (ouLineC && ouLineC !== ouLineMain && ouLineC !== ouLineH && (ouOverC || ouUnderC)) {
+          overUnderLines.push({
+            line: ouLineC,
+            over: ouOverC,
+            under: ouUnderC,
+          });
+          console.log(`    ✅ 大小(C): ${ouLineC} (大:${ouOverC} / 小:${ouUnderC})`);
         }
       }
 
