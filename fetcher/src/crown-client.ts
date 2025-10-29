@@ -314,6 +314,46 @@ export class CrownClient {
         const scoreC = pickString(game, ['SCORE_C']);
         const score = (scoreH || scoreC) ? `${scoreH || '0'}-${scoreC || '0'}` : '';
 
+        // 解析盘口数据
+        const markets: any = {
+          full: {},
+          half: {},
+        };
+
+        // 全场让球盘口
+        const handicapLine = pickString(game, ['RATIO_RE', 'RATIO_R']);
+        const handicapHome = pickString(game, ['IOR_REH', 'IOR_RH']);
+        const handicapAway = pickString(game, ['IOR_REC', 'IOR_RC']);
+        if (handicapLine && (handicapHome || handicapAway)) {
+          markets.handicap = { line: handicapLine, home: handicapHome, away: handicapAway };
+          markets.full.handicap = { line: handicapLine, home: handicapHome, away: handicapAway };
+        }
+
+        // 全场大小球盘口
+        const ouLine = pickString(game, ['RATIO_ROUO', 'RATIO_OUO', 'RATIO_ROUU', 'RATIO_OUU']);
+        const ouOver = pickString(game, ['IOR_ROUC', 'IOR_OUC']);
+        const ouUnder = pickString(game, ['IOR_ROUH', 'IOR_OUH']);
+        if (ouLine && (ouOver || ouUnder)) {
+          markets.ou = { line: ouLine, over: ouOver, under: ouUnder };
+          markets.full.ou = { line: ouLine, over: ouOver, under: ouUnder };
+        }
+
+        // 半场让球盘口
+        const halfHandicapLine = pickString(game, ['RATIO_HRE']);
+        const halfHandicapHome = pickString(game, ['IOR_HREH']);
+        const halfHandicapAway = pickString(game, ['IOR_HREC']);
+        if (halfHandicapLine && (halfHandicapHome || halfHandicapAway)) {
+          markets.half.handicap = { line: halfHandicapLine, home: halfHandicapHome, away: halfHandicapAway };
+        }
+
+        // 半场大小球盘口
+        const halfOuLine = pickString(game, ['RATIO_HROUO', 'RATIO_HROUU']);
+        const halfOuOver = pickString(game, ['IOR_HROUC']);
+        const halfOuUnder = pickString(game, ['IOR_HROUH']);
+        if (halfOuLine && (halfOuOver || halfOuUnder)) {
+          markets.half.ou = { line: halfOuLine, over: halfOuOver, under: halfOuUnder };
+        }
+
         return {
           gid,
           ecid,
@@ -323,6 +363,8 @@ export class CrownClient {
           score,
           time: pickString(game, ['DATETIME', 'TIME']),
           status: pickString(game, ['RUNNING', 'STATUS']),
+          markets,
+          raw: game,
         };
       });
 
