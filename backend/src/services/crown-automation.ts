@@ -7164,14 +7164,14 @@ export class CrownAutomationService {
         }
 
         // 提取大小球盘口
-        // 注意：皇冠 API 有两组大小球数据，需要分别提取
-        // ROUH 系列：ratio_rouho/ratio_rouhu (盘口), ior_ROUHO (Over), ior_ROUHU (Under)
-        // ROUC 系列：ratio_rouco/ratio_roucu (盘口), ior_ROUCO (Over), ior_ROUCU (Under)
+        // 注意：皇冠 API 的字段命名和实际含义相反！
+        // ior_ROUHO 实际是 Under（小），ior_ROUHU 实际是 Over（大）
+        // ior_ROUCO 实际是 Under（小），ior_ROUCU 实际是 Over（大）
 
-        // 提取 ROUH 系列（第一组）
+        // 提取 ROUH 系列（第一组）- 注意：字段名和实际含义相反
         const ouLineH = this.pickString(game, ['ratio_rouho', 'RATIO_ROUHO', 'ratio_rouhu', 'RATIO_ROUHU']);
-        const ouOverH = this.pickString(game, ['ior_ROUHO', 'IOR_ROUHO']);
-        const ouUnderH = this.pickString(game, ['ior_ROUHU', 'IOR_ROUHU']);
+        const ouOverH = this.pickString(game, ['ior_ROUHU', 'IOR_ROUHU']);  // 注意：HU 才是 Over（大）
+        const ouUnderH = this.pickString(game, ['ior_ROUHO', 'IOR_ROUHO']); // 注意：HO 才是 Under（小）
 
         if (ouLineH && (ouOverH || ouUnderH)) {
           overUnderLines.push({
@@ -7182,10 +7182,10 @@ export class CrownAutomationService {
           console.log(`    ✅ 大小(H): ${ouLineH} (大:${ouOverH} / 小:${ouUnderH})`);
         }
 
-        // 提取 ROUC 系列（第二组）
+        // 提取 ROUC 系列（第二组）- 注意：字段名和实际含义相反
         const ouLineC = this.pickString(game, ['ratio_rouco', 'RATIO_ROUCO', 'ratio_roucu', 'RATIO_ROUCU']);
-        const ouOverC = this.pickString(game, ['ior_ROUCO', 'IOR_ROUCO']);
-        const ouUnderC = this.pickString(game, ['ior_ROUCU', 'IOR_ROUCU']);
+        const ouOverC = this.pickString(game, ['ior_ROUCU', 'IOR_ROUCU']);  // 注意：CU 才是 Over（大）
+        const ouUnderC = this.pickString(game, ['ior_ROUCO', 'IOR_ROUCO']); // 注意：CO 才是 Under（小）
 
         if (ouLineC && (ouOverC || ouUnderC)) {
           overUnderLines.push({
