@@ -320,39 +320,100 @@ export class CrownClient {
           half: {},
         };
 
-        // 全场让球盘口
+        // 独赢盘口（全场）
+        const moneylineHome = pickString(game, ['IOR_RMH', 'IOR_MH']);
+        const moneylineDraw = pickString(game, ['IOR_RMN', 'IOR_MN', 'IOR_RMD']);
+        const moneylineAway = pickString(game, ['IOR_RMC', 'IOR_MC']);
+        if (moneylineHome || moneylineDraw || moneylineAway) {
+          markets.moneyline = { home: moneylineHome, draw: moneylineDraw, away: moneylineAway };
+          markets.full.moneyline = { home: moneylineHome, draw: moneylineDraw, away: moneylineAway };
+        }
+
+        // 全场让球盘口（支持多个盘口）
+        const handicapLines: Array<{ line: string; home: string; away: string }> = [];
         const handicapLine = pickString(game, ['RATIO_RE', 'RATIO_R']);
         const handicapHome = pickString(game, ['IOR_REH', 'IOR_RH']);
         const handicapAway = pickString(game, ['IOR_REC', 'IOR_RC']);
-        if (handicapLine && (handicapHome || handicapAway)) {
-          markets.handicap = { line: handicapLine, home: handicapHome, away: handicapAway };
-          markets.full.handicap = { line: handicapLine, home: handicapHome, away: handicapAway };
+        if (handicapLine || handicapHome || handicapAway) {
+          handicapLines.push({ line: handicapLine, home: handicapHome, away: handicapAway });
+        }
+        if (handicapLines.length > 0) {
+          markets.handicap = { ...handicapLines[0] };
+          markets.full.handicap = { ...handicapLines[0] };
+          markets.full.handicapLines = handicapLines;
         }
 
-        // 全场大小球盘口
-        const ouLine = pickString(game, ['RATIO_ROUO', 'RATIO_OUO', 'RATIO_ROUU', 'RATIO_OUU']);
-        const ouOver = pickString(game, ['IOR_ROUC', 'IOR_OUC']);
-        const ouUnder = pickString(game, ['IOR_ROUH', 'IOR_OUH']);
-        if (ouLine && (ouOver || ouUnder)) {
-          markets.ou = { line: ouLine, over: ouOver, under: ouUnder };
-          markets.full.ou = { line: ouLine, over: ouOver, under: ouUnder };
+        // 全场大小球盘口（支持多个盘口）
+        const ouLines: Array<{ line: string; over: string; under: string }> = [];
+        // 主大小球盘口
+        const ouLineMain = pickString(game, ['RATIO_ROUO', 'RATIO_OUO', 'RATIO_ROUU', 'RATIO_OUU']);
+        const ouOverMain = pickString(game, ['IOR_ROUC', 'IOR_OUC']);
+        const ouUnderMain = pickString(game, ['IOR_ROUH', 'IOR_OUH']);
+        if (ouLineMain || ouOverMain || ouUnderMain) {
+          ouLines.push({ line: ouLineMain, over: ouOverMain, under: ouUnderMain });
+        }
+        // 额外大小球盘口 1
+        const ouLineH = pickString(game, ['RATIO_ROUHO']);
+        const ouOverH = pickString(game, ['IOR_ROUHO']);
+        const ouUnderH = pickString(game, ['RATIO_ROUHU', 'IOR_ROUHU']);
+        if (ouLineH || ouOverH || ouUnderH) {
+          ouLines.push({ line: ouLineH, over: ouOverH, under: ouUnderH });
+        }
+        // 额外大小球盘口 2
+        const ouLineC = pickString(game, ['RATIO_ROUCO']);
+        const ouOverC = pickString(game, ['IOR_ROUCO']);
+        const ouUnderC = pickString(game, ['RATIO_ROUCU', 'IOR_ROUCU']);
+        if (ouLineC || ouOverC || ouUnderC) {
+          ouLines.push({ line: ouLineC, over: ouOverC, under: ouUnderC });
+        }
+        if (ouLines.length > 0) {
+          markets.ou = { ...ouLines[0] };
+          markets.full.ou = { ...ouLines[0] };
+          markets.full.overUnderLines = ouLines;
+        }
+
+        // 半场独赢
+        const halfMoneylineHome = pickString(game, ['IOR_HRMH']);
+        const halfMoneylineDraw = pickString(game, ['IOR_HRMN']);
+        const halfMoneylineAway = pickString(game, ['IOR_HRMC']);
+        if (halfMoneylineHome || halfMoneylineDraw || halfMoneylineAway) {
+          markets.half.moneyline = { home: halfMoneylineHome, draw: halfMoneylineDraw, away: halfMoneylineAway };
         }
 
         // 半场让球盘口
+        const halfHandicapLines: Array<{ line: string; home: string; away: string }> = [];
         const halfHandicapLine = pickString(game, ['RATIO_HRE']);
         const halfHandicapHome = pickString(game, ['IOR_HREH']);
         const halfHandicapAway = pickString(game, ['IOR_HREC']);
-        if (halfHandicapLine && (halfHandicapHome || halfHandicapAway)) {
-          markets.half.handicap = { line: halfHandicapLine, home: halfHandicapHome, away: halfHandicapAway };
+        if (halfHandicapLine || halfHandicapHome || halfHandicapAway) {
+          halfHandicapLines.push({ line: halfHandicapLine, home: halfHandicapHome, away: halfHandicapAway });
+        }
+        if (halfHandicapLines.length > 0) {
+          markets.half.handicap = { ...halfHandicapLines[0] };
+          markets.half.handicapLines = halfHandicapLines;
         }
 
         // 半场大小球盘口
+        const halfOuLines: Array<{ line: string; over: string; under: string }> = [];
         const halfOuLine = pickString(game, ['RATIO_HROUO', 'RATIO_HROUU']);
         const halfOuOver = pickString(game, ['IOR_HROUC']);
         const halfOuUnder = pickString(game, ['IOR_HROUH']);
-        if (halfOuLine && (halfOuOver || halfOuUnder)) {
-          markets.half.ou = { line: halfOuLine, over: halfOuOver, under: halfOuUnder };
+        if (halfOuLine || halfOuOver || halfOuUnder) {
+          halfOuLines.push({ line: halfOuLine, over: halfOuOver, under: halfOuUnder });
         }
+        if (halfOuLines.length > 0) {
+          markets.half.ou = { ...halfOuLines[0] };
+          markets.half.overUnderLines = halfOuLines;
+        }
+
+        // 盘口计数
+        const counts = {
+          handicap: pickString(game, ['R_COUNT']),
+          overUnder: pickString(game, ['OU_COUNT']),
+          correctScore: pickString(game, ['PD_COUNT']),
+          corners: pickString(game, ['CN_COUNT']),
+        };
+        markets.counts = counts;
 
         return {
           gid,
