@@ -6117,30 +6117,9 @@ export class CrownAutomationService {
       return null;
     }
 
-    // 5. 尝试登录系统账号（只在没有任何在线账号时才执行）
-    try {
-      const account = this.getSystemAccount();
-      console.log(`🔐 尝试登录系统账号: ${account.username}`);
-      const result = await this.loginAccountWithApi(account);
-
-      if (result.success) {
-        const live = this.pages.get(0) || null;
-        if (live) {
-          this.systemLastBeat = Date.now();
-          this.systemLoginFailCount = 0; // 重置失败计数
-          console.log(`✅ 系统账号登录成功`);
-        }
-        return live;
-      } else {
-        this.systemLoginFailCount++;
-        console.log(`⚠️ 系统账号登录失败 (${this.systemLoginFailCount}/3): ${result.message || '未知错误'}`);
-        return null;
-      }
-    } catch (err) {
-      this.systemLoginFailCount++;
-      console.log(`❌ 系统账号登录异常 (${this.systemLoginFailCount}/3):`, err);
-      return null;
-    }
+    // 5. 系统账号登录已禁用，使用独立抓取服务
+    console.log('ℹ️ 系统账号登录已禁用，使用独立抓取服务');
+    return null;
   }
 
   // 查找可用的用户账号作为后备（优先使用标记为"用于抓取"的账号）
