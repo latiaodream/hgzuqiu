@@ -7203,12 +7203,13 @@ export class CrownAutomationService {
         const handicapAway = this.pickString(game, ['IOR_REC', 'ior_REC']);
 
         if (handicapLine && (handicapHome || handicapAway)) {
+          const master = this.pickString(game, ['@_master', 'master']);
           handicapLines.push({
             line: handicapLine,
             home: handicapHome,
             away: handicapAway,
           });
-          console.log(`    ✅ 让球: ${handicapLine} (${handicapHome} / ${handicapAway})`);
+          console.log(`    ✅ 让球 [Game ${i + 1}, master=${master}]: ${handicapLine} (${handicapHome} / ${handicapAway})`);
         }
 
         // 提取大小球盘口
@@ -7224,12 +7225,13 @@ export class CrownAutomationService {
         const ouUnderMain = this.pickString(game, ['ior_ROUH', 'IOR_ROUH']); // ROUH = 小球（Under）
 
         if (ouLineMain && (ouOverMain || ouUnderMain)) {
+          const master = this.pickString(game, ['@_master', 'master']);
           overUnderLines.push({
             line: ouLineMain,
             over: ouOverMain,
             under: ouUnderMain,
           });
-          console.log(`    ✅ 大小: ${ouLineMain} (大:${ouOverMain} / 小:${ouUnderMain})`);
+          console.log(`    ✅ 大小 [Game ${i + 1}, master=${master}]: ${ouLineMain} (大:${ouOverMain} / 小:${ouUnderMain})`);
         }
 
         // 提取半场让球盘口（HRE 系列）
@@ -7238,12 +7240,13 @@ export class CrownAutomationService {
         const halfHandicapAway = this.pickString(game, ['IOR_HREC', 'ior_HREC']);
 
         if (halfHandicapLine && (halfHandicapHome || halfHandicapAway)) {
+          const master = this.pickString(game, ['@_master', 'master']);
           halfHandicapLines.push({
             line: halfHandicapLine,
             home: halfHandicapHome,
             away: halfHandicapAway,
           });
-          console.log(`    ✅ 半场让球: ${halfHandicapLine} (${halfHandicapHome} / ${halfHandicapAway})`);
+          console.log(`    ✅ 半场让球 [Game ${i + 1}, master=${master}]: ${halfHandicapLine} (${halfHandicapHome} / ${halfHandicapAway})`);
         }
 
         // 提取半场大小球盘口（HROU 系列）
@@ -7252,12 +7255,13 @@ export class CrownAutomationService {
         const halfOuUnder = this.pickString(game, ['ior_HROUH', 'IOR_HROUH']); // HROUH = 小球（Under）
 
         if (halfOuLine && (halfOuOver || halfOuUnder)) {
+          const master = this.pickString(game, ['@_master', 'master']);
           halfOverUnderLines.push({
             line: halfOuLine,
             over: halfOuOver,
             under: halfOuUnder,
           });
-          console.log(`    ✅ 半场大小: ${halfOuLine} (大:${halfOuOver} / 小:${halfOuUnder})`);
+          console.log(`    ✅ 半场大小 [Game ${i + 1}, master=${master}]: ${halfOuLine} (大:${halfOuOver} / 小:${halfOuUnder})`);
         }
       }
 
