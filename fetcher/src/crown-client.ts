@@ -181,7 +181,7 @@ export class CrownClient {
         this.loginTime = Date.now();
         this.saveSession();
         console.log(`✅ 登录成功: UID=${this.uid}`);
-        return { success: true, uid: this.uid };
+        return { success: true, uid: this.uid || undefined };
       }
 
       console.log('❌ 无法从响应中提取 UID');
