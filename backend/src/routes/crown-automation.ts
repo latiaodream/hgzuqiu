@@ -3,6 +3,7 @@ import { authenticateToken } from '../middleware/auth';
 import { query } from '../models/database';
 import { ApiResponse } from '../types';
 import { getCrownAutomation } from '../services/crown-automation';
+import { getMatchFetcher } from '../services/match-fetcher';
 import type { Response } from 'express';
 
 const buildAccountAccess = (user: any, options?: { includeDisabled?: boolean }) => {
@@ -1095,6 +1096,24 @@ router.get('/matches-system', async (req: any, res) => {
         // 任意已登录用户均可使用系统赛事抓取，无需绑定账号
         const { gtype = 'ft', showtype = 'live', rtype = 'rb', ltype = '3', sorttype = 'L' } = req.query as any;
 
+        // 优先使用独立抓取服务的数据
+        const fetcher = getMatchFetcher();
+        if (fetcher) {
+            const data = fetcher.getLatestMatches();
+            res.json({
+                success: true,
+                data: {
+                    matches: data.matches,
+                    meta: { gtype, showtype, rtype, ltype, sorttype },
+                    raw: data.xml,
+                    source: 'dedicated-fetcher',
+                    lastUpdate: data.lastUpdate,
+                }
+            });
+            return;
+        }
+
+        // 降级：使用原有的抓取方式
         const { matches, xml } = await getCrownAutomation().fetchMatchesSystem({
             gtype: String(gtype),
             showtype: String(showtype),
@@ -1103,7 +1122,7 @@ router.get('/matches-system', async (req: any, res) => {
             sorttype: String(sorttype),
         });
 
-        res.json({ success: true, data: { matches, meta: { gtype, showtype, rtype, ltype, sorttype }, raw: xml } });
+        res.json({ success: true, data: { matches, meta: { gtype, showtype, rtype, ltype, sorttype }, raw: xml, source: 'fallback' } });
     } catch (error) {
         console.error('系统抓取赛事接口错误:', error);
         res.status(500).json({ success: false, error: '抓取赛事失败' });
@@ -1451,12 +1470,26 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
     res.write(`event: status\n`);
     res.write(`data: ${JSON.stringify({ ok: true, subscribed: key, system: true })}\n\n`);
 
-    // 自定义轮询：调用系统抓取
+    // 自定义轮询：优先使用独立抓取服务
     const interval = showtype === 'live' ? 1000 : 15000;
     let tm: NodeJS.Timeout | undefined;
     const tick = async () => {
       try {
-        const { matches, xml } = await getCrownAutomation().fetchMatchesSystem({ gtype, showtype, rtype, ltype, sorttype });
+        // 优先使用独立抓取服务的数据
+        const fetcher = getMatchFetcher();
+        let matches, xml;
+
+        if (fetcher) {
+          const data = fetcher.getLatestMatches();
+          matches = data.matches;
+          xml = data.xml;
+        } else {
+          // 降级：使用原有的抓取方式
+          const result = await getCrownAutomation().fetchMatchesSystem({ gtype, showtype, rtype, ltype, sorttype });
+          matches = result.matches;
+          xml = result.xml;
+        }
+
         const payload = JSON.stringify({ matches, meta: { gtype, showtype, rtype, ltype, sorttype }, ts: Date.now() });
         res.write(`event: matches\n`);
         res.write(`data: ${payload}\n\n`);
