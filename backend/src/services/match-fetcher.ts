@@ -99,12 +99,17 @@ export class MatchFetcher {
         this.config.password
       );
 
-      if (loginResult.success && loginResult.uid) {
+      // 检查登录结果
+      if (loginResult.status === 'error' || loginResult.msg === '105') {
+        throw new Error(`登录失败: ${loginResult.code_message || loginResult.msg || '账号或密码错误'}`);
+      }
+
+      if (loginResult.uid) {
         this.uid = loginResult.uid;
         this.loginTime = Date.now();
         console.log(`✅ 登录成功，UID: ${this.uid}`);
       } else {
-        throw new Error(`登录失败: ${loginResult.error || '未知错误'}`);
+        throw new Error(`登录失败: 未获取到 UID`);
       }
     } catch (error) {
       console.error('❌ 登录失败:', error);
