@@ -3,7 +3,7 @@
  * 使用专用账号持续抓取赛事数据，不依赖用户账号
  */
 
-import { CrownApiClient } from './crown-api-client.js';
+import { CrownApiClient } from './crown-api-client';
 import { XMLParser } from 'fast-xml-parser';
 import fs from 'fs/promises';
 
