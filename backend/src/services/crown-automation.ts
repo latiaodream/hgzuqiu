@@ -7149,6 +7149,16 @@ export class CrownAutomationService {
         const game = gameArray[i];
         console.log(`  🎮 Game ${i + 1}:`, JSON.stringify(game, null, 2).substring(0, 300));
 
+        // 打印所有包含 "ior" 的字段，用于调试
+        if (i === 1) { // 只打印 Game 2
+          console.log('  🔍 Game 2 所有 ior 字段:');
+          for (const key of Object.keys(game)) {
+            if (key.toLowerCase().includes('ior') || key.toLowerCase().includes('ratio')) {
+              console.log(`    ${key}: ${game[key]}`);
+            }
+          }
+        }
+
         // 提取让球盘口
         // 皇冠 API 只有一组让球数据：RE 系列
         // ratio_re: 盘口值
