@@ -1096,7 +1096,41 @@ router.get('/matches-system', async (req: any, res) => {
         // 任意已登录用户均可使用系统赛事抓取，无需绑定账号
         const { gtype = 'ft', showtype = 'live', rtype = 'rb', ltype = '3', sorttype = 'L' } = req.query as any;
 
-        // 优先使用独立抓取服务的数据
+        // 优先读取独立抓取服务的数据文件
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const fetcherDataPath = path.join(__dirname, '../../..', 'fetcher', 'data', 'latest-matches.json');
+
+            if (fs.existsSync(fetcherDataPath)) {
+                const fileContent = fs.readFileSync(fetcherDataPath, 'utf-8');
+                const fetcherData = JSON.parse(fileContent);
+
+                // 检查数据是否过期（超过 10 秒）
+                const age = Date.now() - fetcherData.timestamp;
+                if (age < 10000) {
+                    console.log(`✅ 使用独立抓取服务数据 (${fetcherData.matchCount} 场比赛, ${Math.floor(age / 1000)}秒前)`);
+                    res.json({
+                        success: true,
+                        data: {
+                            matches: fetcherData.matches || [],
+                            meta: { gtype, showtype, rtype, ltype, sorttype },
+                            source: 'independent-fetcher',
+                            lastUpdate: fetcherData.timestamp,
+                        }
+                    });
+                    return;
+                } else {
+                    console.log(`⚠️ 独立抓取服务数据过期 (${Math.floor(age / 1000)}秒前)，使用降级方案`);
+                }
+            } else {
+                console.log('⚠️ 独立抓取服务数据文件不存在，使用降级方案');
+            }
+        } catch (error) {
+            console.error('❌ 读取独立抓取服务数据失败:', error);
+        }
+
+        // 尝试使用内置的独立抓取服务
         const fetcher = getMatchFetcher();
         if (fetcher) {
             const data = fetcher.getLatestMatches();
