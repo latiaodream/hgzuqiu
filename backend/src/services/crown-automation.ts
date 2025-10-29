@@ -7180,6 +7180,17 @@ export class CrownAutomationService {
         const game = gameArray[i];
         console.log(`  🎮 Game ${i + 1}:`, JSON.stringify(game, null, 2).substring(0, 300));
 
+        // 打印所有 ratio 和 ior 字段用于调试
+        const debugFields: any = {};
+        for (const key of Object.keys(game)) {
+          if (key.toLowerCase().includes('ratio') || key.toLowerCase().includes('ior')) {
+            debugFields[key] = game[key];
+          }
+        }
+        if (Object.keys(debugFields).length > 0) {
+          console.log(`    📊 所有赔率字段:`, JSON.stringify(debugFields, null, 2));
+        }
+
         // 提取让球盘口
         // 皇冠 API 只有一组让球数据：RE 系列
         // ratio_re: 盘口值
