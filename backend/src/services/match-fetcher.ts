@@ -4,7 +4,7 @@
  */
 
 import { CrownApiClient } from './crown-api-client';
-import { XMLParser } from 'fast-xml-parser';
+import { getCrownAutomation } from './crown-automation';
 import fs from 'fs/promises';
 
 interface FetchConfig {
@@ -266,36 +266,13 @@ export class MatchFetcher {
   }
 
   /**
-   * 解析赛事 XML
+   * 解析赛事 XML（使用 CrownAutomation 的解析方法）
    */
   private parseMatchesFromXml(xml: string): any[] {
     try {
-      const parser = new XMLParser({ ignoreAttributes: false });
-      const parsed = parser.parse(xml);
-
-      const ec = parsed?.serverresponse?.ec;
-      if (!ec) {
-        return [];
-      }
-
-      const ecArray = Array.isArray(ec) ? ec : [ec];
-      const matches: any[] = [];
-
-      for (const ecItem of ecArray) {
-        const games = ecItem?.game;
-        if (!games) continue;
-
-        const gameArray = Array.isArray(games) ? games : [games];
-
-        for (const game of gameArray) {
-          const match = this.parseMatch(game, ecItem);
-          if (match) {
-            matches.push(match);
-          }
-        }
-      }
-
-      return matches;
+      // 直接使用 CrownAutomation 的解析方法，确保解析逻辑一致
+      const automation = getCrownAutomation();
+      return (automation as any).parseMatchesFromXml(xml);
     } catch (error) {
       console.error('❌ 解析赛事 XML 失败:', error);
       return [];
@@ -303,100 +280,17 @@ export class MatchFetcher {
   }
 
   /**
-   * 解析单个比赛
-   */
-  private parseMatch(game: any, ec: any): any {
-    // 这里复用 crown-automation.ts 中的解析逻辑
-    // 为了简化，这里只实现基本解析
-    const pick = (keys: string[]): string => {
-      for (const key of keys) {
-        if (game[key]) return String(game[key]).trim();
-      }
-      return '';
-    };
-
-    return {
-      gid: pick(['GID', 'gid']),
-      ecid: pick(['@_id', 'id']) || ec?.['@_id'],
-      league: pick(['LEAGUE', 'league']),
-      home: pick(['TEAM_H', 'team_h']),
-      away: pick(['TEAM_C', 'team_c']),
-      datetime: pick(['DATETIME', 'datetime']),
-      score: {
-        home: pick(['SCORE_H', 'score_h']),
-        away: pick(['SCORE_C', 'score_c']),
-      },
-      markets: {
-        full: {},
-        half: {},
-      },
-      raw: game,
-    };
-  }
-
-  /**
-   * 解析更多盘口
+   * 解析更多盘口（使用 CrownAutomation 的解析方法）
    */
   private parseMoreMarketsFromXml(xml: string): { handicapLines: any[]; overUnderLines: any[] } {
     try {
-      const parser = new XMLParser({ ignoreAttributes: false });
-      const parsed = parser.parse(xml);
-
-      const games = parsed?.serverresponse?.game;
-      if (!games) {
-        return { handicapLines: [], overUnderLines: [] };
-      }
-
-      const gameArray = Array.isArray(games) ? games : [games];
-      const handicapLines: any[] = [];
-      const overUnderLines: any[] = [];
-
-      for (const game of gameArray) {
-        // 提取让球盘口
-        const handicapLine = this.pickString(game, ['RATIO_RE', 'ratio_re']);
-        const handicapHome = this.pickString(game, ['IOR_REH', 'ior_REH']);
-        const handicapAway = this.pickString(game, ['IOR_REC', 'ior_REC']);
-
-        if (handicapLine && (handicapHome || handicapAway)) {
-          handicapLines.push({
-            line: handicapLine,
-            home: handicapHome,
-            away: handicapAway,
-          });
-        }
-
-        // 提取大小球盘口
-        const ouLineMain = this.pickString(game, ['ratio_rouo', 'RATIO_ROUO', 'ratio_rouu', 'RATIO_ROUU']);
-        const ouOverMain = this.pickString(game, ['ior_ROUC', 'IOR_ROUC']);
-        const ouUnderMain = this.pickString(game, ['ior_ROUH', 'IOR_ROUH']);
-
-        if (ouLineMain && (ouOverMain || ouUnderMain)) {
-          overUnderLines.push({
-            line: ouLineMain,
-            over: ouOverMain,
-            under: ouUnderMain,
-          });
-        }
-      }
-
-      return { handicapLines, overUnderLines };
+      // 直接使用 CrownAutomation 的解析方法，确保解析逻辑一致
+      const automation = getCrownAutomation();
+      return (automation as any).parseMoreMarketsFromXml(xml);
     } catch (error) {
       console.error('❌ 解析更多盘口失败:', error);
       return { handicapLines: [], overUnderLines: [] };
     }
-  }
-
-  /**
-   * 辅助方法：从对象中提取字符串值
-   */
-  private pickString(obj: any, keys: string[]): string {
-    if (!obj) return '';
-    for (const key of keys) {
-      if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
-        return String(obj[key]).trim();
-      }
-    }
-    return '';
   }
 }
 
