@@ -2991,8 +2991,8 @@ export class CrownAutomationService {
       {
         match: () => typeMatches('大/小', '大小', 'over', 'under', 'rou'),
         resolve: () => {
-          if (optionMatches('大', 'over', 'o')) return 'ROUC';
-          if (optionMatches('小', 'under', 'u')) return 'ROUH';
+          if (optionMatches('大', 'over', 'o')) return 'ROUH';  // 大 = Over = H (High)
+          if (optionMatches('小', 'under', 'u')) return 'ROUC'; // 小 = Under = C (Close/Low)
           return null;
         },
       },
