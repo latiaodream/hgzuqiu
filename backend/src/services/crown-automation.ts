@@ -371,44 +371,8 @@ export class CrownAutomationService {
   }
 
   private async warmupFetchAccounts() {
-    try {
-      console.log('🚀 正在预热赛事抓取账号（使用纯 API 方式）...');
-      await query('UPDATE crown_accounts SET is_online = false WHERE use_for_fetch = true');
-
-      const accountsResult = await query(
-        `SELECT * FROM crown_accounts
-           WHERE use_for_fetch = true
-             AND is_enabled = true
-         ORDER BY last_login_at DESC NULLS LAST`
-      );
-
-      const rows = accountsResult.rows || [];
-      if (rows.length === 0) {
-        console.log('ℹ️ 未配置赛事抓取账号，跳过预热');
-        return;
-      }
-
-      for (const row of rows) {
-        const accountId = Number(row.id);
-        if (!Number.isFinite(accountId)) {
-          continue;
-        }
-        if (this.isAccountOnline(accountId)) {
-          continue;
-        }
-
-        await this.randomDelay(400, 800);
-        // 使用纯 API 方式登录，避免 Playwright 和简易码处理
-        const result = await this.loginAccountWithApi(row as CrownAccount);
-        if (result.success) {
-          console.log(`✅ 抓取账号 ${row.username} 预热成功（纯 API）`);
-        } else {
-          console.warn(`⚠️ 抓取账号 ${row.username} 预热失败: ${result.message || '未知错误'}`);
-        }
-      }
-    } catch (error) {
-      throw error;
-    }
+    // 已禁用数据库账号预热功能，只使用独立抓取服务
+    console.log('ℹ️ 数据库账号预热已禁用，使用独立抓取服务');
   }
 
   private async ensureBrowser(): Promise<Browser> {
@@ -6320,155 +6284,12 @@ export class CrownAutomationService {
     }
   }
 
-  // 使用纯 API 方式抓取赛事
+  // 使用纯 API 方式抓取赛事（已禁用，只使用独立抓取服务）
   private async fetchMatchesWithApi(params: {
     gtype: string; showtype: string; rtype: string; ltype: string; sorttype: string
   }): Promise<{ matches: any[]; xml?: string }> {
-    try {
-      // 查找有纯 API 会话的账号
-      const fetchAccounts = await query(
-        `SELECT id, username, device_type, user_agent, proxy_enabled, proxy_type, proxy_host, proxy_port, proxy_username, proxy_password
-         FROM crown_accounts
-         WHERE use_for_fetch = true AND is_enabled = true
-         ORDER BY last_login_at DESC NULLS LAST`
-      );
-
-      for (const row of fetchAccounts.rows) {
-        const accountId = row.id;
-        const apiLoginTime = this.apiLoginSessions.get(accountId);
-        const uid = this.apiUids.get(accountId);
-
-        if (apiLoginTime && uid) {
-          const now = Date.now();
-          const apiSessionTtl = 2 * 60 * 60 * 1000; // 2 小时
-          if (now - apiLoginTime < apiSessionTtl) {
-            console.log(`📌 使用账号 ID=${accountId} 的纯 API 会话抓取赛事 (UID: ${uid})`);
-
-            // 创建 API 客户端
-            const apiClient = new CrownApiClient({
-              baseUrl: this.activeBaseUrl,
-              deviceType: row.device_type || 'iPhone 14',
-              userAgent: row.user_agent,
-              proxy: {
-                enabled: row.proxy_enabled || false,
-                type: row.proxy_type,
-                host: row.proxy_host,
-                port: row.proxy_port,
-                username: row.proxy_username,
-                password: row.proxy_password,
-              },
-            });
-
-            try {
-              // 设置 UID（模拟已登录状态）
-              (apiClient as any).uid = uid;
-
-              // 抓取赛事
-              const xml = await apiClient.getGameList(params);
-              if (xml) {
-                try { await fs.writeFile('matches-latest.xml', xml); } catch {}
-                const matches = this.parseMatchesFromXml(xml);
-                console.log(`✅ 纯 API 抓取赛事成功，数量: ${matches.length}`);
-
-                // 为前 10 场比赛获取更多盘口选项
-                const matchesToEnrich = matches.slice(0, 10);
-                console.log(`📊 开始获取 ${matchesToEnrich.length} 场比赛的更多盘口...`);
-
-                let successCount = 0;
-                let skipCount = 0;
-
-                for (const match of matchesToEnrich) {
-                  try {
-                    const ecid = match.ecid;  // 使用 ecid 而不是 gid
-                    const lid = match.raw?.LID || match.raw?.lid;
-
-                    if (!ecid || !lid) {
-                      skipCount++;
-                      continue;
-                    }
-
-                    // 调用 get_game_more API
-                    const moreXml = await apiClient.getGameMore({
-                      gid: String(ecid),  // 传入 ecid 作为 gid 参数
-                      lid: String(lid),
-                      gtype: params.gtype,
-                      showtype: params.showtype,
-                      ltype: params.ltype,
-                      isRB: params.showtype === 'live' ? 'Y' : 'N',
-                    });
-
-                    if (moreXml) {
-                      // 解析更多盘口
-                      const { handicapLines, overUnderLines, halfHandicapLines, halfOverUnderLines } = this.parseMoreMarketsFromXml(moreXml);
-
-                      // 合并到原有的盘口数据中
-                      if (handicapLines.length > 0 || overUnderLines.length > 0 || halfHandicapLines.length > 0 || halfOverUnderLines.length > 0) {
-                        // 确保 markets.full 和 markets.half 对象存在
-                        if (!match.markets.full) {
-                          match.markets.full = {};
-                        }
-                        if (!match.markets.half) {
-                          match.markets.half = {};
-                        }
-
-                        // 全场盘口
-                        if (handicapLines.length > 0) {
-                          match.markets.full.handicapLines = handicapLines;
-                          // 同时更新单数字段，保持向后兼容
-                          match.markets.handicap = handicapLines[0];
-                          match.markets.full.handicap = handicapLines[0];
-                        }
-
-                        if (overUnderLines.length > 0) {
-                          match.markets.full.overUnderLines = overUnderLines;
-                          // 同时更新单数字段，保持向后兼容
-                          match.markets.ou = overUnderLines[0];
-                          match.markets.full.ou = overUnderLines[0];
-                        }
-
-                        // 半场盘口
-                        if (halfHandicapLines.length > 0) {
-                          match.markets.half.handicapLines = halfHandicapLines;
-                          match.markets.half.handicap = halfHandicapLines[0];
-                        }
-
-                        if (halfOverUnderLines.length > 0) {
-                          match.markets.half.overUnderLines = halfOverUnderLines;
-                          match.markets.half.ou = halfOverUnderLines[0];
-                        }
-
-                        console.log(`  ✅ ${match.home} vs ${match.away}: 全场(${handicapLines.length}让球,${overUnderLines.length}大小) 半场(${halfHandicapLines.length}让球,${halfOverUnderLines.length}大小)`);
-                        successCount++;
-                      } else {
-                        skipCount++;
-                      }
-                    }
-
-                    // 延迟 50ms，避免请求过快
-                    await new Promise(resolve => setTimeout(resolve, 50));
-
-                  } catch (error) {
-                    console.error(`  ❌ 获取 ${match.home} vs ${match.away} 更多盘口失败`);
-                    skipCount++;
-                  }
-                }
-
-                console.log(`✅ 完成获取更多盘口 (成功: ${successCount}, 跳过: ${skipCount})`);
-                return { matches, xml };
-              }
-            } finally {
-              await apiClient.close();
-            }
-          }
-        }
-      }
-
-      console.log('⚠️ 没有可用的纯 API 会话');
-      return { matches: [] };
-    } catch (error) {
-      console.error('纯 API 抓取赛事失败:', error);
-      return { matches: [] };
-    }
+    console.log('ℹ️ 数据库账号抓取已禁用，请使用独立抓取服务');
+    return { matches: [] };
   }
 
   // 使用纯 API 方式下注
