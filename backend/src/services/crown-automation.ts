@@ -7149,6 +7149,14 @@ export class CrownAutomationService {
         const game = gameArray[i];
         console.log(`  🎮 Game ${i + 1}:`, JSON.stringify(game, null, 2).substring(0, 300));
 
+        // 只解析 master="Y" 的 game 元素（主盘口）
+        // 忽略半场、角球等其他盘口，避免重复数据
+        const isMaster = this.pickString(game, ['@_master', 'master']) === 'Y';
+        if (!isMaster) {
+          console.log(`    ⏭️ 跳过非主盘口 (master != Y)`);
+          continue;
+        }
+
         // 提取让球盘口
         // 皇冠 API 有三组让球数据：
         // 1. RE 系列（主盘口）：ratio_re, ior_REH（主队）, ior_REC（客队）
