@@ -1236,7 +1236,7 @@ const startPollingIfNeeded = (key: StreamKey) => {
   const group = streamGroups.get(key);
   if (!group || group.timer) return;
   const { params } = group;
-  const interval = params.showtype === 'live' ? 3000 : 15000;
+  const interval = params.showtype === 'live' ? 1000 : 15000;
 
   const tick = async () => {
     const g = streamGroups.get(key);
@@ -1452,7 +1452,7 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
     res.write(`data: ${JSON.stringify({ ok: true, subscribed: key, system: true })}\n\n`);
 
     // 自定义轮询：调用系统抓取
-    const interval = showtype === 'live' ? 3000 : 15000;
+    const interval = showtype === 'live' ? 1000 : 15000;
     let tm: NodeJS.Timeout | undefined;
     const tick = async () => {
       try {
