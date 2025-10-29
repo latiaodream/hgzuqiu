@@ -24,6 +24,7 @@ export class CrownClient {
   private client: AxiosInstance;
   private sessionFile: string;
   private loginTime: number = 0;
+  private lastEnrichTime: number = 0; // 上次获取更多盘口的时间
 
   constructor(config: { baseUrl: string; username: string; password: string; dataDir: string }) {
     this.baseUrl = config.baseUrl;
@@ -482,8 +483,13 @@ export class CrownClient {
       // 解析赛事
       const matches = this.parseMatches(xml);
 
-      // 为前10场比赛获取更多盘口
-      await this.enrichMatches(matches.slice(0, 10));
+      // 每 5 秒才获取一次更多盘口，避免请求过多
+      const now = Date.now();
+      if (now - this.lastEnrichTime > 5000) {
+        this.lastEnrichTime = now;
+        // 只对前 5 场比赛获取更多盘口
+        await this.enrichMatches(matches.slice(0, 5));
+      }
 
       return {
         success: true,
