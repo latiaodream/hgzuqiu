@@ -79,15 +79,16 @@ app.listen(PORT, async () => {
     // 初始化 Crown 自动化服务（触发预热）
     getCrownAutomation();
 
-    // 启动独立的赛事抓取服务
-    try {
-        await initMatchFetcher({
-            username: process.env.CROWN_FETCH_USERNAME || 'test001',
-            password: process.env.CROWN_FETCH_PASSWORD || 'abc123456',
-            baseUrl: process.env.CROWN_BASE_URL || 'https://hga026.com',
-        });
-        console.log('✅ 独立赛事抓取服务已启动');
-    } catch (error) {
-        console.error('❌ 启动独立赛事抓取服务失败:', error);
-    }
+    // 启动独立的赛事抓取服务（暂时禁用，因为 heizi2025 账号被锁定）
+    // try {
+    //     await initMatchFetcher({
+    //         username: process.env.CROWN_FETCH_USERNAME || 'test001',
+    //         password: process.env.CROWN_FETCH_PASSWORD || 'abc123456',
+    //         baseUrl: process.env.CROWN_BASE_URL || 'https://hga026.com',
+    //     });
+    //     console.log('✅ 独立赛事抓取服务已启动');
+    // } catch (error) {
+    //     console.error('❌ 启动独立赛事抓取服务失败:', error);
+    // }
+    console.log('⚠️ 独立赛事抓取服务已禁用（账号被锁定），使用数据库账号抓取');
 });

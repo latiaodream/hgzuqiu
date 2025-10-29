@@ -219,8 +219,9 @@ export class CrownApiClient {
 
   /**
    * 登录 API（带重试机制）
+   * 注意：重试次数设置为 1，避免短时间内多次失败导致账号被锁定
    */
-  async login(username: string, password: string, retries = 3): Promise<LoginResponse> {
+  async login(username: string, password: string, retries = 1): Promise<LoginResponse> {
     console.log(`🔐 开始登录: ${username}`);
 
     // 获取最新版本号
@@ -246,11 +247,11 @@ export class CrownApiClient {
       userAgent: encodedUA,
     });
 
-    // 重试机制
+    // 重试机制（默认只尝试 1 次，避免账号被锁定）
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         if (attempt > 1) {
-          const delay = attempt * 1000; // 1秒、2秒、3秒
+          const delay = attempt * 2000; // 2秒、4秒（如果需要重试）
           console.log(`⏳ 等待 ${delay}ms 后重试...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
@@ -282,7 +283,7 @@ export class CrownApiClient {
           throw error;
         }
 
-        // 如果是网络错误，继续重试
+        // 只有网络错误才重试，密码错误等业务错误直接抛出
         if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
           console.log('🔄 网络错误，准备重试...');
           continue;
