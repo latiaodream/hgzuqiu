@@ -88,6 +88,40 @@ export class CrownClient {
   }
 
   /**
+   * 获取 BlackBox（从皇冠站点获取）
+   */
+  private async getBlackBox(): Promise<string> {
+    try {
+      const response = await this.client.get('/app/member/FT_browse/index.php?rtype=r&langx=zh-cn&mtype=3');
+      const html = response.data;
+      const match = html.match(/var\s+BETKEY\s*=\s*['"]([^'"]+)['"]/);
+      if (match) {
+        return match[1];
+      }
+    } catch (error) {
+      console.error('⚠️ 获取 BlackBox 失败');
+    }
+    // 返回默认值
+    return this.generateBlackBox();
+  }
+
+  /**
+   * 解析 XML 响应
+   */
+  private parseXmlResponse(xml: string): any {
+    const result: any = {};
+
+    // 提取所有标签内容
+    const tagRegex = /<(\w+)>([^<]*)<\/\1>/g;
+    let match;
+    while ((match = tagRegex.exec(xml)) !== null) {
+      result[match[1].toLowerCase()] = match[2];
+    }
+
+    return result;
+  }
+
+  /**
    * 登录
    */
   async login(): Promise<LoginResult> {
@@ -97,42 +131,53 @@ export class CrownClient {
       // 先获取最新版本号
       await this.updateVersion();
 
+      // 获取 BlackBox
+      const blackbox = await this.getBlackBox();
+
+      // Base64 编码 UserAgent
+      const userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1';
+      const encodedUA = Buffer.from(userAgent).toString('base64');
+
       const params = new URLSearchParams({
-        p: 'login',
-        ver: this.version,
+        p: 'chk_login',
         langx: 'zh-cn',
+        ver: this.version,
         username: this.username,
-        passwd: this.password,
-        blackbox: this.generateBlackBox(),
+        password: this.password,
+        app: 'N',
+        auto: 'CFHFID',
+        blackbox,
+        userAgent: encodedUA,
       });
 
-      const response = await this.client.post('/transform.php', params.toString(), {
+      const response = await this.client.post(`/transform.php?ver=${this.version}`, params.toString(), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 
       const text = response.data;
+      const data = this.parseXmlResponse(text);
 
-      // 打印返回内容（调试用）
-      console.log('📥 登录响应（前500字符）:', text.substring(0, 500));
+      console.log('📥 登录响应:', {
+        status: data.status,
+        msg: data.msg,
+        username: data.username,
+        uid: data.uid,
+      });
 
       // 检查登录失败
-      if (text.includes('密码错误次数过多')) {
+      if (data.msg && data.msg.includes('密码错误次数过多')) {
         return { success: false, error: '密码错误次数过多，请联系您的上线寻求协助。' };
       }
-      if (text.includes('账号或密码错误')) {
+      if (data.msg && (data.msg.includes('账号或密码错误') || data.msg.includes('帐号或密码错误'))) {
         return { success: false, error: '账号或密码错误' };
       }
-      if (text.includes('账号已被锁定')) {
+      if (data.msg && data.msg.includes('账号已被锁定')) {
         return { success: false, error: '账号已被锁定' };
-      }
-      if (text.includes('帐号或密码错误')) {
-        return { success: false, error: '账号或密码错误' };
       }
 
       // 提取 UID
-      const uidMatch = text.match(/uid[=:]([a-z0-9]+)/i);
-      if (uidMatch) {
-        this.uid = uidMatch[1];
+      if (data.uid) {
+        this.uid = data.uid;
         this.loginTime = Date.now();
         this.saveSession();
         console.log(`✅ 登录成功: UID=${this.uid}`);
@@ -140,7 +185,7 @@ export class CrownClient {
       }
 
       console.log('❌ 无法从响应中提取 UID');
-      return { success: false, error: '无法提取 UID' };
+      return { success: false, error: data.msg || '无法提取 UID' };
     } catch (error: any) {
       console.error('❌ 登录失败:', error.message);
       return { success: false, error: error.message };
