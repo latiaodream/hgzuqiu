@@ -7165,45 +7165,51 @@ export class CrownAutomationService {
 
         // 提取大小球盘口
         // 根据官方网站 HTML：ROUH = 小球，ROUC = 大球
-        // 所以：ior_ROUHO/ior_ROUHU 是小球的赔率
-        //      ior_ROUCO/ior_ROUCU 是大球的赔率
+        // 皇冠 API 有三组大小球数据：
+        // 1. ROUH 系列：ratio_rouho/ratio_rouhu, ior_ROUHO/ior_ROUHU (小球)
+        // 2. ROUC 系列：ratio_rouco/ratio_roucu, ior_ROUCO/ior_ROUCU (大球)
+        // 3. ROU 系列：ratio_rouo/ratio_rouu, ior_ROUH/ior_ROUC (注意：ROUH=小，ROUC=大)
 
-        // 提取 ROUH 系列（小球盘口）
+        // 提取 ROU 系列（主盘口，包含大小球）
+        const ouLineMain = this.pickString(game, ['ratio_rouo', 'RATIO_ROUO', 'ratio_rouu', 'RATIO_ROUU']);
+        const ouOverMain = this.pickString(game, ['ior_ROUC', 'IOR_ROUC']); // ROUC = 大球
+        const ouUnderMain = this.pickString(game, ['ior_ROUH', 'IOR_ROUH']); // ROUH = 小球
+
+        if (ouLineMain && (ouOverMain || ouUnderMain)) {
+          overUnderLines.push({
+            line: ouLineMain,
+            over: ouOverMain,
+            under: ouUnderMain,
+          });
+          console.log(`    ✅ 大小: ${ouLineMain} (大:${ouOverMain} / 小:${ouUnderMain})`);
+        }
+
+        // 提取 ROUH 系列（额外的小球盘口）
         const ouLineH = this.pickString(game, ['ratio_rouho', 'RATIO_ROUHO', 'ratio_rouhu', 'RATIO_ROUHU']);
-        const ouUnderH = this.pickString(game, ['ior_ROUHO', 'IOR_ROUHO', 'ior_ROUHU', 'IOR_ROUHU']);
+        const ouOverH = this.pickString(game, ['ior_ROUHO', 'IOR_ROUHO']);
+        const ouUnderH = this.pickString(game, ['ior_ROUHU', 'IOR_ROUHU']);
 
-        // 提取 ROUC 系列（大球盘口）
-        const ouLineC = this.pickString(game, ['ratio_rouco', 'RATIO_ROUCO', 'ratio_roucu', 'RATIO_ROUCU']);
-        const ouOverC = this.pickString(game, ['ior_ROUCO', 'IOR_ROUCO', 'ior_ROUCU', 'IOR_ROUCU']);
-
-        // 如果两个盘口的盘口数相同，则合并为一个
-        if (ouLineH && ouLineC && ouLineH === ouLineC && ouUnderH && ouOverC) {
+        if (ouLineH && ouLineH !== ouLineMain && (ouOverH || ouUnderH)) {
           overUnderLines.push({
             line: ouLineH,
-            over: ouOverC,   // ROUC 是大球
-            under: ouUnderH, // ROUH 是小球
+            over: ouOverH,
+            under: ouUnderH,
           });
-          console.log(`    ✅ 大小: ${ouLineH} (大:${ouOverC} / 小:${ouUnderH})`);
-        } else {
-          // 如果盘口数不同，分别添加
-          if (ouLineH && ouUnderH) {
-            // ROUH 只有小球，需要找对应的大球
-            overUnderLines.push({
-              line: ouLineH,
-              over: ouOverC || '',
-              under: ouUnderH,
-            });
-            console.log(`    ✅ 大小(H): ${ouLineH} (大:${ouOverC || 'N/A'} / 小:${ouUnderH})`);
-          }
-          if (ouLineC && ouOverC && ouLineC !== ouLineH) {
-            // ROUC 只有大球，需要找对应的小球
-            overUnderLines.push({
-              line: ouLineC,
-              over: ouOverC,
-              under: ouUnderH || '',
-            });
-            console.log(`    ✅ 大小(C): ${ouLineC} (大:${ouOverC} / 小:${ouUnderH || 'N/A'})`);
-          }
+          console.log(`    ✅ 大小(H): ${ouLineH} (大:${ouOverH} / 小:${ouUnderH})`);
+        }
+
+        // 提取 ROUC 系列（额外的大球盘口）
+        const ouLineC = this.pickString(game, ['ratio_rouco', 'RATIO_ROUCO', 'ratio_roucu', 'RATIO_ROUCU']);
+        const ouOverC = this.pickString(game, ['ior_ROUCO', 'IOR_ROUCO']);
+        const ouUnderC = this.pickString(game, ['ior_ROUCU', 'IOR_ROUCU']);
+
+        if (ouLineC && ouLineC !== ouLineMain && ouLineC !== ouLineH && (ouOverC || ouUnderC)) {
+          overUnderLines.push({
+            line: ouLineC,
+            over: ouOverC,
+            under: ouUnderC,
+          });
+          console.log(`    ✅ 大小(C): ${ouLineC} (大:${ouOverC} / 小:${ouUnderC})`);
         }
       }
 
