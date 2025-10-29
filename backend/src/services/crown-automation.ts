@@ -7164,11 +7164,16 @@ export class CrownAutomationService {
         }
 
         // 提取大小球盘口
-        const ouLineOver = this.pickString(game, ['RATIO_ROUO', 'ratio_rouo']);
-        const ouLineUnder = this.pickString(game, ['RATIO_ROUU', 'ratio_rouu']);
+        // 注意：皇冠 API 有两组大小球数据
+        // ROUH 系列：ior_ROUHO (Over), ior_ROUHU (Under)
+        // ROUC 系列：ior_ROUCO (Over), ior_ROUCU (Under)
+        const ouLineOver = this.pickString(game, ['RATIO_ROUO', 'ratio_rouo', 'ratio_rouho']);
+        const ouLineUnder = this.pickString(game, ['RATIO_ROUU', 'ratio_rouu', 'ratio_rouhu']);
         const ouLine = ouLineOver || ouLineUnder;
-        const ouOver = this.pickString(game, ['IOR_ROUH', 'ior_ROUH']);
-        const ouUnder = this.pickString(game, ['IOR_ROUC', 'ior_ROUC']);
+
+        // 尝试从两组数据中获取赔率（优先 ROUH 系列）
+        const ouOver = this.pickString(game, ['IOR_ROUHO', 'ior_ROUHO', 'IOR_ROUCO', 'ior_ROUCO']);
+        const ouUnder = this.pickString(game, ['IOR_ROUHU', 'ior_ROUHU', 'IOR_ROUCU', 'ior_ROUCU']);
 
         if (ouLine && (ouOver || ouUnder)) {
           overUnderLines.push({
@@ -7176,7 +7181,7 @@ export class CrownAutomationService {
             over: ouOver,
             under: ouUnder,
           });
-          console.log(`    ✅ 大小: ${ouLine} (${ouOver} / ${ouUnder})`);
+          console.log(`    ✅ 大小: ${ouLine} (大:${ouOver} / 小:${ouUnder})`);
         }
       }
 
