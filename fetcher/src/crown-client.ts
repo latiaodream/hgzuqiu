@@ -255,9 +255,14 @@ export class CrownClient {
    */
   private parseMatches(xml: string): any[] {
     try {
+      // 打印 XML 前 500 字符用于调试
+      console.log('📥 XML 响应（前500字符）:', xml.substring(0, 500));
+
       const { XMLParser } = require('fast-xml-parser');
       const parser = new XMLParser({ ignoreAttributes: false });
       const parsed = parser.parse(xml);
+
+      console.log('📊 解析后的对象:', JSON.stringify(parsed).substring(0, 500));
 
       const ec = parsed?.serverresponse?.ec;
       if (!ec) {
@@ -343,20 +348,28 @@ export class CrownClient {
         return { success: false, matches: [], timestamp: Date.now(), error: '未登录' };
       }
 
+      const timestamp = Date.now().toString();
+
       const params = new URLSearchParams({
         uid: this.uid,
         ver: this.version,
         langx: 'zh-cn',
         p: 'get_game_list',
+        p3type: '',
+        date: '',
         gtype: 'ft',
         showtype: 'live',
         rtype: 'rb',
         ltype: '3',
+        filter: '',
+        cupFantasy: 'N',
         sorttype: 'L',
-        ts: Date.now().toString(),
+        specialClick: '',
+        isFantasy: 'N',
+        ts: timestamp,
       });
 
-      const response = await this.client.post('/transform.php', params.toString(), {
+      const response = await this.client.post(`/transform.php?ver=${this.version}`, params.toString(), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 
