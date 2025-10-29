@@ -7256,7 +7256,7 @@ export class CrownAutomationService {
 
     } catch (error) {
       console.error('❌ 解析 get_game_more XML 失败:', error);
-      return { handicapLines: [], overUnderLines: [] };
+      return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
     }
   }
 
