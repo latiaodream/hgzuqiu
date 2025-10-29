@@ -7164,24 +7164,36 @@ export class CrownAutomationService {
         }
 
         // 提取大小球盘口
-        // 注意：皇冠 API 有两组大小球数据
-        // ROUH 系列：ior_ROUHO (Over), ior_ROUHU (Under)
-        // ROUC 系列：ior_ROUCO (Over), ior_ROUCU (Under)
-        const ouLineOver = this.pickString(game, ['RATIO_ROUO', 'ratio_rouo', 'ratio_rouho']);
-        const ouLineUnder = this.pickString(game, ['RATIO_ROUU', 'ratio_rouu', 'ratio_rouhu']);
-        const ouLine = ouLineOver || ouLineUnder;
+        // 注意：皇冠 API 有两组大小球数据，需要分别提取
+        // ROUH 系列：ratio_rouho/ratio_rouhu (盘口), ior_ROUHO (Over), ior_ROUHU (Under)
+        // ROUC 系列：ratio_rouco/ratio_roucu (盘口), ior_ROUCO (Over), ior_ROUCU (Under)
 
-        // 尝试从两组数据中获取赔率（优先 ROUH 系列）
-        const ouOver = this.pickString(game, ['IOR_ROUHO', 'ior_ROUHO', 'IOR_ROUCO', 'ior_ROUCO']);
-        const ouUnder = this.pickString(game, ['IOR_ROUHU', 'ior_ROUHU', 'IOR_ROUCU', 'ior_ROUCU']);
+        // 提取 ROUH 系列（第一组）
+        const ouLineH = this.pickString(game, ['ratio_rouho', 'RATIO_ROUHO', 'ratio_rouhu', 'RATIO_ROUHU']);
+        const ouOverH = this.pickString(game, ['ior_ROUHO', 'IOR_ROUHO']);
+        const ouUnderH = this.pickString(game, ['ior_ROUHU', 'IOR_ROUHU']);
 
-        if (ouLine && (ouOver || ouUnder)) {
+        if (ouLineH && (ouOverH || ouUnderH)) {
           overUnderLines.push({
-            line: ouLine,
-            over: ouOver,
-            under: ouUnder,
+            line: ouLineH,
+            over: ouOverH,
+            under: ouUnderH,
           });
-          console.log(`    ✅ 大小: ${ouLine} (大:${ouOver} / 小:${ouUnder})`);
+          console.log(`    ✅ 大小(H): ${ouLineH} (大:${ouOverH} / 小:${ouUnderH})`);
+        }
+
+        // 提取 ROUC 系列（第二组）
+        const ouLineC = this.pickString(game, ['ratio_rouco', 'RATIO_ROUCO', 'ratio_roucu', 'RATIO_ROUCU']);
+        const ouOverC = this.pickString(game, ['ior_ROUCO', 'IOR_ROUCO']);
+        const ouUnderC = this.pickString(game, ['ior_ROUCU', 'IOR_ROUCU']);
+
+        if (ouLineC && (ouOverC || ouUnderC)) {
+          overUnderLines.push({
+            line: ouLineC,
+            over: ouOverC,
+            under: ouUnderC,
+          });
+          console.log(`    ✅ 大小(C): ${ouLineC} (大:${ouOverC} / 小:${ouUnderC})`);
         }
       }
 
