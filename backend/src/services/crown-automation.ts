@@ -6618,6 +6618,8 @@ export class CrownAutomationService {
     rtype: string;
     chose_team: string;
   } {
+    console.log(`🔄 转换下注参数: betType="${betType}", betOption="${betOption}"`);
+
     // 默认使用滚球独赢
     let wtype = 'RM';
     let rtype = 'RMH';
@@ -6625,36 +6627,41 @@ export class CrownAutomationService {
 
     if (betType === '独赢') {
       wtype = 'RM';
-      if (betOption === '主队') {
+      if (betOption === '主队' || betOption.includes('主队')) {
         rtype = 'RMH';
         chose_team = 'H';
-      } else if (betOption === '客队') {
+      } else if (betOption === '客队' || betOption.includes('客队')) {
         rtype = 'RMC';
         chose_team = 'C';
-      } else if (betOption === '和局') {
+      } else if (betOption === '和局' || betOption.includes('和局')) {
         rtype = 'RMN';
         chose_team = 'N';
       }
     } else if (betType === '让球') {
       wtype = 'R';
-      if (betOption === '主队') {
-        rtype = 'RH';
-        chose_team = 'H';
-      } else if (betOption === '客队') {
+      // 前端传的格式：'队名 (盘口)' 或 '主队' 或 '客队'
+      // 判断逻辑：如果包含 '客队' 或者 betOption 在后半部分，则是客队
+      if (betOption.includes('客队')) {
         rtype = 'RC';
         chose_team = 'C';
+      } else {
+        // 默认主队（包括 '主队' 或实际队名）
+        rtype = 'RH';
+        chose_team = 'H';
       }
-    } else if (betType === '大小') {
+    } else if (betType === '大小' || betType === '大小球') {
       wtype = 'OU';
-      if (betOption === '大') {
+      // 前端传的格式：'大球(盘口)' 或 '小球(盘口)'
+      if (betOption.includes('大')) {
         rtype = 'OUH';
         chose_team = 'H';
-      } else if (betOption === '小') {
+      } else if (betOption.includes('小')) {
         rtype = 'OUC';
         chose_team = 'C';
       }
     }
 
+    console.log(`✅ 转换结果: wtype="${wtype}", rtype="${rtype}", chose_team="${chose_team}"`);
     return { wtype, rtype, chose_team };
   }
 
