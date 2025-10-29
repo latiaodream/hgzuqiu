@@ -255,18 +255,12 @@ export class CrownClient {
    */
   private parseMatches(xml: string): any[] {
     try {
-      // 打印 XML 前 500 字符用于调试
-      console.log('📥 XML 响应（前500字符）:', xml.substring(0, 500));
-
       const { XMLParser } = require('fast-xml-parser');
       const parser = new XMLParser({ ignoreAttributes: false });
       const parsed = parser.parse(xml);
 
-      console.log('📊 解析后的对象:', JSON.stringify(parsed).substring(0, 500));
-
       const ec = parsed?.serverresponse?.ec;
       if (!ec) {
-        console.log('⚠️ XML 中没有赛事数据');
         return [];
       }
 
@@ -374,6 +368,13 @@ export class CrownClient {
       });
 
       const xml = response.data;
+
+      // 检查是否是 doubleLogin 错误
+      if (xml.includes('doubleLogin')) {
+        console.log('⚠️ 检测到重复登录，会话已失效');
+        this.uid = null; // 清除 UID，下次会重新登录
+        return { success: false, matches: [], timestamp: Date.now(), error: 'doubleLogin' };
+      }
 
       // 解析赛事
       const matches = this.parseMatches(xml);
