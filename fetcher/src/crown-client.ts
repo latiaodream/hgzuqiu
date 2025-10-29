@@ -251,57 +251,87 @@ export class CrownClient {
   }
 
   /**
-   * 解析赛事 XML
+   * 解析赛事 XML（使用 fast-xml-parser）
    */
   private parseMatches(xml: string): any[] {
-    const matches: any[] = [];
-
     try {
-      // 提取所有 <game> 标签
-      const gameRegex = /<game[^>]*>([\s\S]*?)<\/game>/gi;
-      let match;
+      const { XMLParser } = require('fast-xml-parser');
+      const parser = new XMLParser({ ignoreAttributes: false });
+      const parsed = parser.parse(xml);
 
-      while ((match = gameRegex.exec(xml)) !== null) {
-        const gameXml = match[0];
-        const game: any = {};
+      const ec = parsed?.serverresponse?.ec;
+      if (!ec) {
+        console.log('⚠️ XML 中没有赛事数据');
+        return [];
+      }
 
-        // 提取标签内容
-        const extractTag = (tag: string) => {
-          const regex = new RegExp(`<${tag}>([^<]*)<\/${tag}>`, 'i');
-          const m = gameXml.match(regex);
-          return m ? m[1] : '';
-        };
+      // 辅助函数：从对象中提取值
+      const pickValue = (source: any, candidateKeys: string[]): any => {
+        if (!source) return undefined;
+        for (const key of candidateKeys) {
+          if (source[key] !== undefined) return source[key];
+          const attrKey = `@_${key}`;
+          if (source[attrKey] !== undefined) return source[attrKey];
+          const lowerKey = key.toLowerCase();
+          for (const currentKey of Object.keys(source)) {
+            if (currentKey.toLowerCase() === lowerKey) {
+              return source[currentKey];
+            }
+            if (currentKey.toLowerCase() === `@_${lowerKey}`) {
+              return source[currentKey];
+            }
+          }
+        }
+        return undefined;
+      };
 
-        // 提取基本信息
-        game.gid = extractTag('gid');
-        game.datetime = extractTag('datetime');
-        game.league = extractTag('league');
-        game.gnum_h = extractTag('gnum_h');
-        game.gnum_c = extractTag('gnum_c');
-        game.team_h = extractTag('team_h');
-        game.team_c = extractTag('team_c');
-        game.strong = extractTag('strong');
-        game.score_h = extractTag('score_h');
-        game.score_c = extractTag('score_c');
+      const pickString = (source: any, candidateKeys: string[], fallback = ''): string => {
+        const value = pickValue(source, candidateKeys);
+        if (value === undefined || value === null) return fallback;
+        return String(value).trim();
+      };
 
-        // 提取赔率
-        game.ratio_re = extractTag('ratio_re');
-        game.ior_REH = extractTag('ior_REH');
-        game.ior_REC = extractTag('ior_REC');
-        game.ratio_rouo = extractTag('ratio_rouo');
-        game.ratio_rouu = extractTag('ratio_rouu');
-        game.ior_ROUH = extractTag('ior_ROUH');
-        game.ior_ROUC = extractTag('ior_ROUC');
-
-        if (game.gid) {
-          matches.push(game);
+      // 提取所有 game 元素
+      const ecArray = Array.isArray(ec) ? ec : [ec];
+      const allGames: any[] = [];
+      for (const ecItem of ecArray) {
+        const games = ecItem?.game;
+        if (!games) continue;
+        if (Array.isArray(games)) {
+          allGames.push(...games);
+        } else {
+          allGames.push(games);
         }
       }
+
+      // 解析每场比赛
+      const matches = allGames.map((game: any) => {
+        const gid = pickString(game, ['GID']);
+        const ecid = pickString(game, ['ECID']);
+        const league = pickString(game, ['LEAGUE']);
+        const home = pickString(game, ['TEAM_H', 'TEAM_H_E', 'TEAM_H_TW']);
+        const away = pickString(game, ['TEAM_C', 'TEAM_C_E', 'TEAM_C_TW']);
+        const scoreH = pickString(game, ['SCORE_H']);
+        const scoreC = pickString(game, ['SCORE_C']);
+        const score = (scoreH || scoreC) ? `${scoreH || '0'}-${scoreC || '0'}` : '';
+
+        return {
+          gid,
+          ecid,
+          league,
+          home,
+          away,
+          score,
+          time: pickString(game, ['DATETIME', 'TIME']),
+          status: pickString(game, ['RUNNING', 'STATUS']),
+        };
+      });
+
+      return matches;
     } catch (error) {
       console.error('❌ 解析赛事失败:', error);
+      return [];
     }
-
-    return matches;
   }
 
   /**
