@@ -129,11 +129,16 @@ export class CrownClient {
     try {
       console.log(`🔐 开始登录: ${this.username}`);
 
+      // 清除旧的会话数据
+      this.uid = null;
+      this.loginTime = 0;
+
       // 先获取最新版本号
       await this.updateVersion();
 
-      // 获取 BlackBox
-      const blackbox = await this.getBlackBox();
+      // 获取 BlackBox（使用生成的假 BlackBox，因为没有会话无法获取真实的）
+      const blackbox = this.generateBlackBox();
+      console.log(`🔐 使用生成的 BlackBox: ${blackbox.substring(0, 20)}...`);
 
       // Base64 编码 UserAgent
       const userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1';
@@ -210,11 +215,21 @@ export class CrownClient {
 
   /**
    * 生成 BlackBox 设备指纹
+   * 生成一个看起来像真实 BlackBox 的字符串
+   * 真实的 BlackBox 格式大概是：0400xxxxx@xxxxx@xxxxx;xxxxx
    */
   private generateBlackBox(): string {
     const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 15);
-    return `${timestamp}${random}`;
+    const random1 = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const random2 = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const random3 = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const random4 = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const random5 = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+    // 生成一个类似真实 BlackBox 的字符串（长度约 200-300 字符）
+    const fakeBlackBox = `0400${random1}${random2}@${random3}@${random4};${random5}${timestamp}`;
+
+    return fakeBlackBox;
   }
 
   /**
