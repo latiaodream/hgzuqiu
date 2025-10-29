@@ -16,7 +16,6 @@ import { coinRoutes } from './routes/coins';
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/logger';
 import { getCrownAutomation } from './services/crown-automation';
-import { initMatchFetcher } from './services/match-fetcher';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -79,15 +78,6 @@ app.listen(PORT, async () => {
     // 初始化 Crown 自动化服务（触发预热）
     getCrownAutomation();
 
-    // 启动独立的赛事抓取服务
-    try {
-        await initMatchFetcher({
-            username: process.env.CROWN_FETCH_USERNAME || 'test001',
-            password: process.env.CROWN_FETCH_PASSWORD || 'abc123456',
-            baseUrl: process.env.CROWN_BASE_URL || 'https://hga026.com',
-        });
-        console.log('✅ 独立赛事抓取服务已启动');
-    } catch (error) {
-        console.error('❌ 启动独立赛事抓取服务失败:', error);
-    }
+    // 内置的独立赛事抓取服务已禁用，使用外部独立进程（fetcher/）
+    console.log('ℹ️ 内置赛事抓取服务已禁用，使用外部独立进程');
 });
