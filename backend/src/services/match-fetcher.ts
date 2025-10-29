@@ -230,12 +230,16 @@ export class MatchFetcher {
         });
 
         if (moreXml) {
-          const { handicapLines, overUnderLines } = this.parseMoreMarketsFromXml(moreXml);
+          const { handicapLines, overUnderLines, halfHandicapLines, halfOverUnderLines } = this.parseMoreMarketsFromXml(moreXml);
 
           if (!match.markets.full) {
             match.markets.full = {};
           }
+          if (!match.markets.half) {
+            match.markets.half = {};
+          }
 
+          // 全场盘口
           if (handicapLines.length > 0) {
             match.markets.full.handicapLines = handicapLines;
             match.markets.handicap = handicapLines[0];
@@ -246,6 +250,17 @@ export class MatchFetcher {
             match.markets.full.overUnderLines = overUnderLines;
             match.markets.ou = overUnderLines[0];
             match.markets.full.ou = overUnderLines[0];
+          }
+
+          // 半场盘口
+          if (halfHandicapLines.length > 0) {
+            match.markets.half.handicapLines = halfHandicapLines;
+            match.markets.half.handicap = halfHandicapLines[0];
+          }
+
+          if (halfOverUnderLines.length > 0) {
+            match.markets.half.overUnderLines = halfOverUnderLines;
+            match.markets.half.ou = halfOverUnderLines[0];
           }
         }
 
@@ -282,14 +297,19 @@ export class MatchFetcher {
   /**
    * 解析更多盘口（使用 CrownAutomation 的解析方法）
    */
-  private parseMoreMarketsFromXml(xml: string): { handicapLines: any[]; overUnderLines: any[] } {
+  private parseMoreMarketsFromXml(xml: string): {
+    handicapLines: any[];
+    overUnderLines: any[];
+    halfHandicapLines: any[];
+    halfOverUnderLines: any[];
+  } {
     try {
       // 直接使用 CrownAutomation 的解析方法，确保解析逻辑一致
       const automation = getCrownAutomation();
       return (automation as any).parseMoreMarketsFromXml(xml);
     } catch (error) {
       console.error('❌ 解析更多盘口失败:', error);
-      return { handicapLines: [], overUnderLines: [] };
+      return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
     }
   }
 }

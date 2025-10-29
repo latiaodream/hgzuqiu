@@ -6399,15 +6399,19 @@ export class CrownAutomationService {
 
                     if (moreXml) {
                       // 解析更多盘口
-                      const { handicapLines, overUnderLines } = this.parseMoreMarketsFromXml(moreXml);
+                      const { handicapLines, overUnderLines, halfHandicapLines, halfOverUnderLines } = this.parseMoreMarketsFromXml(moreXml);
 
                       // 合并到原有的盘口数据中
-                      if (handicapLines.length > 0 || overUnderLines.length > 0) {
-                        // 确保 markets.full 对象存在
+                      if (handicapLines.length > 0 || overUnderLines.length > 0 || halfHandicapLines.length > 0 || halfOverUnderLines.length > 0) {
+                        // 确保 markets.full 和 markets.half 对象存在
                         if (!match.markets.full) {
                           match.markets.full = {};
                         }
+                        if (!match.markets.half) {
+                          match.markets.half = {};
+                        }
 
+                        // 全场盘口
                         if (handicapLines.length > 0) {
                           match.markets.full.handicapLines = handicapLines;
                           // 同时更新单数字段，保持向后兼容
@@ -6422,7 +6426,18 @@ export class CrownAutomationService {
                           match.markets.full.ou = overUnderLines[0];
                         }
 
-                        console.log(`  ✅ ${match.home} vs ${match.away}: ${handicapLines.length} 让球, ${overUnderLines.length} 大小`);
+                        // 半场盘口
+                        if (halfHandicapLines.length > 0) {
+                          match.markets.half.handicapLines = halfHandicapLines;
+                          match.markets.half.handicap = halfHandicapLines[0];
+                        }
+
+                        if (halfOverUnderLines.length > 0) {
+                          match.markets.half.overUnderLines = halfOverUnderLines;
+                          match.markets.half.ou = halfOverUnderLines[0];
+                        }
+
+                        console.log(`  ✅ ${match.home} vs ${match.away}: 全场(${handicapLines.length}让球,${overUnderLines.length}大小) 半场(${halfHandicapLines.length}让球,${halfOverUnderLines.length}大小)`);
                         successCount++;
                       } else {
                         skipCount++;
@@ -7122,7 +7137,12 @@ export class CrownAutomationService {
   }
 
   // 解析 get_game_more 返回的 XML，提取所有盘口
-  private parseMoreMarketsFromXml(xml: string): { handicapLines: any[]; overUnderLines: any[] } {
+  private parseMoreMarketsFromXml(xml: string): {
+    handicapLines: any[];
+    overUnderLines: any[];
+    halfHandicapLines: any[];
+    halfOverUnderLines: any[];
+  } {
     try {
       const { XMLParser } = require('fast-xml-parser');
       const parser = new XMLParser({ ignoreAttributes: false });
@@ -7137,7 +7157,7 @@ export class CrownAutomationService {
         // 即使盘口关闭，也尝试解析 game 数据（可能还有数据）
         if (!games) {
           console.log('   且没有 game 数据，跳过');
-          return { handicapLines: [], overUnderLines: [] };
+          return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
         }
         console.log('   但仍尝试解析 game 数据...');
       }
@@ -7145,7 +7165,7 @@ export class CrownAutomationService {
       if (!games) {
         console.log('⚠️ get_game_more XML 中没有 game 数据');
         console.log('📋 完整响应:', JSON.stringify(parsed?.serverresponse, null, 2).substring(0, 500));
-        return { handicapLines: [], overUnderLines: [] };
+        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
       }
 
       const gameArray = Array.isArray(games) ? games : [games];
@@ -7153,6 +7173,8 @@ export class CrownAutomationService {
 
       const handicapLines: any[] = [];
       const overUnderLines: any[] = [];
+      const halfHandicapLines: any[] = [];
+      const halfOverUnderLines: any[] = [];
 
       for (let i = 0; i < gameArray.length; i++) {
         const game = gameArray[i];
@@ -7198,10 +7220,39 @@ export class CrownAutomationService {
           });
           console.log(`    ✅ 大小: ${ouLineMain} (大:${ouOverMain} / 小:${ouUnderMain})`);
         }
+
+        // 提取半场让球盘口（HRE 系列）
+        const halfHandicapLine = this.pickString(game, ['RATIO_HRE', 'ratio_hre']);
+        const halfHandicapHome = this.pickString(game, ['IOR_HREH', 'ior_HREH']);
+        const halfHandicapAway = this.pickString(game, ['IOR_HREC', 'ior_HREC']);
+
+        if (halfHandicapLine && (halfHandicapHome || halfHandicapAway)) {
+          halfHandicapLines.push({
+            line: halfHandicapLine,
+            home: halfHandicapHome,
+            away: halfHandicapAway,
+          });
+          console.log(`    ✅ 半场让球: ${halfHandicapLine} (${halfHandicapHome} / ${halfHandicapAway})`);
+        }
+
+        // 提取半场大小球盘口（HROU 系列）
+        const halfOuLine = this.pickString(game, ['ratio_hrouo', 'RATIO_HROUO', 'ratio_hrouu', 'RATIO_HROUU']);
+        const halfOuOver = this.pickString(game, ['ior_HROUC', 'IOR_HROUC']); // HROUC = 大球（Over）
+        const halfOuUnder = this.pickString(game, ['ior_HROUH', 'IOR_HROUH']); // HROUH = 小球（Under）
+
+        if (halfOuLine && (halfOuOver || halfOuUnder)) {
+          halfOverUnderLines.push({
+            line: halfOuLine,
+            over: halfOuOver,
+            under: halfOuUnder,
+          });
+          console.log(`    ✅ 半场大小: ${halfOuLine} (大:${halfOuOver} / 小:${halfOuUnder})`);
+        }
       }
 
       console.log(`📊 解析到 ${handicapLines.length} 个让球盘口, ${overUnderLines.length} 个大小球盘口`);
-      return { handicapLines, overUnderLines };
+      console.log(`📊 解析到 ${halfHandicapLines.length} 个半场让球盘口, ${halfOverUnderLines.length} 个半场大小球盘口`);
+      return { handicapLines, overUnderLines, halfHandicapLines, halfOverUnderLines };
 
     } catch (error) {
       console.error('❌ 解析 get_game_more XML 失败:', error);
