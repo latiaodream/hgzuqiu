@@ -1504,21 +1504,35 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
     res.write(`event: status\n`);
     res.write(`data: ${JSON.stringify({ ok: true, subscribed: key, system: true })}\n\n`);
 
-    // 自定义轮询：优先使用独立抓取服务
+    // 自定义轮询：优先使用独立抓取服务的数据文件
     const interval = showtype === 'live' ? 1000 : 15000;
     let tm: NodeJS.Timeout | undefined;
     const tick = async () => {
       try {
-        // 优先使用独立抓取服务的数据
-        const fetcher = getMatchFetcher();
-        let matches, xml;
+        let matches: any[] = [];
+        let xml: string | undefined;
 
-        if (fetcher) {
-          const data = fetcher.getLatestMatches();
-          matches = data.matches;
-          xml = data.xml;
-        } else {
-          // 降级：使用原有的抓取方式
+        // 优先读取独立抓取服务的数据文件
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const fetcherDataPath = path.join(__dirname, '../../..', 'fetcher', 'data', 'latest-matches.json');
+
+          if (fs.existsSync(fetcherDataPath)) {
+            const fetcherData = JSON.parse(fs.readFileSync(fetcherDataPath, 'utf-8'));
+            const age = Date.now() - fetcherData.timestamp;
+
+            if (age < 10000) { // 数据新鲜（< 10 秒）
+              matches = fetcherData.matches || [];
+              xml = fetcherData.xml;
+            }
+          }
+        } catch (err) {
+          console.error('读取独立抓取服务数据失败:', err);
+        }
+
+        // 如果没有数据，使用降级方案
+        if (matches.length === 0) {
           const result = await getCrownAutomation().fetchMatchesSystem({ gtype, showtype, rtype, ltype, sorttype });
           matches = result.matches;
           xml = result.xml;
