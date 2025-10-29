@@ -112,6 +112,9 @@ export class CrownClient {
 
       const text = response.data;
 
+      // 打印返回内容（调试用）
+      console.log('📥 登录响应（前500字符）:', text.substring(0, 500));
+
       // 检查登录失败
       if (text.includes('密码错误次数过多')) {
         return { success: false, error: '密码错误次数过多，请联系您的上线寻求协助。' };
@@ -121,6 +124,9 @@ export class CrownClient {
       }
       if (text.includes('账号已被锁定')) {
         return { success: false, error: '账号已被锁定' };
+      }
+      if (text.includes('帐号或密码错误')) {
+        return { success: false, error: '账号或密码错误' };
       }
 
       // 提取 UID
@@ -133,6 +139,7 @@ export class CrownClient {
         return { success: true, uid: this.uid };
       }
 
+      console.log('❌ 无法从响应中提取 UID');
       return { success: false, error: '无法提取 UID' };
     } catch (error: any) {
       console.error('❌ 登录失败:', error.message);
