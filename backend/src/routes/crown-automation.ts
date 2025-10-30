@@ -1516,11 +1516,18 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
         try {
           const fs = require('fs');
           const path = require('path');
-          const fetcherDataPath = path.join(__dirname, '../../..', 'fetcher', 'data', 'latest-matches.json');
+
+          // 优先尝试 fetcher-isports（iSportsAPI）
+          let fetcherDataPath = path.join(__dirname, '../../..', 'fetcher-isports', 'data', 'latest-matches.json');
+
+          // 如果不存在，回退到 fetcher（皇冠 API）
+          if (!fs.existsSync(fetcherDataPath)) {
+            fetcherDataPath = path.join(__dirname, '../../..', 'fetcher', 'data', 'latest-matches.json');
+          }
 
           if (fs.existsSync(fetcherDataPath)) {
             const fetcherData = JSON.parse(fs.readFileSync(fetcherDataPath, 'utf-8'));
-            const age = Date.now() - fetcherData.timestamp;
+            const age = Date.now() - (fetcherData.timestamp || Date.now());
 
             if (age < 10000) { // 数据新鲜（< 10 秒）
               matches = fetcherData.matches || [];
