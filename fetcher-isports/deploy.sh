@@ -48,7 +48,17 @@ else
 fi
 echo ""
 
-# 4. 检查 PM2
+# 4. 编译 TypeScript
+echo "🔨 编译 TypeScript..."
+npm run build
+if [ $? -ne 0 ]; then
+    echo "❌ 编译失败"
+    exit 1
+fi
+echo "✅ 编译成功"
+echo ""
+
+# 5. 检查 PM2
 echo "🔍 检查 PM2..."
 if ! command -v pm2 &> /dev/null; then
     echo "⚠️  PM2 未安装，尝试使用系统 PM2..."
@@ -64,22 +74,6 @@ fi
 echo "✅ PM2 已找到: $PM2_CMD"
 echo ""
 
-# 5. 检查 ts-node
-echo "🔍 检查 ts-node..."
-if ! command -v ts-node &> /dev/null; then
-    echo "⚠️  ts-node 未安装，尝试使用系统 ts-node..."
-    TS_NODE_CMD="/www/server/nodejs/v22.18.0/bin/ts-node"
-    if [ ! -f "$TS_NODE_CMD" ]; then
-        echo "❌ 未找到 ts-node，请先安装 ts-node"
-        echo "   npm install -g ts-node"
-        exit 1
-    fi
-else
-    TS_NODE_CMD="ts-node"
-fi
-echo "✅ ts-node 已找到: $TS_NODE_CMD"
-echo ""
-
 # 6. 停止旧服务（如果存在）
 echo "🛑 停止旧服务..."
 $PM2_CMD stop crown-fetcher-isports 2>/dev/null || true
@@ -89,9 +83,7 @@ echo ""
 
 # 7. 启动新服务
 echo "🚀 启动新服务..."
-$PM2_CMD start src/index.ts \
-    --name crown-fetcher-isports \
-    --interpreter $TS_NODE_CMD
+$PM2_CMD start dist/index.js --name crown-fetcher-isports
 
 if [ $? -ne 0 ]; then
     echo "❌ 服务启动失败"
