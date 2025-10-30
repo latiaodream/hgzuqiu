@@ -115,7 +115,12 @@ function convertToCrownFormat(match: any, matchOdds: any) {
 
 function saveData(matches: any[]) {
   const filePath = path.join(DATA_DIR, 'latest-matches.json');
-  fs.writeFileSync(filePath, JSON.stringify(matches, null, 2));
+  const data = {
+    timestamp: Date.now(),
+    matches: matches,
+    matchCount: matches.length,
+  };
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
   console.log(`✅ 已保存 ${matches.length} 场比赛数据`);
 }
 
