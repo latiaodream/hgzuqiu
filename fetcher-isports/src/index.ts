@@ -25,41 +25,134 @@ if (!fs.existsSync(DATA_DIR)) {
 let matchesCache: any[] = [];
 let oddsCache: Map<string, any> = new Map();
 
+// API 调用统计
+let apiCallStats = {
+  schedule: 0,
+  mainOdds: 0,
+  changes: 0,
+  errors: 0,
+  limitExceeded: false,
+  lastResetDate: new Date().toISOString().split('T')[0],
+};
+
+function checkAndResetStats() {
+  const today = new Date().toISOString().split('T')[0];
+  if (apiCallStats.lastResetDate !== today) {
+    console.log('📊 昨日 API 调用统计:');
+    console.log(`   赛程: ${apiCallStats.schedule} 次`);
+    console.log(`   主赔率: ${apiCallStats.mainOdds} 次`);
+    console.log(`   赔率变化: ${apiCallStats.changes} 次`);
+    console.log(`   总计: ${apiCallStats.schedule + apiCallStats.mainOdds + apiCallStats.changes} 次`);
+    console.log(`   错误: ${apiCallStats.errors} 次`);
+
+    apiCallStats = {
+      schedule: 0,
+      mainOdds: 0,
+      changes: 0,
+      errors: 0,
+      limitExceeded: false,
+      lastResetDate: today,
+    };
+    console.log('✅ 统计已重置');
+  }
+}
+
+function printStats() {
+  const total = apiCallStats.schedule + apiCallStats.mainOdds + apiCallStats.changes;
+  console.log(`📊 今日 API 调用: ${total} 次 (赛程: ${apiCallStats.schedule}, 主赔率: ${apiCallStats.mainOdds}, 变化: ${apiCallStats.changes}, 错误: ${apiCallStats.errors})`);
+  if (apiCallStats.limitExceeded) {
+    console.log('⚠️  已超出免费试用限制 (200 次/天)');
+  }
+}
+
 async function fetchSchedule() {
+  checkAndResetStats();
+  apiCallStats.schedule++;
+
   try {
     const today = new Date().toISOString().split('T')[0];
     const response = await axios.get(`${BASE_URL}/schedule/basic`, {
       params: { api_key: API_KEY, date: today },
       timeout: 30000,
     });
-    return response.data.code === 0 ? response.data.data : [];
+
+    if (response.data.code === 0) {
+      return response.data.data;
+    } else {
+      apiCallStats.errors++;
+      console.error('❌ 获取赛程失败:', response.data);
+      if (response.data.code === 2) {
+        apiCallStats.limitExceeded = true;
+        console.error('⚠️  API 调用次数已超出限制！');
+        printStats();
+      }
+      return [];
+    }
   } catch (error: any) {
-    console.error('获取赛程失败:', error.message);
+    apiCallStats.errors++;
+    console.error('❌ 获取赛程失败:', error.message);
     return [];
   }
 }
 
 async function fetchMainOdds() {
+  checkAndResetStats();
+  apiCallStats.mainOdds++;
+
   try {
     const response = await axios.get(`${BASE_URL}/odds/main`, {
       params: { api_key: API_KEY, companyId: '3' },
       timeout: 30000,
     });
-    return response.data.code === 0 ? response.data.data : null;
+
+    if (response.data.code === 0) {
+      return response.data.data;
+    } else {
+      apiCallStats.errors++;
+      console.error('❌ 获取赔率失败:', response.data);
+      if (response.data.code === 2) {
+        apiCallStats.limitExceeded = true;
+        console.error('⚠️  API 调用次数已超出限制！');
+        console.error('   免费试用：200 次/天');
+        console.error('   请等待明天重置或升级到付费计划');
+        printStats();
+      }
+      return null;
+    }
   } catch (error: any) {
-    console.error('获取赔率失败:', error.message);
+    apiCallStats.errors++;
+    console.error('❌ 获取赔率失败:', error.message);
     return null;
   }
 }
 
 async function fetchOddsChanges() {
+  checkAndResetStats();
+  apiCallStats.changes++;
+
   try {
     const response = await axios.get(`${BASE_URL}/odds/main/changes`, {
       params: { api_key: API_KEY, companyId: '3' },
       timeout: 30000,
     });
-    return response.data.code === 0 ? response.data.data : null;
+
+    if (response.data.code === 0) {
+      return response.data.data;
+    } else if (response.data.code === 2) {
+      apiCallStats.errors++;
+      if (!apiCallStats.limitExceeded) {
+        apiCallStats.limitExceeded = true;
+        console.error('⚠️  API 调用次数已超出限制！');
+        printStats();
+      }
+      return null;
+    } else {
+      apiCallStats.errors++;
+      console.error('❌ 获取赔率变化失败:', response.data);
+      return null;
+    }
   } catch (error: any) {
+    apiCallStats.errors++;
     return null;
   }
 }
@@ -195,4 +288,11 @@ console.log('============================================================\n');
 fullUpdate();
 setInterval(fullUpdate, FULL_FETCH_INTERVAL);
 setInterval(changesUpdate, CHANGES_INTERVAL);
+
+// 每 10 分钟打印一次统计
+setInterval(() => {
+  if (!apiCallStats.limitExceeded) {
+    printStats();
+  }
+}, 600000);
 
