@@ -11,6 +11,8 @@ backend/dist/
 backend/.env
 backend/.env.local
 backend/.env.*
+fetcher/.env
+fetcher-isports/.env
 .env
 database/*.sqlite
 
