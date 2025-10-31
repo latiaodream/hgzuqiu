@@ -1,10 +1,10 @@
 /**
  * iSportsAPI 独立抓取服务
- * 
+ *
  * 工作原理：
- * 1. 首次启动：获取完整的赛前和滚球赔率数据（/odds/main）
+ * 1. 首次启动：获取完整的赛前和滚球赔率数据（/odds/all - 支持多个盘口）
  * 2. 定期完整更新：每 60 秒获取一次完整数据
- * 3. 实时增量更新：每 2 秒获取过去 20 秒内变化的赔率（/odds/main/changes）
+ * 3. 实时增量更新：每 2 秒获取过去 20 秒内变化的赔率（/odds/all/changes）
  * 4. 合并数据：将变化的赔率更新到缓存中
  */
 
@@ -17,6 +17,7 @@ const BASE_URL = 'http://api.isportsapi.com/sport/football';
 const DATA_DIR = process.env.DATA_DIR || './data';
 const FULL_FETCH_INTERVAL = parseInt(process.env.FULL_FETCH_INTERVAL || '60000');
 const CHANGES_INTERVAL = parseInt(process.env.CHANGES_INTERVAL || '2000');
+const USE_ALL_ODDS = true; // 使用 /odds/all 端点获取多个盘口
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -100,7 +101,8 @@ async function fetchMainOdds() {
   apiCallStats.mainOdds++;
 
   try {
-    const response = await axios.get(`${BASE_URL}/odds/main`, {
+    const endpoint = USE_ALL_ODDS ? '/odds/all' : '/odds/main';
+    const response = await axios.get(`${BASE_URL}${endpoint}`, {
       params: { api_key: API_KEY, companyId: '3' },
       timeout: 30000,
     });
@@ -131,7 +133,8 @@ async function fetchOddsChanges() {
   apiCallStats.changes++;
 
   try {
-    const response = await axios.get(`${BASE_URL}/odds/main/changes`, {
+    const endpoint = USE_ALL_ODDS ? '/odds/all/changes' : '/odds/main/changes';
+    const response = await axios.get(`${BASE_URL}${endpoint}`, {
       params: { api_key: API_KEY, companyId: '3' },
       timeout: 30000,
     });
@@ -161,33 +164,48 @@ function parseOdds(data: string[], type: string) {
   return data.map((item) => {
     const parts = item.split(',');
     const base = { matchId: parts[0], companyId: parts[1] };
-    
+
     if (type === 'handicap') {
-      return { ...base, instantHandicap: parts[5], instantHome: parts[6], instantAway: parts[7] };
+      // /odds/all 格式: matchId,companyId,initialHandicap,initialHome,initialAway,instantHandicap,instantHome,instantAway,maintenance,inPlay,handicapIndex,handicapCount,changeTime,close,oddsType
+      return {
+        ...base,
+        instantHandicap: parts[5],
+        instantHome: parts[6],
+        instantAway: parts[7],
+        handicapIndex: USE_ALL_ODDS ? parseInt(parts[10]) : 1
+      };
     } else if (type === 'europeOdds') {
       return { ...base, instantHome: parts[5], instantDraw: parts[6], instantAway: parts[7] };
     } else if (type === 'overUnder') {
-      return { ...base, instantHandicap: parts[5], instantOver: parts[6], instantUnder: parts[7] };
+      // /odds/all 格式: matchId,companyId,initialHandicap,initialOver,initialUnder,instantHandicap,instantOver,instantUnder,handicapIndex,changeTime,close,oddsType
+      return {
+        ...base,
+        instantHandicap: parts[5],
+        instantOver: parts[6],
+        instantUnder: parts[7],
+        handicapIndex: USE_ALL_ODDS ? parseInt(parts[8]) : 1
+      };
     }
     return base;
   });
 }
 
 function convertToCrownFormat(match: any, matchOdds: any) {
-  const h = matchOdds.handicap;
-  const e = matchOdds.europeOdds;
-  const o = matchOdds.overUnder;
-  const hh = matchOdds.handicapHalf;
-  const oh = matchOdds.overUnderHalf;
+  // 获取主盘口（handicapIndex = 1）
+  const h = matchOdds.handicap?.find((h: any) => h.handicapIndex === 1) || matchOdds.handicap?.[0];
+  const e = matchOdds.europeOdds?.[0];
+  const o = matchOdds.overUnder?.find((o: any) => o.handicapIndex === 1) || matchOdds.overUnder?.[0];
+  const hh = matchOdds.handicapHalf?.find((h: any) => h.handicapIndex === 1) || matchOdds.handicapHalf?.[0];
+  const oh = matchOdds.overUnderHalf?.find((o: any) => o.handicapIndex === 1) || matchOdds.overUnderHalf?.[0];
 
-  return {
+  const result: any = {
     gid: match.matchId,
     league: match.leagueName,
     team_h: match.homeName,
     team_c: match.awayName,
     timer: new Date(match.matchTime * 1000).toISOString(),
 
-    // 让球盘 - 使用后端期望的字段名
+    // 让球盘 - 使用后端期望的字段名（主盘口）
     RATIO_RE: h?.instantHandicap || '0',
     IOR_REH: h?.instantHome || '0',
     IOR_REC: h?.instantAway || '0',
@@ -197,17 +215,17 @@ function convertToCrownFormat(match: any, matchOdds: any) {
     IOR_RMN: e?.instantDraw || '0',
     IOR_RMC: e?.instantAway || '0',
 
-    // 大小球 - 使用后端期望的字段名
+    // 大小球 - 使用后端期望的字段名（主盘口）
     RATIO_ROUO: o?.instantHandicap || '0',
     IOR_ROUC: o?.instantOver || '0',
     IOR_ROUH: o?.instantUnder || '0',
 
-    // 半场让球盘 - 使用后端期望的字段名
+    // 半场让球盘 - 使用后端期望的字段名（主盘口）
     RATIO_HRE: hh?.instantHandicap || '0',
     IOR_HREH: hh?.instantHome || '0',
     IOR_HREC: hh?.instantAway || '0',
 
-    // 半场大小球 - 使用后端期望的字段名
+    // 半场大小球 - 使用后端期望的字段名（主盘口）
     RATIO_HROUO: oh?.instantHandicap || '0',
     IOR_HROUC: oh?.instantOver || '0',
     IOR_HROUH: oh?.instantUnder || '0',
@@ -215,6 +233,32 @@ function convertToCrownFormat(match: any, matchOdds: any) {
     more: 1,
     strong: parseFloat(h?.instantHandicap || '0') > 0 ? 'H' : 'C',
   };
+
+  // 添加额外的让球盘口（如果有多个）
+  if (matchOdds.handicap && matchOdds.handicap.length > 1) {
+    matchOdds.handicap.forEach((handicap: any, index: number) => {
+      if (handicap.handicapIndex !== 1) {
+        const suffix = handicap.handicapIndex === 2 ? 'O' : handicap.handicapIndex === 3 ? 'CO' : `_${handicap.handicapIndex}`;
+        result[`RATIO_R${suffix}`] = handicap.instantHandicap;
+        result[`IOR_R${suffix}H`] = handicap.instantHome;
+        result[`IOR_R${suffix}C`] = handicap.instantAway;
+      }
+    });
+  }
+
+  // 添加额外的大小球盘口（如果有多个）
+  if (matchOdds.overUnder && matchOdds.overUnder.length > 1) {
+    matchOdds.overUnder.forEach((ou: any, index: number) => {
+      if (ou.handicapIndex !== 1) {
+        const suffix = ou.handicapIndex === 2 ? 'HO' : ou.handicapIndex === 3 ? 'CO' : `_${ou.handicapIndex}`;
+        result[`RATIO_ROU${suffix}`] = ou.instantHandicap;
+        result[`IOR_ROU${suffix}C`] = ou.instantOver;
+        result[`IOR_ROU${suffix}H`] = ou.instantUnder;
+      }
+    });
+  }
+
+  return result;
 }
 
 function saveData(matches: any[]) {
@@ -231,8 +275,36 @@ function saveData(matches: any[]) {
 function updateOddsCache(odds: any) {
   ['handicap', 'europeOdds', 'overUnder', 'handicapHalf', 'overUnderHalf'].forEach((key) => {
     odds[key]?.forEach((item: any) => {
-      if (!oddsCache.has(item.matchId)) oddsCache.set(item.matchId, {});
-      oddsCache.get(item.matchId)[key] = item;
+      if (!oddsCache.has(item.matchId)) {
+        oddsCache.set(item.matchId, {
+          handicap: [],
+          europeOdds: [],
+          overUnder: [],
+          handicapHalf: [],
+          overUnderHalf: []
+        });
+      }
+
+      const matchCache = oddsCache.get(item.matchId);
+
+      if (key === 'europeOdds') {
+        // 独赢盘只有一个，直接替换
+        matchCache[key] = [item];
+      } else if (key === 'handicap' || key === 'overUnder' || key === 'handicapHalf' || key === 'overUnderHalf') {
+        // 让球盘和大小球可能有多个，按 handicapIndex 更新
+        const existingIndex = matchCache[key].findIndex((existing: any) =>
+          existing.handicapIndex === item.handicapIndex
+        );
+
+        if (existingIndex >= 0) {
+          matchCache[key][existingIndex] = item;
+        } else {
+          matchCache[key].push(item);
+        }
+
+        // 按 handicapIndex 排序
+        matchCache[key].sort((a: any, b: any) => (a.handicapIndex || 1) - (b.handicapIndex || 1));
+      }
     });
   });
 }
