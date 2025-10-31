@@ -7140,6 +7140,8 @@ export class CrownAutomationService {
 
       const handicapLines: Array<{ line: string; home: string; away: string }> = [];
       addHandicapLine(handicapLines, ['RATIO_RE', 'RATIO_R'], ['IOR_REH', 'IOR_RH'], ['IOR_REC', 'IOR_RC']);
+      addHandicapLine(handicapLines, ['RATIO_RO'], ['IOR_ROH'], ['IOR_ROC']);
+      addHandicapLine(handicapLines, ['RATIO_RCO'], ['IOR_RCOH'], ['IOR_RCOC']);
       if (handicapLines.length > 0) {
         markets.handicap = { ...handicapLines[0] };
         markets.full.handicap = { ...handicapLines[0] };
@@ -7147,9 +7149,12 @@ export class CrownAutomationService {
       }
 
       const ouLines: Array<{ line: string; over: string; under: string }> = [];
-      addOverUnderLine(ouLines, ['RATIO_ROUO', 'RATIO_OUO'], ['RATIO_ROUU', 'RATIO_OUU'], ['IOR_ROUH', 'IOR_OUH'], ['IOR_ROUC', 'IOR_OUC']);
-      addOverUnderLine(ouLines, ['RATIO_ROUHO'], ['RATIO_ROUHU'], ['IOR_ROUHO'], ['IOR_ROUHU']);
-      addOverUnderLine(ouLines, ['RATIO_ROUCO'], ['RATIO_ROUCU'], ['IOR_ROUCO'], ['IOR_ROUCU']);
+      // 主盘口
+      addOverUnderLine(ouLines, ['RATIO_ROUO', 'RATIO_OUO'], ['RATIO_ROUU', 'RATIO_OUU'], ['IOR_ROUC', 'IOR_OUC'], ['IOR_ROUH', 'IOR_OUH']);
+      // 第2个盘口
+      addOverUnderLine(ouLines, ['RATIO_ROUHO'], ['RATIO_ROUHU'], ['IOR_ROUHOC'], ['IOR_ROUHOH']);
+      // 第3个盘口
+      addOverUnderLine(ouLines, ['RATIO_ROUCO'], ['RATIO_ROUCU'], ['IOR_ROUCOC'], ['IOR_ROUCOH']);
       if (ouLines.length > 0) {
         markets.ou = { ...ouLines[0] };
         markets.full.ou = { ...ouLines[0] };
