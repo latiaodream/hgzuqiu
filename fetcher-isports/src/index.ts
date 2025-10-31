@@ -78,7 +78,11 @@ async function fetchSchedule() {
     });
 
     if (response.data.code === 0) {
-      return response.data.data;
+      // 只返回滚球中的比赛 (state=1)
+      const allMatches = response.data.data || [];
+      const liveMatches = allMatches.filter((m: any) => m.state === 1);
+      console.log(`📊 今日比赛总数: ${allMatches.length}, 滚球中: ${liveMatches.length}`);
+      return liveMatches;
     } else {
       apiCallStats.errors++;
       console.error('❌ 获取赛程失败:', response.data);
