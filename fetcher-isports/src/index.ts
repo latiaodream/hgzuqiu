@@ -186,21 +186,32 @@ function convertToCrownFormat(match: any, matchOdds: any) {
     team_h: match.homeName,
     team_c: match.awayName,
     timer: new Date(match.matchTime * 1000).toISOString(),
-    ratio: h?.instantHandicap || '0',
-    ratio_o: h?.instantHome || '0',
-    ratio_u: h?.instantAway || '0',
-    ior_RH: e?.instantHome || '0',
-    ior_RN: e?.instantDraw || '0',
-    ior_RC: e?.instantAway || '0',
-    ratio_uo: o?.instantHandicap || '0',
-    ratio_uo_o: o?.instantOver || '0',
-    ratio_uo_u: o?.instantUnder || '0',
-    ratio_h: hh?.instantHandicap || '0',
-    ratio_ho: hh?.instantHome || '0',
-    ratio_hu: hh?.instantAway || '0',
-    ratio_huo: oh?.instantHandicap || '0',
-    ratio_huo_o: oh?.instantOver || '0',
-    ratio_huo_u: oh?.instantUnder || '0',
+
+    // 让球盘 - 使用后端期望的字段名
+    RATIO_RE: h?.instantHandicap || '0',
+    IOR_REH: h?.instantHome || '0',
+    IOR_REC: h?.instantAway || '0',
+
+    // 独赢盘 - 使用后端期望的字段名
+    IOR_RMH: e?.instantHome || '0',
+    IOR_RMN: e?.instantDraw || '0',
+    IOR_RMC: e?.instantAway || '0',
+
+    // 大小球 - 使用后端期望的字段名
+    RATIO_ROUO: o?.instantHandicap || '0',
+    IOR_ROUC: o?.instantOver || '0',
+    IOR_ROUH: o?.instantUnder || '0',
+
+    // 半场让球盘 - 使用后端期望的字段名
+    RATIO_HRE: hh?.instantHandicap || '0',
+    IOR_HREH: hh?.instantHome || '0',
+    IOR_HREC: hh?.instantAway || '0',
+
+    // 半场大小球 - 使用后端期望的字段名
+    RATIO_HROUO: oh?.instantHandicap || '0',
+    IOR_HROUC: oh?.instantOver || '0',
+    IOR_HROUH: oh?.instantUnder || '0',
+
     more: 1,
     strong: parseFloat(h?.instantHandicap || '0') > 0 ? 'H' : 'C',
   };
