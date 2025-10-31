@@ -165,22 +165,37 @@ function parseOdds(data: string[], type: string) {
     const parts = item.split(',');
     const base = { matchId: parts[0], companyId: parts[1] };
 
-    if (type === 'handicap' || type === 'handicapHalf') {
-      // /odds/all 格式: matchId,companyId,initialHandicap,initialHome,initialAway,instantHandicap,instantHome,instantAway,maintenance,inPlay,handicapIndex,handicapCount,changeTime,close,oddsType
-      // handicapHalf 格式: matchId,companyId,initialHandicap,initialHome,initialAway,instantHandicap,instantHome,instantAway,inPlay,handicapIndex,changeTime,oddsType
-      const handicapIndexPos = type === 'handicap' ? 10 : 9;
+    if (type === 'handicap') {
+      // /odds/all 格式 (15字段): matchId,companyId,initialHandicap,initialHome,initialAway,instantHandicap,instantHome,instantAway,maintenance,inPlay,handicapIndex,handicapCount,changeTime,close,oddsType
       return {
         ...base,
         instantHandicap: parts[5],
         instantHome: parts[6],
         instantAway: parts[7],
-        handicapIndex: USE_ALL_ODDS ? parseInt(parts[handicapIndexPos]) : 1
+        handicapIndex: USE_ALL_ODDS ? parseInt(parts[10]) : 1
+      };
+    } else if (type === 'handicapHalf') {
+      // handicapHalf 格式 (12字段): matchId,companyId,initialHandicap,initialHome,initialAway,instantHandicap,instantHome,instantAway,inPlay,handicapIndex,changeTime,oddsType
+      return {
+        ...base,
+        instantHandicap: parts[5],
+        instantHome: parts[6],
+        instantAway: parts[7],
+        handicapIndex: USE_ALL_ODDS ? parseInt(parts[9]) : 1
       };
     } else if (type === 'europeOdds') {
       return { ...base, instantHome: parts[5], instantDraw: parts[6], instantAway: parts[7] };
-    } else if (type === 'overUnder' || type === 'overUnderHalf') {
-      // /odds/all 格式: matchId,companyId,initialHandicap,initialOver,initialUnder,instantHandicap,instantOver,instantUnder,handicapIndex,changeTime,close,oddsType
-      // overUnderHalf 格式: matchId,companyId,initialHandicap,initialOver,initialUnder,instantHandicap,instantOver,instantUnder,handicapIndex,changeTime,oddsType
+    } else if (type === 'overUnder') {
+      // /odds/all 格式 (12字段): matchId,companyId,initialHandicap,initialOver,initialUnder,instantHandicap,instantOver,instantUnder,handicapIndex,changeTime,close,oddsType
+      return {
+        ...base,
+        instantHandicap: parts[5],
+        instantOver: parts[6],
+        instantUnder: parts[7],
+        handicapIndex: USE_ALL_ODDS ? parseInt(parts[8]) : 1
+      };
+    } else if (type === 'overUnderHalf') {
+      // overUnderHalf 格式 (11字段): matchId,companyId,initialHandicap,initialOver,initialUnder,instantHandicap,instantOver,instantUnder,handicapIndex,changeTime,oddsType
       return {
         ...base,
         instantHandicap: parts[5],
