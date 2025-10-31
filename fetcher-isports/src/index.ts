@@ -163,7 +163,7 @@ async function fetchOddsChanges() {
 function parseOdds(data: string[], type: string) {
   return data.map((item) => {
     const parts = item.split(',');
-    const base = { matchId: parts[0], companyId: parts[1] };
+    const base = { matchId: parts[0], companyId: parts[1], raw: item };
 
     if (type === 'handicap') {
       // /odds/all 格式 (15字段): matchId,companyId,initialHandicap,initialHome,initialAway,instantHandicap,instantHome,instantAway,maintenance,inPlay,handicapIndex,handicapCount,changeTime,close,oddsType
@@ -228,10 +228,10 @@ function convertToCrownFormat(match: any, matchOdds: any) {
     IOR_REH: h?.instantHome || '0',
     IOR_REC: h?.instantAway || '0',
 
-    // 独赢盘 - 使用后端期望的字段名
-    IOR_RMH: e?.instantHome || '0',
-    IOR_RMN: e?.instantDraw || '0',
-    IOR_RMC: e?.instantAway || '0',
+    // 独赢盘 - 使用后端期望的字段名（优先从 raw 纠正）
+    IOR_RMH: e?.raw ? (e.raw.split(',')[5] || e.instantHome || '0') : (e?.instantHome || '0'),
+    IOR_RMN: e?.raw ? (e.raw.split(',')[6] || e.instantDraw || '0') : (e?.instantDraw || '0'),
+    IOR_RMC: e?.raw ? (e.raw.split(',')[7] || e.instantAway || '0') : (e?.instantAway || '0'),
 
     // 大小球 - 使用后端期望的字段名（主盘口）
     RATIO_ROUO: o?.instantHandicap || '0',
@@ -251,6 +251,66 @@ function convertToCrownFormat(match: any, matchOdds: any) {
     more: 1,
     strong: parseFloat(h?.instantHandicap || '0') > 0 ? 'H' : 'C',
   };
+
+  // 生成 markets 供前端使用
+  const markets: any = { full: {}, half: {} };
+  // 独赢
+  if (result.IOR_RMH || result.IOR_RMN || result.IOR_RMC) {
+    markets.moneyline = { home: result.IOR_RMH, draw: result.IOR_RMN, away: result.IOR_RMC };
+    markets.full.moneyline = { ...markets.moneyline };
+  }
+  // 全场让球（支持多盘口）
+  const handicapLines: Array<{ line: string; home: string; away: string }> = [];
+  if (result.RATIO_RE || result.IOR_REH || result.IOR_REC) {
+    handicapLines.push({ line: result.RATIO_RE, home: result.IOR_REH, away: result.IOR_REC });
+  }
+  if (result.RATIO_RO || result.IOR_ROH || result.IOR_ROC) {
+    handicapLines.push({ line: result.RATIO_RO, home: result.IOR_ROH, away: result.IOR_ROC });
+  }
+  if (result.RATIO_RCO || result.IOR_RCOH || result.IOR_RCOC) {
+    handicapLines.push({ line: result.RATIO_RCO, home: result.IOR_RCOH, away: result.IOR_RCOC });
+  }
+  if (handicapLines.length > 0) {
+    markets.handicap = { ...handicapLines[0] };
+    markets.full.handicap = { ...handicapLines[0] };
+    markets.full.handicapLines = handicapLines;
+  }
+  // 全场大小球（支持多盘口）
+  const ouLines: Array<{ line: string; over: string; under: string }> = [];
+  if (result.RATIO_ROUO || result.IOR_ROUC || result.IOR_ROUH) {
+    ouLines.push({ line: result.RATIO_ROUO, over: result.IOR_ROUC, under: result.IOR_ROUH });
+  }
+  if (result.RATIO_ROUHO || result.IOR_ROUHOC || result.IOR_ROUHOH) {
+    ouLines.push({ line: result.RATIO_ROUHO, over: result.IOR_ROUHOC, under: result.IOR_ROUHOH });
+  }
+  if (result.RATIO_ROUCO || result.IOR_ROUCOC || result.IOR_ROUCOH) {
+    ouLines.push({ line: result.RATIO_ROUCO, over: result.IOR_ROUCOC, under: result.IOR_ROUCOH });
+  }
+  if (ouLines.length > 0) {
+    markets.ou = { ...ouLines[0] };
+    markets.full.ou = { ...ouLines[0] };
+    markets.full.overUnderLines = ouLines;
+  }
+  // 半场让球
+  const halfHandicapLines: Array<{ line: string; home: string; away: string }> = [];
+  if (result.RATIO_HRE || result.IOR_HREH || result.IOR_HREC) {
+    halfHandicapLines.push({ line: result.RATIO_HRE, home: result.IOR_HREH, away: result.IOR_HREC });
+  }
+  if (halfHandicapLines.length > 0) {
+    markets.half.handicap = { ...halfHandicapLines[0] };
+    markets.half.handicapLines = halfHandicapLines;
+  }
+  // 半场大小球
+  const halfOuLines: Array<{ line: string; over: string; under: string }> = [];
+  if (result.RATIO_HROUO || result.IOR_HROUC || result.IOR_HROUH) {
+    halfOuLines.push({ line: result.RATIO_HROUO, over: result.IOR_HROUC, under: result.IOR_HROUH });
+  }
+  if (halfOuLines.length > 0) {
+    markets.half.ou = { ...halfOuLines[0] };
+    markets.half.overUnderLines = halfOuLines;
+  }
+
+  result.markets = markets;
 
   // 添加额外的让球盘口（如果有多个）
   if (matchOdds.handicap && matchOdds.handicap.length > 1) {
