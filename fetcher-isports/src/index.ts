@@ -165,19 +165,22 @@ function parseOdds(data: string[], type: string) {
     const parts = item.split(',');
     const base = { matchId: parts[0], companyId: parts[1] };
 
-    if (type === 'handicap') {
+    if (type === 'handicap' || type === 'handicapHalf') {
       // /odds/all 格式: matchId,companyId,initialHandicap,initialHome,initialAway,instantHandicap,instantHome,instantAway,maintenance,inPlay,handicapIndex,handicapCount,changeTime,close,oddsType
+      // handicapHalf 格式: matchId,companyId,initialHandicap,initialHome,initialAway,instantHandicap,instantHome,instantAway,inPlay,handicapIndex,changeTime,oddsType
+      const handicapIndexPos = type === 'handicap' ? 10 : 9;
       return {
         ...base,
         instantHandicap: parts[5],
         instantHome: parts[6],
         instantAway: parts[7],
-        handicapIndex: USE_ALL_ODDS ? parseInt(parts[10]) : 1
+        handicapIndex: USE_ALL_ODDS ? parseInt(parts[handicapIndexPos]) : 1
       };
     } else if (type === 'europeOdds') {
       return { ...base, instantHome: parts[5], instantDraw: parts[6], instantAway: parts[7] };
-    } else if (type === 'overUnder') {
+    } else if (type === 'overUnder' || type === 'overUnderHalf') {
       // /odds/all 格式: matchId,companyId,initialHandicap,initialOver,initialUnder,instantHandicap,instantOver,instantUnder,handicapIndex,changeTime,close,oddsType
+      // overUnderHalf 格式: matchId,companyId,initialHandicap,initialOver,initialUnder,instantHandicap,instantOver,instantUnder,handicapIndex,changeTime,oddsType
       return {
         ...base,
         instantHandicap: parts[5],
