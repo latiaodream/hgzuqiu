@@ -1545,6 +1545,17 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
           xml = result.xml;
         }
 
+        // 根据前端的 showtype 参数过滤比赛
+        // state: 0=未开赛(早盘), 1=滚球中, -1=已结束
+        if (showtype === 'live') {
+          // 只显示滚球中的比赛
+          matches = matches.filter((m: any) => m.state === 1);
+        } else if (showtype === 'early') {
+          // 只显示未开赛的比赛
+          matches = matches.filter((m: any) => m.state === 0);
+        }
+        // showtype === 'today' 时不过滤，显示所有比赛
+
         const payload = JSON.stringify({ matches, meta: { gtype, showtype, rtype, ltype, sorttype }, ts: Date.now() });
         res.write(`event: matches\n`);
         res.write(`data: ${payload}\n\n`);
