@@ -19,6 +19,9 @@ const FULL_FETCH_INTERVAL = parseInt(process.env.FULL_FETCH_INTERVAL || '60000')
 const CHANGES_INTERVAL = parseInt(process.env.CHANGES_INTERVAL || '2000');
 const USE_ALL_ODDS = true; // 使用 /odds/all 端点获取多个盘口
 
+// 显示模式：live=只滚球, today=今日所有, early=早盘
+const DISPLAY_MODE = process.env.DISPLAY_MODE || 'today';
+
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
@@ -78,11 +81,26 @@ async function fetchSchedule() {
     });
 
     if (response.data.code === 0) {
-      // 只返回滚球中的比赛 (state=1)
       const allMatches = response.data.data || [];
-      const liveMatches = allMatches.filter((m: any) => m.state === 1);
-      console.log(`📊 今日比赛总数: ${allMatches.length}, 滚球中: ${liveMatches.length}`);
-      return liveMatches;
+
+      // 根据显示模式过滤比赛
+      let filteredMatches = allMatches;
+      if (DISPLAY_MODE === 'live') {
+        // 只显示滚球中的比赛 (state=1)
+        filteredMatches = allMatches.filter((m: any) => m.state === 1);
+        console.log(`📊 今日比赛总数: ${allMatches.length}, 滚球中: ${filteredMatches.length}`);
+      } else if (DISPLAY_MODE === 'early') {
+        // 只显示未开赛的比赛 (state=0)
+        filteredMatches = allMatches.filter((m: any) => m.state === 0);
+        console.log(`📊 今日比赛总数: ${allMatches.length}, 早盘: ${filteredMatches.length}`);
+      } else {
+        // today 模式：显示所有比赛
+        const liveCount = allMatches.filter((m: any) => m.state === 1).length;
+        const earlyCount = allMatches.filter((m: any) => m.state === 0).length;
+        console.log(`📊 今日比赛总数: ${allMatches.length} (滚球: ${liveCount}, 早盘: ${earlyCount})`);
+      }
+
+      return filteredMatches;
     } else {
       apiCallStats.errors++;
       console.error('❌ 获取赛程失败:', response.data);
@@ -446,6 +464,7 @@ console.log('🚀 iSportsAPI 独立抓取服务');
 console.log('============================================================');
 console.log(`API Key: ${API_KEY}`);
 console.log(`数据目录: ${DATA_DIR}`);
+console.log(`显示模式: ${DISPLAY_MODE} (live=只滚球, today=今日所有, early=早盘)`);
 console.log(`完整更新间隔: ${FULL_FETCH_INTERVAL / 1000} 秒`);
 console.log(`实时更新间隔: ${CHANGES_INTERVAL / 1000} 秒`);
 console.log('============================================================\n');
