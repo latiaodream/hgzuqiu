@@ -348,8 +348,8 @@ async function fullUpdate() {
     handicap: parseOdds(oddsData.handicap || [], 'handicap'),
     europeOdds: parseOdds(oddsData.europeOdds || [], 'europeOdds'),
     overUnder: parseOdds(oddsData.overUnder || [], 'overUnder'),
-    handicapHalf: parseOdds(oddsData.handicapHalf || [], 'handicap'),
-    overUnderHalf: parseOdds(oddsData.overUnderHalf || [], 'overUnder'),
+    handicapHalf: parseOdds(oddsData.handicapHalf || [], 'handicapHalf'),
+    overUnderHalf: parseOdds(oddsData.overUnderHalf || [], 'overUnderHalf'),
   };
 
   console.log(`✅ 获取到皇冠赔率：让球 ${odds.handicap.length}，独赢 ${odds.europeOdds.length}，大小 ${odds.overUnder.length}`);
@@ -365,8 +365,8 @@ async function changesUpdate() {
     handicap: parseOdds(changesData.handicap || [], 'handicap'),
     europeOdds: parseOdds(changesData.europeOdds || [], 'europeOdds'),
     overUnder: parseOdds(changesData.overUnder || [], 'overUnder'),
-    handicapHalf: parseOdds(changesData.handicapHalf || [], 'handicap'),
-    overUnderHalf: parseOdds(changesData.overUnderHalf || [], 'overUnder'),
+    handicapHalf: parseOdds(changesData.handicapHalf || [], 'handicapHalf'),
+    overUnderHalf: parseOdds(changesData.overUnderHalf || [], 'overUnderHalf'),
   };
 
   const total = changes.handicap.length + changes.europeOdds.length + changes.overUnder.length;
