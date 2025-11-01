@@ -20,7 +20,6 @@ import * as path from 'path';
 const API_KEY = process.env.ISPORTS_API_KEY || 'GvpziueL9ouzIJNj';
 const BASE_URL = 'http://api.isportsapi.com/sport/football';
 const DATA_DIR = process.env.DATA_DIR || './data';
-const TRANSLATIONS_PATH = path.join(DATA_DIR, 'name-translations.json');
 // 设置为 60 秒（60000ms），符合 /schedule/basic 接口的 "每 60 秒最多 1 次" 限制
 const FULL_FETCH_INTERVAL = parseInt(process.env.FULL_FETCH_INTERVAL || '60000');
 const CHANGES_INTERVAL = parseInt(process.env.CHANGES_INTERVAL || '2000');
@@ -32,30 +31,6 @@ if (!fs.existsSync(DATA_DIR)) {
 
 let matchesCache: any[] = [];
 let oddsCache: Map<string, any> = new Map();
-let nameTranslations: { teams: Record<string, string>; leagues: Record<string, string> } = {
-  teams: {},
-  leagues: {},
-};
-
-try {
-  if (fs.existsSync(TRANSLATIONS_PATH)) {
-    const cached = JSON.parse(fs.readFileSync(TRANSLATIONS_PATH, 'utf-8'));
-    nameTranslations = {
-      teams: cached?.teams || {},
-      leagues: cached?.leagues || {},
-    };
-  }
-} catch (error: any) {
-  console.error('⚠️  加载名称翻译缓存失败:', error.message);
-}
-
-function persistTranslations() {
-  try {
-    fs.writeFileSync(TRANSLATIONS_PATH, JSON.stringify(nameTranslations, null, 2));
-  } catch (error: any) {
-    console.error('⚠️  保存名称翻译缓存失败:', error.message);
-  }
-}
 
 // API 调用统计
 let apiCallStats = {
@@ -403,55 +378,6 @@ const resolveStrongSide = (handicap?: string) => {
   return 'C';
 };
 
-const chineseCharRegex = /[\u4e00-\u9fff]/;
-
-async function translateName(name: string, type: 'team' | 'league'): Promise<string> {
-  if (!name) return name;
-  if (chineseCharRegex.test(name)) return name;
-
-  const bucket = type === 'team' ? nameTranslations.teams : nameTranslations.leagues;
-  if (bucket[name]) return bucket[name];
-
-  try {
-    const response = await axios.get('https://translate.googleapis.com/translate_a/single', {
-      params: {
-        client: 'gtx',
-        sl: 'auto',
-        tl: 'zh-CN',
-        dt: 't',
-        q: name,
-      },
-      timeout: 10000,
-    });
-    const translated = response.data?.[0]?.[0]?.[0];
-    if (translated && typeof translated === 'string') {
-      bucket[name] = translated;
-      persistTranslations();
-      return translated;
-    }
-  } catch (error: any) {
-    console.error(`⚠️  翻译失败 (${name}):`, error.message);
-  }
-
-  return name;
-}
-
-async function translateMatchNames(match: any) {
-  const translatedLeague = await translateName(match.leagueName, 'league');
-  const translatedHome = await translateName(match.homeName, 'team');
-  const translatedAway = await translateName(match.awayName, 'team');
-
-  return {
-    ...match,
-    originalLeagueName: match.leagueName,
-    originalHomeName: match.homeName,
-    originalAwayName: match.awayName,
-    leagueName: translatedLeague,
-    homeName: translatedHome,
-    awayName: translatedAway,
-  };
-}
-
 function convertToCrownFormat(match: any, matchOdds: any) {
   // 获取主盘口（handicapIndex = 1）
   const h = matchOdds.handicap?.find((h: any) => h.handicapIndex === 1) || matchOdds.handicap?.[0];
@@ -469,11 +395,8 @@ function convertToCrownFormat(match: any, matchOdds: any) {
     gid: match.matchId,
     league: match.leagueName,
     league_short_name: match.leagueShortName,
-    league_en: match.originalLeagueName || match.leagueName,
     team_h: match.homeName,
     team_c: match.awayName,
-    team_h_en: match.originalHomeName || match.homeName,
-    team_c_en: match.originalAwayName || match.awayName,
     home: match.homeName,
     away: match.awayName,
     timer: timerIso,
@@ -655,21 +578,14 @@ function updateOddsCache(odds: any) {
   });
 }
 
-async function generateOutput() {
-  const preparedMatches = matchesCache
+function generateOutput() {
+  const convertedMatches = matchesCache
     .map((match) => {
       const matchIdKey = String(match.matchId ?? match.match_id ?? match.gid ?? '');
       return { match, matchIdKey };
     })
-    .filter(({ matchIdKey }) => matchIdKey && oddsCache.has(matchIdKey));
-
-  const convertedMatches = await Promise.all(
-    preparedMatches.map(async ({ match, matchIdKey }) => {
-      const translatedMatch = await translateMatchNames(match);
-      return convertToCrownFormat(translatedMatch, oddsCache.get(matchIdKey));
-    })
-  );
-
+    .filter(({ matchIdKey }) => matchIdKey && oddsCache.has(matchIdKey))
+    .map(({ match, matchIdKey }) => convertToCrownFormat(match, oddsCache.get(matchIdKey)));
   saveData(convertedMatches);
 }
 
@@ -700,7 +616,7 @@ async function fullUpdate() {
 
   console.log(`✅ 获取到皇冠赔率：让球 ${odds.handicap.length}，独赢 ${odds.europeOdds.length}，大小 ${odds.overUnder.length}`);
   updateOddsCache(odds);
-  await generateOutput();
+  generateOutput();
 }
 
 async function changesUpdate() {
@@ -720,7 +636,7 @@ async function changesUpdate() {
 
   console.log(`🔄 赔率变化：让球 ${changes.handicap.length}，独赢 ${changes.europeOdds.length}，大小 ${changes.overUnder.length}`);
   updateOddsCache(changes);
-  await generateOutput();
+  generateOutput();
 }
 
 console.log('============================================================');
