@@ -83,7 +83,13 @@ echo ""
 
 # 7. 启动新服务
 echo "🚀 启动新服务..."
-$PM2_CMD start dist/index.js --name crown-fetcher-isports
+if [ -f "ecosystem.config.js" ]; then
+    echo "   使用 ecosystem.config.js 配置文件启动..."
+    $PM2_CMD start ecosystem.config.js
+else
+    echo "   使用默认配置启动..."
+    $PM2_CMD start dist/index.js --name crown-fetcher-isports
+fi
 
 if [ $? -ne 0 ]; then
     echo "❌ 服务启动失败"
