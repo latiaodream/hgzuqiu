@@ -66,6 +66,7 @@ function printStats() {
   }
 }
 
+// 使用 Common API 中的 /schedule/basic 接口（应该在套餐内）
 async function fetchSchedule() {
   checkAndResetStats();
   apiCallStats.schedule++;
@@ -94,7 +95,9 @@ async function fetchSchedule() {
       console.error('❌ 获取赛程失败:', response.data);
       if (response.data.code === 2) {
         apiCallStats.limitExceeded = true;
-        console.error('⚠️  API 调用次数已超出限制！');
+        console.error('⚠️  /schedule/basic 接口超出限制！');
+        console.error('   请确认该接口是否在你的套餐内（Common API）');
+        console.error('   如果不在套餐内，请联系 iSportsAPI 客服');
         printStats();
       }
       return [];
@@ -408,7 +411,10 @@ function generateOutput() {
 async function fullUpdate() {
   console.log('🔄 开始完整更新...');
   const matches = await fetchSchedule();
-  if (matches.length === 0) return;
+  if (matches.length === 0) {
+    console.log('⚠️  未获取到比赛数据，跳过本次更新');
+    return;
+  }
   matchesCache = matches;
   console.log(`✅ 获取到 ${matches.length} 场比赛`);
 
