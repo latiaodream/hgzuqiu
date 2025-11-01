@@ -6333,60 +6333,76 @@ export class CrownAutomationService {
         }
 
         // 转换下注类型和选项为 API 参数
-        const { wtype, rtype, chose_team } = this.convertBetTypeToApiParams(betRequest.betType, betRequest.betOption);
+        const { wtype, rtype, chose_team } = this.convertBetTypeToApiParams(
+          betRequest.betType,
+          betRequest.betOption,
+          {
+            homeName: betRequest.home_team || betRequest.homeTeam,
+            awayName: betRequest.away_team || betRequest.awayTeam,
+          }
+        );
 
-        console.log(`🎯 纯 API 下注参数:`, {
+        const variants = this.buildBetVariants({ wtype, rtype, chose_team });
+
+        let oddsResult: any = null;
+        let selectedVariant: { wtype: string; rtype: string; chose_team: string } | null = null;
+        let lastErrorMessage = '';
+
+        const maxRetries = 3;
+        const retryDelay = 2000;
+
+        for (const variant of variants) {
+          console.log('🎯 尝试获取赔率组合:', variant);
+          for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            console.log(`🔄 获取赔率 [${variant.wtype}/${variant.rtype}] 尝试 ${attempt}/${maxRetries}`);
+            oddsResult = await apiClient.getLatestOdds({
+              gid: crownMatchId,
+              gtype: 'FT',
+              wtype: variant.wtype,
+              chose_team: variant.chose_team,
+            });
+
+            if (oddsResult.success) {
+              selectedVariant = variant;
+              console.log('✅ 获取赔率成功:', oddsResult);
+              break;
+            }
+
+            lastErrorMessage = oddsResult.message || oddsResult.code || '未知错误';
+
+            if (oddsResult.code === 'MARKET_CLOSED' && attempt < maxRetries) {
+              console.log(`⏳ 盘口暂时封盘，等待 ${retryDelay / 1000} 秒后重试...`);
+              await new Promise((resolve) => setTimeout(resolve, retryDelay));
+              continue;
+            }
+
+            if (attempt === maxRetries) {
+              console.log('⚠️ 该组合获取赔率失败:', oddsResult);
+            }
+          }
+
+          if (selectedVariant) {
+            break;
+          }
+        }
+
+        if (!selectedVariant || !oddsResult?.success) {
+          return {
+            success: false,
+            message: `获取赔率失败: ${lastErrorMessage || '未知错误'}`,
+          };
+        }
+
+        const chosenVariant = selectedVariant;
+
+        console.log('🎯 最终下注参数:', {
           gid: crownMatchId,
-          wtype,
-          rtype,
-          chose_team,
+          wtype: chosenVariant.wtype,
+          rtype: chosenVariant.rtype,
+          chose_team: chosenVariant.chose_team,
           amount: betRequest.amount,
           odds: betRequest.odds,
         });
-
-        // 先获取最新赔率（带重试机制）
-        console.log('📊 获取最新赔率...');
-        let oddsResult: any = null;
-        const maxRetries = 3;
-        const retryDelay = 2000; // 2秒
-
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-          console.log(`🔄 尝试获取赔率 (${attempt}/${maxRetries})...`);
-
-          oddsResult = await apiClient.getLatestOdds({
-            gid: crownMatchId,
-            gtype: 'FT',
-            wtype,
-            chose_team,  // ✅ 修复：传递 chose_team 而不是 rtype
-          });
-
-          if (oddsResult.success) {
-            console.log('✅ 获取赔率成功:', oddsResult);
-            break;
-          }
-
-          // 如果是盘口封盘错误，等待后重试
-          if (oddsResult.code === 'MARKET_CLOSED' && attempt < maxRetries) {
-            console.log(`⏳ 盘口暂时封盘，等待 ${retryDelay/1000} 秒后重试...`);
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
-            continue;
-          }
-
-          // 其他错误或最后一次尝试失败，直接返回
-          if (attempt === maxRetries) {
-            return {
-              success: false,
-              message: `获取赔率失败 (尝试 ${maxRetries} 次): ${oddsResult.message || '未知错误'}`,
-            };
-          }
-        }
-
-        if (!oddsResult || !oddsResult.success) {
-          return {
-            success: false,
-            message: `获取赔率失败: ${oddsResult?.message || '未知错误'}`,
-          };
-        }
 
         // 执行下注（使用最新获取到的赔率）
         const latestOdds = oddsResult.ioratio || betRequest.odds.toString();
@@ -6396,11 +6412,14 @@ export class CrownAutomationService {
         const betResult = await apiClient.placeBet({
           gid: crownMatchId,
           gtype: 'FT',
-          wtype,
-          rtype,
-          chose_team,
+          wtype: chosenVariant.wtype,
+          rtype: chosenVariant.rtype,
+          chose_team: chosenVariant.chose_team,
           ioratio: latestOdds,
           gold: betRequest.amount.toString(),
+          con: oddsResult.con,
+          ratio: oddsResult.ratio,
+          isRB: chosenVariant.wtype.startsWith('R') ? 'Y' : 'N',
         });
 
         console.log('📥 下注响应:', betResult);
@@ -6437,56 +6456,140 @@ export class CrownAutomationService {
   }
 
   // 将下注类型和选项转换为 API 参数
-  private convertBetTypeToApiParams(betType: string, betOption: string): {
+  private convertBetTypeToApiParams(
+    betType: string,
+    betOption: string,
+    context?: { homeName?: string; awayName?: string }
+  ): {
     wtype: string;
     rtype: string;
     chose_team: string;
   } {
     console.log(`🔄 转换下注参数: betType="${betType}", betOption="${betOption}"`);
 
-    // 默认使用滚球独赢
-    let wtype = 'RM';
-    let rtype = 'RMH';
-    let chose_team = 'H';
+    const normalize = (value?: string) => (value || '').replace(/\s+/g, '').toLowerCase();
+    const typeNormalized = normalize(betType);
+    const optionNormalized = normalize(betOption);
+    const homeNameNormalized = normalize(context?.homeName);
+    const awayNameNormalized = normalize(context?.awayName);
 
-    if (betType === '独赢') {
-      wtype = 'RM';
-      if (betOption === '主队' || betOption.includes('主队')) {
-        rtype = 'RMH';
-        chose_team = 'H';
-      } else if (betOption === '客队' || betOption.includes('客队')) {
-        rtype = 'RMC';
-        chose_team = 'C';
-      } else if (betOption === '和局' || betOption.includes('和局')) {
-        rtype = 'RMN';
-        chose_team = 'N';
-      }
-    } else if (betType === '让球') {
-      wtype = 'R';
-      // 前端传的格式：'队名 (盘口)' 或 '主队' 或 '客队'
-      // 判断逻辑：如果包含 '客队' 或者 betOption 在后半部分，则是客队
-      if (betOption.includes('客队')) {
-        rtype = 'RC';
+    const containsHomeKeyword = optionNormalized.includes('主') || optionNormalized.includes('home') || optionNormalized.includes('h');
+    const containsAwayKeyword = optionNormalized.includes('客') || optionNormalized.includes('away') || optionNormalized.includes('c');
+    const optionContainsHome = homeNameNormalized ? optionNormalized.includes(homeNameNormalized) : false;
+    const optionContainsAway = awayNameNormalized ? optionNormalized.includes(awayNameNormalized) : false;
+
+    const isHomeSelection = containsHomeKeyword || optionContainsHome;
+    const isAwaySelection = containsAwayKeyword || optionContainsAway;
+
+    const detectHalf = () => optionNormalized.includes('半') || typeNormalized.includes('半') || optionNormalized.includes('1h') || optionNormalized.includes('half');
+    const isHalfMarket = detectHalf();
+
+    // 默认滚球独赢（RMH）
+    let wtype = isHalfMarket ? 'HRM' : 'RM';
+    let rtype = isHalfMarket ? 'HRMH' : 'RMH';
+    let chose_team: 'H' | 'C' | 'N' = 'H';
+
+    const parseHandicap = () => {
+      wtype = isHalfMarket ? 'HRE' : 'RE';
+      if (isAwaySelection) {
+        rtype = isHalfMarket ? 'HREC' : 'REC';
         chose_team = 'C';
       } else {
-        // 默认主队（包括 '主队' 或实际队名）
-        rtype = 'RH';
+        rtype = isHalfMarket ? 'HREH' : 'REH';
         chose_team = 'H';
       }
-    } else if (betType === '大小' || betType === '大小球') {
-      wtype = 'OU';
-      // 前端传的格式：'大球(盘口)' 或 '小球(盘口)'
-      if (betOption.includes('大')) {
-        rtype = 'OUH';
+    };
+
+    const parseMoneyline = () => {
+      wtype = isHalfMarket ? 'HRM' : 'RM';
+      if (isAwaySelection) {
+        rtype = isHalfMarket ? 'HRMC' : 'RMC';
+        chose_team = 'C';
+      } else if (optionNormalized.includes('和') || optionNormalized.includes('draw') || optionNormalized.includes('x')) {
+        rtype = isHalfMarket ? 'HRMN' : 'RMN';
+        chose_team = 'N';
+      } else {
+        rtype = isHalfMarket ? 'HRMH' : 'RMH';
         chose_team = 'H';
-      } else if (betOption.includes('小')) {
-        rtype = 'OUC';
+      }
+    };
+
+    const parseOverUnder = () => {
+      wtype = isHalfMarket ? 'HROU' : 'ROU';
+      if (optionNormalized.includes('大') || optionNormalized.includes('over')) {
+        rtype = isHalfMarket ? 'HROUO' : 'ROUH';
+        chose_team = 'H';
+      } else {
+        rtype = isHalfMarket ? 'HROUU' : 'ROUC';
         chose_team = 'C';
       }
+    };
+
+    if (typeNormalized.includes('让球') || typeNormalized.includes('handicap') || typeNormalized.includes('讓球')) {
+      parseHandicap();
+    } else if (typeNormalized.includes('独赢') || typeNormalized.includes('moneyline') || typeNormalized.includes('獨贏')) {
+      parseMoneyline();
+    } else if (typeNormalized.includes('大小') || typeNormalized.includes('大/小') || typeNormalized.includes('over') || typeNormalized.includes('under')) {
+      parseOverUnder();
+    } else {
+      // 无法明确识别时默认独赢主队
+      parseMoneyline();
     }
 
-    console.log(`✅ 转换结果: wtype="${wtype}", rtype="${rtype}", chose_team="${chose_team}"`);
+    console.log(`✅ 转换结果: wtype="${wtype}", rtype="${rtype}", chose_team="${chose_team}" (half=${isHalfMarket})`);
     return { wtype, rtype, chose_team };
+  }
+
+  private buildBetVariants(base: { wtype: string; rtype: string; chose_team: string }) {
+    const fallbackMap: Record<string, string[]> = {
+      RE: ['R'],
+      R: ['RE'],
+      ROU: ['OU'],
+      OU: ['ROU'],
+      RM: ['M'],
+      M: ['RM'],
+      HRE: ['HR'],
+      HR: ['HRE'],
+      HROU: ['HOU'],
+      HOU: ['HROU'],
+      HRM: ['HM'],
+      HM: ['HRM'],
+    };
+
+    const variants: Array<{ wtype: string; rtype: string; chose_team: string }> = [];
+    const seen = new Set<string>();
+
+    const normalize = (value: string) => value.toUpperCase();
+
+    const replaceRtypePrefix = (rtype: string, from: string, to: string) => {
+      const upperRtype = rtype.toUpperCase();
+      const fromUpper = from.toUpperCase();
+      const toUpper = to.toUpperCase();
+      if (upperRtype.startsWith(fromUpper)) {
+        return toUpper + rtype.slice(fromUpper.length);
+      }
+      return toUpper;
+    };
+
+    const pushVariant = (wtype: string, rtype: string) => {
+      const key = `${normalize(wtype)}|${normalize(rtype)}`;
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      variants.push({ wtype: normalize(wtype), rtype: normalize(rtype), chose_team: base.chose_team });
+    };
+
+    pushVariant(base.wtype, base.rtype);
+
+    const primaryUpper = normalize(base.wtype);
+    const fallbacks = fallbackMap[primaryUpper] || [];
+    for (const fallback of fallbacks) {
+      const derivedRtype = replaceRtypePrefix(base.rtype, primaryUpper, fallback);
+      pushVariant(fallback, derivedRtype);
+    }
+
+    return variants;
   }
 
   // 执行下注（仅支持纯 API 方式）
