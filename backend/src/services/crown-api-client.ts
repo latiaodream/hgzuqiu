@@ -260,20 +260,28 @@ export class CrownApiClient {
         const response = await this.httpClient.post(`/transform.php?ver=${this.version}`, params.toString());
         const data = await this.parseXmlResponse(response.data);
 
+        const loginResponse = data as LoginResponse;
         console.log('📥 登录响应:', {
-          status: data.status,
-          msg: data.msg,
-          username: data.username,
-          uid: data.uid,
+          status: loginResponse.status,
+          msg: loginResponse.msg,
+          username: loginResponse.username,
+          uid: loginResponse.uid,
         });
 
-        // 保存 UID 用于后续请求
-        if (data.uid) {
-          this.uid = data.uid;
-          console.log('✅ UID 已保存:', this.uid);
+        if (loginResponse.msg === '100' && loginResponse.status !== 'success') {
+          loginResponse.status = 'success';
         }
 
-        return data as LoginResponse;
+        if (loginResponse.status === 'success' || loginResponse.msg === '100') {
+          if (loginResponse.uid) {
+            this.uid = loginResponse.uid;
+            console.log('✅ UID 已保存:', this.uid);
+          }
+          return loginResponse;
+        }
+
+        console.error('❌ 登录失败:', loginResponse);
+        throw new Error(loginResponse.code_message || '登录失败');
 
       } catch (error: any) {
         console.error(`❌ 登录失败 (尝试 ${attempt}/${retries}):`, error.code || error.message);
@@ -1355,4 +1363,3 @@ export class CrownApiClient {
     }
   }
 }
-
