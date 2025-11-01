@@ -44,7 +44,13 @@ async function main() {
 
   console.log(`🔐 使用账号 ${username} 登录 ${baseUrl} ...`);
   const loginResult = await client.login(username, password, 1);
-  if (loginResult.status !== 'success' || !loginResult.uid) {
+
+  // 判断登录是否成功
+  // 皇冠 API 返回: status='200' 且 msg='100' 表示登录成功
+  // 同时必须有 uid 字段
+  const isLoginSuccess = loginResult.status === '200' && loginResult.msg === '100' && loginResult.uid;
+
+  if (!isLoginSuccess) {
     console.error('❌ 登录失败:', loginResult);
     process.exit(1);
   }
