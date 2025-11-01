@@ -9,7 +9,8 @@
     "start": "node dist/app.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate": "node migrate.js",
-    "ensure-admin": "node ensure-admin.js"
+    "ensure-admin": "node ensure-admin.js",
+    "crown:fetch-gids": "ts-node scripts/fetch-crown-gids.ts"
   },
   "keywords": [],
   "author": "",
