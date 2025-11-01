@@ -234,6 +234,7 @@ const MatchesPage: React.FC = () => {
       current_score: matchData.score || '',
       match_period: [matchData.period, matchData.clock].filter(Boolean).join(' '),
       markets: matchData.markets || {},
+      crown_gid: matchData.crown_gid || matchData.crownGid || null,
       last_synced_at: nowIso,
       created_at: nowIso,
       updated_at: nowIso,

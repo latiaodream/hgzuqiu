@@ -20,6 +20,7 @@ import * as path from 'path';
 const API_KEY = process.env.ISPORTS_API_KEY || 'GvpziueL9ouzIJNj';
 const BASE_URL = 'http://api.isportsapi.com/sport/football';
 const DATA_DIR = process.env.DATA_DIR || './data';
+const CROWN_MAP_PATH = path.join(DATA_DIR, 'crown-match-map.json');
 // 设置为 60 秒（60000ms），符合 /schedule/basic 接口的 "每 60 秒最多 1 次" 限制
 const FULL_FETCH_INTERVAL = parseInt(process.env.FULL_FETCH_INTERVAL || '60000');
 const CHANGES_INTERVAL = parseInt(process.env.CHANGES_INTERVAL || '2000');
@@ -31,6 +32,29 @@ if (!fs.existsSync(DATA_DIR)) {
 
 let matchesCache: any[] = [];
 let oddsCache: Map<string, any> = new Map();
+let crownMatchMap: Map<string, string> = new Map();
+
+function loadCrownMatchMap() {
+  try {
+    if (!fs.existsSync(CROWN_MAP_PATH)) {
+      console.log('ℹ️  未找到 crown-match-map.json，下注将使用 iSports 比赛 ID');
+      crownMatchMap = new Map();
+      return;
+    }
+    const raw = fs.readFileSync(CROWN_MAP_PATH, 'utf-8');
+    const parsed = JSON.parse(raw);
+    const entries = parsed?.matches || [];
+    crownMatchMap = new Map(
+      entries.map((entry: any) => [String(entry.isports_match_id), String(entry.crown_gid)])
+    );
+    console.log(`ℹ️  已加载 ${crownMatchMap.size} 条皇冠映射`);
+  } catch (error: any) {
+    console.error('⚠️  读取 crown-match-map.json 失败:', error.message);
+    crownMatchMap = new Map();
+  }
+}
+
+loadCrownMatchMap();
 
 // API 调用统计
 let apiCallStats = {
@@ -394,7 +418,7 @@ const resolveStrongSide = (handicap?: string) => {
   return 'C';
 };
 
-function convertToCrownFormat(match: any, matchOdds: any) {
+function convertToCrownFormat(match: any, matchOdds: any, crownGid?: string) {
   const timerIso = new Date(match.matchTime * 1000).toISOString();
   const score = formatScore(match.homeScore, match.awayScore);
   const period = derivePeriod(match.status);
@@ -444,6 +468,7 @@ function convertToCrownFormat(match: any, matchOdds: any) {
     period,
     clock,
     state: match.status,
+    crown_gid: crownGid,
 
     RATIO_RE: mainHandicap?.line || '0',
     IOR_REH: mainHandicap?.home || '0',
@@ -600,11 +625,14 @@ function generateOutput() {
       return { match, matchIdKey };
     })
     .filter(({ matchIdKey }) => matchIdKey && oddsCache.has(matchIdKey))
-    .map(({ match, matchIdKey }) => convertToCrownFormat(match, oddsCache.get(matchIdKey)));
+    .map(({ match, matchIdKey }) =>
+      convertToCrownFormat(match, oddsCache.get(matchIdKey), crownMatchMap.get(matchIdKey))
+    );
   saveData(convertedMatches);
 }
 
 async function fullUpdate() {
+  loadCrownMatchMap();
   console.log('🔄 开始完整更新...');
   const matches = await fetchSchedule();
   if (matches.length === 0) {
@@ -615,6 +643,7 @@ async function fullUpdate() {
   matchesCache = matchesCache.map((match) => ({
     ...match,
     matchId: String(match.matchId ?? match.match_id ?? match.gid ?? ''),
+    crown_gid: crownMatchMap.get(String(match.matchId ?? match.match_id ?? match.gid ?? '')),
   }));
   console.log(`✅ 获取到 ${matches.length} 场比赛`);
 

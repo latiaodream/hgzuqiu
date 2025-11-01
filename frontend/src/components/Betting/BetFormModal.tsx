@@ -283,7 +283,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         single_limit: values.single_limit,
         interval_seconds: values.interval_seconds,
         quantity: values.quantity,
-        crown_match_id: match.match_id,
+        crown_match_id: match.crown_gid || match.match_id,
         league_name: match.league_name,
         home_team: match.home_team,
         away_team: match.away_team,

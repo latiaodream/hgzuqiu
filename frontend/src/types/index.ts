@@ -178,6 +178,7 @@ export interface Match {
   current_score?: string;
   match_period?: string;
   markets?: any;
+  crown_gid?: string | null;
   last_synced_at?: string;
   created_at: string;
   updated_at: string;
