@@ -1110,10 +1110,18 @@ router.get('/matches-system', async (req: any, res) => {
                 const age = Date.now() - fetcherData.timestamp;
                 if (age < 10000) {
                     console.log(`✅ 使用独立抓取服务数据 (${fetcherData.matchCount} 场比赛, ${Math.floor(age / 1000)}秒前)`);
+
+                    // 转换字段名以兼容前端（team_h/team_c -> home/away）
+                    const matches = (fetcherData.matches || []).map((m: any) => ({
+                        ...m,
+                        home: m.team_h || m.home,
+                        away: m.team_c || m.away,
+                    }));
+
                     res.json({
                         success: true,
                         data: {
-                            matches: fetcherData.matches || [],
+                            matches,
                             meta: { gtype, showtype, rtype, ltype, sorttype },
                             source: 'independent-fetcher',
                             lastUpdate: fetcherData.timestamp,
