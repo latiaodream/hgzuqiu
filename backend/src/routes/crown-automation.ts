@@ -29,6 +29,67 @@ const buildAccountAccess = (user: any, options?: { includeDisabled?: boolean }) 
 const router = Router();
 router.use(authenticateToken);
 
+const pickValue = (...values: any[]) => {
+    for (const value of values) {
+        if (value === undefined || value === null) continue;
+        if (typeof value === 'string' && value.trim() === '') continue;
+        return value;
+    }
+    return undefined;
+};
+
+const buildScoreFromParts = (home: any, away: any) => {
+    if (home === undefined || home === null || away === undefined || away === null) {
+        return undefined;
+    }
+    return `${home}-${away}`;
+};
+
+const normalizeMatchForFrontend = (match: any) => {
+    if (!match) return match;
+    const normalized = { ...match };
+
+    const home = pickValue(match.home, match.team_h, match.teamH, match.homeName, match.home_team);
+    if (home !== undefined) normalized.home = home;
+
+    const away = pickValue(match.away, match.team_c, match.teamC, match.awayName, match.away_team);
+    if (away !== undefined) normalized.away = away;
+
+    const league = pickValue(match.league, match.league_name, match.leagueName);
+    if (league !== undefined) normalized.league = league;
+
+    const scoreFromParts = buildScoreFromParts(
+        pickValue(match.score_h, match.homeScore, match.HomeScore, match.hscore, match.home_half_score),
+        pickValue(match.score_c, match.awayScore, match.AwayScore, match.ascore, match.away_half_score)
+    );
+    const score = pickValue(match.score, match.current_score, scoreFromParts);
+    if (score !== undefined) {
+        normalized.score = score;
+        normalized.current_score = score;
+    }
+
+    const matchTime = pickValue(match.time, match.match_time, match.timer);
+    if (matchTime !== undefined) {
+        if (!normalized.time) normalized.time = matchTime;
+        if (!normalized.timer) normalized.timer = matchTime;
+        if (!normalized.match_time) normalized.match_time = matchTime;
+    }
+
+    const period = pickValue(match.period, match.match_period);
+    if (period !== undefined) normalized.period = period;
+
+    const clock = pickValue(match.clock, match.match_clock);
+    if (clock !== undefined) normalized.clock = clock;
+
+    const stateRaw = pickValue(match.state, match.status);
+    if (stateRaw !== undefined) {
+        const parsedState = typeof stateRaw === 'string' ? parseInt(stateRaw, 10) : stateRaw;
+        normalized.state = Number.isFinite(parsedState) ? parsedState : stateRaw;
+    }
+
+    return normalized;
+};
+
 // 辅助函数：自动获取并保存账号限额
 async function autoFetchAndSaveLimits(accountId: number, account: any): Promise<void> {
     try {
@@ -1100,40 +1161,46 @@ router.get('/matches-system', async (req: any, res) => {
         try {
             const fs = require('fs');
             const path = require('path');
-            const fetcherDataPath = path.join(__dirname, '../../..', 'fetcher', 'data', 'latest-matches.json');
+            const candidates = [
+                { file: path.join(__dirname, '../../..', 'fetcher-isports', 'data', 'latest-matches.json'), source: 'independent-fetcher' },
+                { file: path.join(__dirname, '../../..', 'fetcher', 'data', 'latest-matches.json'), source: 'legacy-fetcher' },
+            ];
 
-            if (fs.existsSync(fetcherDataPath)) {
-                const fileContent = fs.readFileSync(fetcherDataPath, 'utf-8');
-                const fetcherData = JSON.parse(fileContent);
-
-                // 检查数据是否过期（超过 10 秒）
-                const age = Date.now() - fetcherData.timestamp;
-                if (age < 10000) {
-                    console.log(`✅ 使用独立抓取服务数据 (${fetcherData.matchCount} 场比赛, ${Math.floor(age / 1000)}秒前)`);
-
-                    // 转换字段名以兼容前端（team_h/team_c -> home/away）
-                    const matches = (fetcherData.matches || []).map((m: any) => ({
-                        ...m,
-                        home: m.team_h || m.home,
-                        away: m.team_c || m.away,
-                    }));
-
-                    res.json({
-                        success: true,
-                        data: {
-                            matches,
-                            meta: { gtype, showtype, rtype, ltype, sorttype },
-                            source: 'independent-fetcher',
-                            lastUpdate: fetcherData.timestamp,
-                        }
-                    });
-                    return;
-                } else {
-                    console.log(`⚠️ 独立抓取服务数据过期 (${Math.floor(age / 1000)}秒前)，使用降级方案`);
+            for (const candidate of candidates) {
+                if (!fs.existsSync(candidate.file)) {
+                    continue;
                 }
-            } else {
-                console.log('⚠️ 独立抓取服务数据文件不存在，使用降级方案');
+
+                try {
+                    const fileContent = fs.readFileSync(candidate.file, 'utf-8');
+                    const fetcherData = JSON.parse(fileContent);
+                    const matchCount = fetcherData.matchCount ?? (fetcherData.matches?.length || 0);
+                    const timestamp = fetcherData.timestamp || 0;
+                    const age = Date.now() - timestamp;
+
+                    if (age < 10000) {
+                        console.log(`✅ 使用独立抓取服务数据 (${matchCount} 场比赛, ${Math.max(0, Math.floor(age / 1000))}秒前)`);
+                        const matches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
+
+                        res.json({
+                            success: true,
+                            data: {
+                                matches,
+                                meta: { gtype, showtype, rtype, ltype, sorttype },
+                                source: candidate.source,
+                                lastUpdate: timestamp,
+                            }
+                        });
+                        return;
+                    }
+
+                    console.log(`⚠️ 独立抓取服务数据过期 (${Math.max(0, Math.floor(age / 1000))}秒前)，尝试下一数据源`);
+                } catch (error) {
+                    console.error(`❌ 读取独立抓取服务数据失败 (${candidate.file}):`, error);
+                }
             }
+
+            console.log('⚠️ 独立抓取服务数据不可用，使用降级方案');
         } catch (error) {
             console.error('❌ 读取独立抓取服务数据失败:', error);
         }
@@ -1164,7 +1231,17 @@ router.get('/matches-system', async (req: any, res) => {
             sorttype: String(sorttype),
         });
 
-        res.json({ success: true, data: { matches, meta: { gtype, showtype, rtype, ltype, sorttype }, raw: xml, source: 'fallback' } });
+        const normalizedMatches = (matches || []).map((m: any) => normalizeMatchForFrontend(m));
+
+        res.json({
+            success: true,
+            data: {
+                matches: normalizedMatches,
+                meta: { gtype, showtype, rtype, ltype, sorttype },
+                raw: xml,
+                source: 'fallback',
+            }
+        });
     } catch (error) {
         console.error('系统抓取赛事接口错误:', error);
         res.status(500).json({ success: false, error: '抓取赛事失败' });
@@ -1524,22 +1601,27 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
         try {
           const fs = require('fs');
           const path = require('path');
+          const candidates = [
+            { file: path.join(__dirname, '../../..', 'fetcher-isports', 'data', 'latest-matches.json') },
+            { file: path.join(__dirname, '../../..', 'fetcher', 'data', 'latest-matches.json') },
+          ];
 
-          // 优先尝试 fetcher-isports（iSportsAPI）
-          let fetcherDataPath = path.join(__dirname, '../../..', 'fetcher-isports', 'data', 'latest-matches.json');
+          for (const candidate of candidates) {
+            if (!fs.existsSync(candidate.file)) {
+              continue;
+            }
 
-          // 如果不存在，回退到 fetcher（皇冠 API）
-          if (!fs.existsSync(fetcherDataPath)) {
-            fetcherDataPath = path.join(__dirname, '../../..', 'fetcher', 'data', 'latest-matches.json');
-          }
-
-          if (fs.existsSync(fetcherDataPath)) {
-            const fetcherData = JSON.parse(fs.readFileSync(fetcherDataPath, 'utf-8'));
-            const age = Date.now() - (fetcherData.timestamp || Date.now());
-
-            if (age < 10000) { // 数据新鲜（< 10 秒）
-              matches = fetcherData.matches || [];
-              xml = fetcherData.xml;
+            try {
+              const fetcherData = JSON.parse(fs.readFileSync(candidate.file, 'utf-8'));
+              const timestamp = fetcherData.timestamp || 0;
+              const age = Date.now() - timestamp;
+              if (age < 10000) {
+                matches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
+                xml = fetcherData.xml;
+                break;
+              }
+            } catch (readErr) {
+              console.error(`读取独立抓取服务数据失败 (${candidate.file}):`, readErr);
             }
           }
         } catch (err) {
@@ -1549,7 +1631,7 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
         // 如果没有数据，使用降级方案
         if (matches.length === 0) {
           const result = await getCrownAutomation().fetchMatchesSystem({ gtype, showtype, rtype, ltype, sorttype });
-          matches = result.matches;
+          matches = (result.matches || []).map((m: any) => normalizeMatchForFrontend(m));
           xml = result.xml;
         }
 

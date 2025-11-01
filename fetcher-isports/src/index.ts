@@ -180,68 +180,236 @@ async function fetchOddsChanges() {
   }
 }
 
+const parseBool = (value?: string) => value === 'true' || value === '1';
+const parseIntSafe = (value?: string) => {
+  if (value === undefined || value === '') return undefined;
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
 function parseOdds(data: string[], type: string) {
   return data.map((item) => {
     const parts = item.split(',');
-    const base = { matchId: parts[0], companyId: parts[1], raw: item };
+    const base: any = { matchId: parts[0], companyId: parts[1], raw: item };
+    const len = parts.length;
 
     if (type === 'handicap') {
-      // /odds/all 格式 (15字段): matchId,companyId,initialHandicap,initialHome,initialAway,instantHandicap,instantHome,instantAway,maintenance,inPlay,handicapIndex,handicapCount,changeTime,close,oddsType
+      if (len >= 15) {
+        return {
+          ...base,
+          initialHandicap: parts[2],
+          initialHome: parts[3],
+          initialAway: parts[4],
+          instantHandicap: parts[5],
+          instantHome: parts[6],
+          instantAway: parts[7],
+          maintenance: parseBool(parts[8]),
+          inPlay: parseBool(parts[9]),
+          handicapIndex: parseIntSafe(parts[10]) ?? 1,
+          handicapCount: parseIntSafe(parts[11]) ?? 1,
+          changeTime: parseIntSafe(parts[12]),
+          close: parseBool(parts[13]),
+          oddsType: parseIntSafe(parts[14]),
+        };
+      }
+
       return {
         ...base,
-        instantHandicap: parts[5],
-        instantHome: parts[6],
-        instantAway: parts[7],
-        handicapIndex: USE_ALL_ODDS ? parseInt(parts[10]) : 1
-      };
-    } else if (type === 'handicapHalf') {
-      // handicapHalf 格式 (12字段): matchId,companyId,initialHandicap,initialHome,initialAway,instantHandicap,instantHome,instantAway,inPlay,handicapIndex,changeTime,oddsType
-      return {
-        ...base,
-        instantHandicap: parts[5],
-        instantHome: parts[6],
-        instantAway: parts[7],
-        handicapIndex: USE_ALL_ODDS ? parseInt(parts[9]) : 1
-      };
-    } else if (type === 'europeOdds') {
-      return { ...base, instantHome: parts[5], instantDraw: parts[6], instantAway: parts[7] };
-    } else if (type === 'overUnder') {
-      // /odds/all 格式 (12字段): matchId,companyId,initialHandicap,initialOver,initialUnder,instantHandicap,instantOver,instantUnder,handicapIndex,changeTime,close,oddsType
-      return {
-        ...base,
-        instantHandicap: parts[5],
-        instantOver: parts[6],
-        instantUnder: parts[7],
-        handicapIndex: USE_ALL_ODDS ? parseInt(parts[8]) : 1
-      };
-    } else if (type === 'overUnderHalf') {
-      // overUnderHalf 格式 (11字段): matchId,companyId,initialHandicap,initialOver,initialUnder,instantHandicap,instantOver,instantUnder,handicapIndex,changeTime,oddsType
-      return {
-        ...base,
-        instantHandicap: parts[5],
-        instantOver: parts[6],
-        instantUnder: parts[7],
-        handicapIndex: USE_ALL_ODDS ? parseInt(parts[8]) : 1
+        instantHandicap: parts[2],
+        instantHome: parts[3],
+        instantAway: parts[4],
+        maintenance: parseBool(parts[5]),
+        inPlay: parseBool(parts[6]),
+        handicapIndex: parseIntSafe(parts[7]) ?? 1,
+        changeTime: parseIntSafe(parts[8]),
+        close: parseBool(parts[9]),
+        oddsType: parseIntSafe(parts[10]),
       };
     }
+
+    if (type === 'handicapHalf') {
+      if (len >= 12) {
+        return {
+          ...base,
+          initialHandicap: parts[2],
+          initialHome: parts[3],
+          initialAway: parts[4],
+          instantHandicap: parts[5],
+          instantHome: parts[6],
+          instantAway: parts[7],
+          maintenance: parseBool(parts[8]),
+          handicapIndex: parseIntSafe(parts[9]) ?? 1,
+          changeTime: parseIntSafe(parts[10]),
+          oddsType: parseIntSafe(parts[11]),
+        };
+      }
+
+      return {
+        ...base,
+        instantHandicap: parts[2],
+        instantHome: parts[3],
+        instantAway: parts[4],
+        maintenance: parseBool(parts[5]),
+        handicapIndex: parseIntSafe(parts[6]) ?? 1,
+        changeTime: parseIntSafe(parts[7]),
+        oddsType: parseIntSafe(parts[8]),
+      };
+    }
+
+    if (type === 'europeOdds') {
+      if (len >= 12) {
+        return {
+          ...base,
+          initialHome: parts[2],
+          initialDraw: parts[3],
+          initialAway: parts[4],
+          instantHome: parts[5],
+          instantDraw: parts[6],
+          instantAway: parts[7],
+          oddsIndex: parseIntSafe(parts[8]),
+          changeTime: parseIntSafe(parts[9]),
+          close: parseBool(parts[10]),
+          oddsType: parseIntSafe(parts[11]),
+        };
+      }
+
+      return {
+        ...base,
+        instantHome: parts[2],
+        instantDraw: parts[3],
+        instantAway: parts[4],
+        oddsIndex: parseIntSafe(parts[5]),
+        changeTime: parseIntSafe(parts[6]),
+        close: parseBool(parts[7]),
+        oddsType: parseIntSafe(parts[8]),
+      };
+    }
+
+    if (type === 'overUnder') {
+      if (len >= 12) {
+        return {
+          ...base,
+          initialHandicap: parts[2],
+          initialOver: parts[3],
+          initialUnder: parts[4],
+          instantHandicap: parts[5],
+          instantOver: parts[6],
+          instantUnder: parts[7],
+          handicapIndex: parseIntSafe(parts[8]) ?? 1,
+          changeTime: parseIntSafe(parts[9]),
+          close: parseBool(parts[10]),
+          oddsType: parseIntSafe(parts[11]),
+        };
+      }
+
+      return {
+        ...base,
+        instantHandicap: parts[2],
+        instantOver: parts[3],
+        instantUnder: parts[4],
+        handicapIndex: parseIntSafe(parts[5]) ?? 1,
+        changeTime: parseIntSafe(parts[6]),
+        close: parseBool(parts[7]),
+        oddsType: parseIntSafe(parts[8]),
+      };
+    }
+
+    if (type === 'overUnderHalf') {
+      if (len >= 11) {
+        return {
+          ...base,
+          initialHandicap: parts[2],
+          initialOver: parts[3],
+          initialUnder: parts[4],
+          instantHandicap: parts[5],
+          instantOver: parts[6],
+          instantUnder: parts[7],
+          handicapIndex: parseIntSafe(parts[8]) ?? 1,
+          changeTime: parseIntSafe(parts[9]),
+          oddsType: parseIntSafe(parts[10]),
+        };
+      }
+
+      return {
+        ...base,
+        instantHandicap: parts[2],
+        instantOver: parts[3],
+        instantUnder: parts[4],
+        handicapIndex: parseIntSafe(parts[5]) ?? 1,
+        changeTime: parseIntSafe(parts[6]),
+        oddsType: parseIntSafe(parts[7]),
+      };
+    }
+
     return base;
   });
 }
 
+const formatScore = (homeScore?: number, awayScore?: number) => {
+  const home = Number.isFinite(homeScore) ? Number(homeScore) : 0;
+  const away = Number.isFinite(awayScore) ? Number(awayScore) : 0;
+  return `${home}-${away}`;
+};
+
+const derivePeriod = (status: number) => {
+  if (status === 1) return '滚球';
+  if (status === 0) return '未开赛';
+  if (status === -1) return '已结束';
+  return '';
+};
+
+const deriveClock = (match: any) => {
+  const minute = match?.extraExplain?.minute ?? match?.minute;
+  if (typeof minute === 'number' && minute > 0) {
+    return `${minute}'`;
+  }
+  return '';
+};
+
+const resolveStrongSide = (handicap?: string) => {
+  if (!handicap) return 'C';
+  const parts = handicap.split('/').map((p) => parseFloat(p));
+  for (const value of parts) {
+    if (!Number.isFinite(value) || value === 0) continue;
+    return value > 0 ? 'H' : 'C';
+  }
+  if (handicap.trim().startsWith('-')) return 'C';
+  if (handicap.trim().startsWith('+')) return 'H';
+  return 'C';
+};
+
 function convertToCrownFormat(match: any, matchOdds: any) {
   // 获取主盘口（handicapIndex = 1）
   const h = matchOdds.handicap?.find((h: any) => h.handicapIndex === 1) || matchOdds.handicap?.[0];
-  const e = matchOdds.europeOdds?.[0];
+  const e = matchOdds.europeOdds?.find((eo: any) => (eo.oddsIndex ?? 1) === 1) || matchOdds.europeOdds?.[0];
   const o = matchOdds.overUnder?.find((o: any) => o.handicapIndex === 1) || matchOdds.overUnder?.[0];
   const hh = matchOdds.handicapHalf?.find((h: any) => h.handicapIndex === 1) || matchOdds.handicapHalf?.[0];
   const oh = matchOdds.overUnderHalf?.find((o: any) => o.handicapIndex === 1) || matchOdds.overUnderHalf?.[0];
 
+  const timerIso = new Date(match.matchTime * 1000).toISOString();
+  const score = formatScore(match.homeScore, match.awayScore);
+  const period = derivePeriod(match.status);
+  const clock = deriveClock(match);
+
   const result: any = {
     gid: match.matchId,
     league: match.leagueName,
+    league_short_name: match.leagueShortName,
     team_h: match.homeName,
     team_c: match.awayName,
-    timer: new Date(match.matchTime * 1000).toISOString(),
+    home: match.homeName,
+    away: match.awayName,
+    timer: timerIso,
+    time: timerIso,
+    match_time: timerIso,
+    score,
+    current_score: score,
+    homeScore: match.homeScore,
+    awayScore: match.awayScore,
+    homeHalfScore: match.homeHalfScore,
+    awayHalfScore: match.awayHalfScore,
+    period,
+    clock,
     state: match.status, // 添加 state 字段供后端过滤 (status: -1=已结束, 0=未开始, 1=进行中)
 
     // 让球盘 - 使用后端期望的字段名（主盘口）
@@ -270,7 +438,7 @@ function convertToCrownFormat(match: any, matchOdds: any) {
     IOR_HROUH: oh?.instantUnder || '0',
 
     more: 1,
-    strong: parseFloat(h?.instantHandicap || '0') > 0 ? 'H' : 'C',
+    strong: resolveStrongSide(h?.instantHandicap),
   };
 
   // 生成 markets 供前端使用
@@ -387,8 +555,9 @@ function updateOddsCache(odds: any) {
       const matchCache = oddsCache.get(item.matchId);
 
       if (key === 'europeOdds') {
-        // 独赢盘只有一个，直接替换
-        matchCache[key] = [item];
+        // 独赢盘只有一个，合并后替换
+        const existing = matchCache[key][0];
+        matchCache[key] = [existing ? { ...existing, ...item } : item];
       } else if (key === 'handicap' || key === 'overUnder' || key === 'handicapHalf' || key === 'overUnderHalf') {
         // 让球盘和大小球可能有多个，按 handicapIndex 更新
         const existingIndex = matchCache[key].findIndex((existing: any) =>
@@ -396,7 +565,7 @@ function updateOddsCache(odds: any) {
         );
 
         if (existingIndex >= 0) {
-          matchCache[key][existingIndex] = item;
+          matchCache[key][existingIndex] = { ...matchCache[key][existingIndex], ...item };
         } else {
           matchCache[key].push(item);
         }
@@ -482,4 +651,3 @@ setInterval(() => {
     printStats();
   }
 }, 600000);
-
