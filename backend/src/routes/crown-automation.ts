@@ -61,11 +61,8 @@ const isLiveState = (value: any): boolean => {
     if (state === undefined) {
         return false;
     }
-    if (state > 0) {
-        return true;
-    }
-    // iSports 在部分进行中状态使用负值编码（如 -11 半场休息、-12 加时等）
-    return [-11, -12, -13, -14].includes(state);
+    // 除 0（未开赛）和 -1（已结束）外，iSports 其它状态基本为进行中或暂停状态
+    return state !== 0 && state !== -1;
 };
 
 const filterMatchesByShowtype = (matches: any[], showtype: string) => {

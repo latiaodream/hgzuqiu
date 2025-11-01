@@ -213,6 +213,22 @@ function parseOdds(data: string[], type: string) {
         };
       }
 
+      if (len >= 12) {
+        return {
+          ...base,
+          initialHandicap: parts[2],
+          initialHome: parts[3],
+          initialAway: parts[4],
+          instantHandicap: parts[5],
+          instantHome: parts[6],
+          instantAway: parts[7],
+          maintenance: parseBool(parts[8]),
+          inPlay: parseBool(parts[9]),
+          handicapIndex: parseIntSafe(parts[10]) ?? 1,
+          handicapCount: parseIntSafe(parts[11]) ?? 1,
+        };
+      }
+
       return {
         ...base,
         instantHandicap: parts[2],
@@ -379,17 +395,34 @@ const resolveStrongSide = (handicap?: string) => {
 };
 
 function convertToCrownFormat(match: any, matchOdds: any) {
-  // 获取主盘口（handicapIndex = 1）
-  const h = matchOdds.handicap?.find((h: any) => h.handicapIndex === 1) || matchOdds.handicap?.[0];
-  const e = matchOdds.europeOdds?.find((eo: any) => (eo.oddsIndex ?? 1) === 1) || matchOdds.europeOdds?.[0];
-  const o = matchOdds.overUnder?.find((o: any) => o.handicapIndex === 1) || matchOdds.overUnder?.[0];
-  const hh = matchOdds.handicapHalf?.find((h: any) => h.handicapIndex === 1) || matchOdds.handicapHalf?.[0];
-  const oh = matchOdds.overUnderHalf?.find((o: any) => o.handicapIndex === 1) || matchOdds.overUnderHalf?.[0];
-
   const timerIso = new Date(match.matchTime * 1000).toISOString();
   const score = formatScore(match.homeScore, match.awayScore);
   const period = derivePeriod(match.status);
   const clock = deriveClock(match);
+
+  const mapLines = (items: any[] | undefined, valueKeys: { line: string; home?: string; away?: string; over?: string; under?: string }) => {
+    if (!items) return [];
+    return items
+      .map((item) => ({
+        line: item[valueKeys.line] ?? item.instantHandicap ?? item.initialHandicap ?? '0',
+        home: valueKeys.home ? item[valueKeys.home] ?? '0' : undefined,
+        away: valueKeys.away ? item[valueKeys.away] ?? '0' : undefined,
+        over: valueKeys.over ? item[valueKeys.over] ?? '0' : undefined,
+        under: valueKeys.under ? item[valueKeys.under] ?? '0' : undefined,
+        index: item.handicapIndex ?? item.oddsIndex ?? 1,
+      }))
+      .sort((a, b) => (a.index || 1) - (b.index || 1));
+  };
+
+  const handicapLines = mapLines(matchOdds.handicap, { line: 'instantHandicap', home: 'instantHome', away: 'instantAway' });
+  const overUnderLines = mapLines(matchOdds.overUnder, { line: 'instantHandicap', over: 'instantOver', under: 'instantUnder' });
+  const halfHandicapLines = mapLines(matchOdds.handicapHalf, { line: 'instantHandicap', home: 'instantHome', away: 'instantAway' });
+  const halfOverUnderLines = mapLines(matchOdds.overUnderHalf, { line: 'instantHandicap', over: 'instantOver', under: 'instantUnder' });
+  const mainHandicap = handicapLines[0];
+  const mainOverUnder = overUnderLines[0];
+  const mainHalfHandicap = halfHandicapLines[0];
+  const mainHalfOverUnder = halfOverUnderLines[0];
+  const mainEurope = matchOdds.europeOdds?.find((eo: any) => (eo.oddsIndex ?? 1) === 1) || matchOdds.europeOdds?.[0];
 
   const result: any = {
     gid: match.matchId,
@@ -410,121 +443,103 @@ function convertToCrownFormat(match: any, matchOdds: any) {
     awayHalfScore: match.awayHalfScore,
     period,
     clock,
-    state: match.status, // 添加 state 字段供后端过滤 (status: -1=已结束, 0=未开始, 1=进行中)
+    state: match.status,
 
-    // 让球盘 - 使用后端期望的字段名（主盘口）
-    RATIO_RE: h?.instantHandicap || '0',
-    IOR_REH: h?.instantHome || '0',
-    IOR_REC: h?.instantAway || '0',
+    RATIO_RE: mainHandicap?.line || '0',
+    IOR_REH: mainHandicap?.home || '0',
+    IOR_REC: mainHandicap?.away || '0',
 
-    // 独赢盘
-    IOR_RMH: e?.instantHome || '0',
-    IOR_RMN: e?.instantDraw || '0',
-    IOR_RMC: e?.instantAway || '0',
+    IOR_RMH: mainEurope?.instantHome || '0',
+    IOR_RMN: mainEurope?.instantDraw || '0',
+    IOR_RMC: mainEurope?.instantAway || '0',
 
-    // 大小球 - 使用后端期望的字段名（主盘口）
-    RATIO_ROUO: o?.instantHandicap || '0',
-    IOR_ROUC: o?.instantOver || '0',
-    IOR_ROUH: o?.instantUnder || '0',
+    RATIO_ROUO: mainOverUnder?.line || '0',
+    IOR_ROUC: mainOverUnder?.over || '0',
+    IOR_ROUH: mainOverUnder?.under || '0',
 
-    // 半场让球盘 - 使用后端期望的字段名（主盘口）
-    RATIO_HRE: hh?.instantHandicap || '0',
-    IOR_HREH: hh?.instantHome || '0',
-    IOR_HREC: hh?.instantAway || '0',
+    RATIO_HRE: mainHalfHandicap?.line || '0',
+    IOR_HREH: mainHalfHandicap?.home || '0',
+    IOR_HREC: mainHalfHandicap?.away || '0',
 
-    // 半场大小球 - 使用后端期望的字段名（主盘口）
-    RATIO_HROUO: oh?.instantHandicap || '0',
-    IOR_HROUC: oh?.instantOver || '0',
-    IOR_HROUH: oh?.instantUnder || '0',
+    RATIO_HROUO: mainHalfOverUnder?.line || '0',
+    IOR_HROUC: mainHalfOverUnder?.over || '0',
+    IOR_HROUH: mainHalfOverUnder?.under || '0',
 
-    more: 1,
-    strong: resolveStrongSide(h?.instantHandicap),
+    more: handicapLines.length > 1 || overUnderLines.length > 1 ? 1 : 0,
+    strong: resolveStrongSide(mainHandicap?.line),
   };
 
-  // 生成 markets 供前端使用
-  const markets: any = { full: {}, half: {} };
-  // 独赢
+  handicapLines.forEach((line, idx) => {
+    const index = line.index ?? idx + 1;
+    if (index === 1) return;
+    const suffix = index === 2 ? 'O' : index === 3 ? 'CO' : `_${index}`;
+    result[`RATIO_R${suffix}`] = line.line;
+    result[`IOR_R${suffix}H`] = line.home;
+    result[`IOR_R${suffix}C`] = line.away;
+  });
+
+  overUnderLines.forEach((line, idx) => {
+    const index = line.index ?? idx + 1;
+    if (index === 1) return;
+    const suffix = index === 2 ? 'HO' : index === 3 ? 'CO' : `_${index}`;
+    result[`RATIO_ROU${suffix}`] = line.line;
+    result[`IOR_ROU${suffix}C`] = line.over;
+    result[`IOR_ROU${suffix}H`] = line.under;
+  });
+
+  halfHandicapLines.forEach((line, idx) => {
+    const index = line.index ?? idx + 1;
+    if (index === 1) return;
+    const suffix = index === 2 ? 'O' : index === 3 ? 'CO' : `_${index}`;
+    result[`RATIO_HR${suffix}`] = line.line;
+    result[`IOR_HR${suffix}H`] = line.home;
+    result[`IOR_HR${suffix}C`] = line.away;
+  });
+
+  halfOverUnderLines.forEach((line, idx) => {
+    const index = line.index ?? idx + 1;
+    if (index === 1) return;
+    const suffix = index === 2 ? 'HO' : index === 3 ? 'CO' : `_${index}`;
+    result[`RATIO_HROU${suffix}`] = line.line;
+    result[`IOR_HROU${suffix}C`] = line.over;
+    result[`IOR_HROU${suffix}H`] = line.under;
+  });
+
+  const markets: any = {
+    full: {
+      handicapLines: handicapLines.map((line) => ({ line: line.line, home: line.home || '0', away: line.away || '0' })),
+      overUnderLines: overUnderLines.map((line) => ({ line: line.line, over: line.over || '0', under: line.under || '0' })),
+    },
+    half: {
+      handicapLines: halfHandicapLines.map((line) => ({ line: line.line, home: line.home || '0', away: line.away || '0' })),
+      overUnderLines: halfOverUnderLines.map((line) => ({ line: line.line, over: line.over || '0', under: line.under || '0' })),
+    }
+  };
+
   if (result.IOR_RMH || result.IOR_RMN || result.IOR_RMC) {
     markets.moneyline = { home: result.IOR_RMH, draw: result.IOR_RMN, away: result.IOR_RMC };
     markets.full.moneyline = { ...markets.moneyline };
   }
-  // 全场让球（支持多盘口）
-  const handicapLines: Array<{ line: string; home: string; away: string }> = [];
-  if (result.RATIO_RE || result.IOR_REH || result.IOR_REC) {
-    handicapLines.push({ line: result.RATIO_RE, home: result.IOR_REH, away: result.IOR_REC });
+
+  if (markets.full.handicapLines.length) {
+    markets.handicap = { ...markets.full.handicapLines[0] };
+    markets.full.handicap = { ...markets.full.handicapLines[0] };
   }
-  if (result.RATIO_RO || result.IOR_ROH || result.IOR_ROC) {
-    handicapLines.push({ line: result.RATIO_RO, home: result.IOR_ROH, away: result.IOR_ROC });
+
+  if (markets.full.overUnderLines.length) {
+    markets.ou = { ...markets.full.overUnderLines[0] };
+    markets.full.ou = { ...markets.full.overUnderLines[0] };
   }
-  if (result.RATIO_RCO || result.IOR_RCOH || result.IOR_RCOC) {
-    handicapLines.push({ line: result.RATIO_RCO, home: result.IOR_RCOH, away: result.IOR_RCOC });
+
+  if (markets.half.handicapLines.length) {
+    markets.half.handicap = { ...markets.half.handicapLines[0] };
   }
-  if (handicapLines.length > 0) {
-    markets.handicap = { ...handicapLines[0] };
-    markets.full.handicap = { ...handicapLines[0] };
-    markets.full.handicapLines = handicapLines;
-  }
-  // 全场大小球（支持多盘口）
-  const ouLines: Array<{ line: string; over: string; under: string }> = [];
-  if (result.RATIO_ROUO || result.IOR_ROUC || result.IOR_ROUH) {
-    ouLines.push({ line: result.RATIO_ROUO, over: result.IOR_ROUC, under: result.IOR_ROUH });
-  }
-  if (result.RATIO_ROUHO || result.IOR_ROUHOC || result.IOR_ROUHOH) {
-    ouLines.push({ line: result.RATIO_ROUHO, over: result.IOR_ROUHOC, under: result.IOR_ROUHOH });
-  }
-  if (result.RATIO_ROUCO || result.IOR_ROUCOC || result.IOR_ROUCOH) {
-    ouLines.push({ line: result.RATIO_ROUCO, over: result.IOR_ROUCOC, under: result.IOR_ROUCOH });
-  }
-  if (ouLines.length > 0) {
-    markets.ou = { ...ouLines[0] };
-    markets.full.ou = { ...ouLines[0] };
-    markets.full.overUnderLines = ouLines;
-  }
-  // 半场让球
-  const halfHandicapLines: Array<{ line: string; home: string; away: string }> = [];
-  if (result.RATIO_HRE || result.IOR_HREH || result.IOR_HREC) {
-    halfHandicapLines.push({ line: result.RATIO_HRE, home: result.IOR_HREH, away: result.IOR_HREC });
-  }
-  if (halfHandicapLines.length > 0) {
-    markets.half.handicap = { ...halfHandicapLines[0] };
-    markets.half.handicapLines = halfHandicapLines;
-  }
-  // 半场大小球
-  const halfOuLines: Array<{ line: string; over: string; under: string }> = [];
-  if (result.RATIO_HROUO || result.IOR_HROUC || result.IOR_HROUH) {
-    halfOuLines.push({ line: result.RATIO_HROUO, over: result.IOR_HROUC, under: result.IOR_HROUH });
-  }
-  if (halfOuLines.length > 0) {
-    markets.half.ou = { ...halfOuLines[0] };
-    markets.half.overUnderLines = halfOuLines;
+
+  if (markets.half.overUnderLines.length) {
+    markets.half.ou = { ...markets.half.overUnderLines[0] };
   }
 
   result.markets = markets;
-
-  // 添加额外的让球盘口（如果有多个）
-  if (matchOdds.handicap && matchOdds.handicap.length > 1) {
-    matchOdds.handicap.forEach((handicap: any, index: number) => {
-      if (handicap.handicapIndex !== 1) {
-        const suffix = handicap.handicapIndex === 2 ? 'O' : handicap.handicapIndex === 3 ? 'CO' : `_${handicap.handicapIndex}`;
-        result[`RATIO_R${suffix}`] = handicap.instantHandicap;
-        result[`IOR_R${suffix}H`] = handicap.instantHome;
-        result[`IOR_R${suffix}C`] = handicap.instantAway;
-      }
-    });
-  }
-
-  // 添加额外的大小球盘口（如果有多个）
-  if (matchOdds.overUnder && matchOdds.overUnder.length > 1) {
-    matchOdds.overUnder.forEach((ou: any, index: number) => {
-      if (ou.handicapIndex !== 1) {
-        const suffix = ou.handicapIndex === 2 ? 'HO' : ou.handicapIndex === 3 ? 'CO' : `_${ou.handicapIndex}`;
-        result[`RATIO_ROU${suffix}`] = ou.instantHandicap;
-        result[`IOR_ROU${suffix}C`] = ou.instantOver;
-        result[`IOR_ROU${suffix}H`] = ou.instantUnder;
-      }
-    });
-  }
-
   return result;
 }
 
