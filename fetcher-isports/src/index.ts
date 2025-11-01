@@ -3,9 +3,14 @@
  *
  * 工作原理：
  * 1. 首次启动：获取完整的赛前和滚球赔率数据（/odds/all - 支持多个盘口）
- * 2. 定期完整更新：每 60 秒获取一次完整数据
+ * 2. 定期完整更新：每 60 秒获取一次完整数据（符合 /schedule/basic 接口限制）
  * 3. 实时增量更新：每 2 秒获取过去 20 秒内变化的赔率（/odds/all/changes）
  * 4. 合并数据：将变化的赔率更新到缓存中
+ *
+ * API 调用频率限制：
+ * - /schedule/basic: 每 60 秒最多 1 次
+ * - /odds/all: 根据套餐限制
+ * - /odds/all/changes: 每 2 秒 1 次
  */
 
 import axios from 'axios';
@@ -15,6 +20,7 @@ import * as path from 'path';
 const API_KEY = process.env.ISPORTS_API_KEY || 'GvpziueL9ouzIJNj';
 const BASE_URL = 'http://api.isportsapi.com/sport/football';
 const DATA_DIR = process.env.DATA_DIR || './data';
+// 设置为 60 秒（60000ms），符合 /schedule/basic 接口的 "每 60 秒最多 1 次" 限制
 const FULL_FETCH_INTERVAL = parseInt(process.env.FULL_FETCH_INTERVAL || '60000');
 const CHANGES_INTERVAL = parseInt(process.env.CHANGES_INTERVAL || '2000');
 const USE_ALL_ODDS = true; // 使用 /odds/all 端点获取多个盘口
@@ -81,10 +87,11 @@ async function fetchSchedule() {
     if (response.data.code === 0) {
       const allMatches = response.data.data || [];
 
-      // 统计各状态比赛数量
-      const liveCount = allMatches.filter((m: any) => m.state === 1).length;
-      const earlyCount = allMatches.filter((m: any) => m.state === 0).length;
-      const finishedCount = allMatches.filter((m: any) => m.state === -1).length;
+      // 统计各状态比赛数量（注意：字段名是 status 不是 state）
+      // status: -1=已结束, 0=未开始(早盘), 1=进行中(滚球)
+      const liveCount = allMatches.filter((m: any) => m.status === 1).length;
+      const earlyCount = allMatches.filter((m: any) => m.status === 0).length;
+      const finishedCount = allMatches.filter((m: any) => m.status === -1).length;
 
       console.log(`📊 今日比赛: 总数 ${allMatches.length} (滚球 ${liveCount}, 早盘 ${earlyCount}, 已结束 ${finishedCount})`);
 
@@ -235,7 +242,7 @@ function convertToCrownFormat(match: any, matchOdds: any) {
     team_h: match.homeName,
     team_c: match.awayName,
     timer: new Date(match.matchTime * 1000).toISOString(),
-    state: match.state, // 添加 state 字段供后端过滤 (0=未开赛, 1=滚球中, -1=已结束)
+    state: match.status, // 添加 state 字段供后端过滤 (status: -1=已结束, 0=未开始, 1=进行中)
 
     // 让球盘 - 使用后端期望的字段名（主盘口）
     RATIO_RE: h?.instantHandicap || '0',
@@ -462,6 +469,7 @@ console.log(`数据目录: ${DATA_DIR}`);
 console.log(`完整更新间隔: ${FULL_FETCH_INTERVAL / 1000} 秒`);
 console.log(`实时更新间隔: ${CHANGES_INTERVAL / 1000} 秒`);
 console.log('注意: 抓取所有比赛，由后端根据前端选择的 showtype 过滤');
+console.log('⚠️  /schedule/basic 接口限制: 每 60 秒最多 1 次');
 console.log('============================================================\n');
 
 fullUpdate();
