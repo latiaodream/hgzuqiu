@@ -45,6 +45,42 @@ const buildScoreFromParts = (home: any, away: any) => {
     return `${home}-${away}`;
 };
 
+const normalizeStateValue = (value: any): number | undefined => {
+    if (value === undefined || value === null) {
+        return undefined;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+    const parsed = parseInt(String(value), 10);
+    return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const isLiveState = (value: any): boolean => {
+    const state = normalizeStateValue(value);
+    if (state === undefined) {
+        return false;
+    }
+    if (state > 0) {
+        return true;
+    }
+    // iSports 在部分进行中状态使用负值编码（如 -11 半场休息、-12 加时等）
+    return [-11, -12, -13, -14].includes(state);
+};
+
+const filterMatchesByShowtype = (matches: any[], showtype: string) => {
+    if (!Array.isArray(matches)) {
+        return [];
+    }
+    if (showtype === 'live') {
+        return matches.filter((m) => isLiveState(m.state ?? m.status));
+    }
+    if (showtype === 'early') {
+        return matches.filter((m) => normalizeStateValue(m.state ?? m.status) === 0);
+    }
+    return matches;
+};
+
 const normalizeMatchForFrontend = (match: any) => {
     if (!match) return match;
     const normalized = { ...match };
@@ -1180,12 +1216,13 @@ router.get('/matches-system', async (req: any, res) => {
 
                     if (age < 10000) {
                         console.log(`✅ 使用独立抓取服务数据 (${matchCount} 场比赛, ${Math.max(0, Math.floor(age / 1000))}秒前)`);
-                        const matches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
+                        const normalizedMatches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
+                        const filteredMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
 
                         res.json({
                             success: true,
                             data: {
-                                matches,
+                                matches: filteredMatches,
                                 meta: { gtype, showtype, rtype, ltype, sorttype },
                                 source: candidate.source,
                                 lastUpdate: timestamp,
@@ -1209,10 +1246,11 @@ router.get('/matches-system', async (req: any, res) => {
         const fetcher = getMatchFetcher();
         if (fetcher) {
             const data = fetcher.getLatestMatches();
+            const filteredMatches = filterMatchesByShowtype(data.matches ?? [], String(showtype));
             res.json({
                 success: true,
                 data: {
-                    matches: data.matches,
+                    matches: filteredMatches,
                     meta: { gtype, showtype, rtype, ltype, sorttype },
                     raw: data.xml,
                     source: 'dedicated-fetcher',
@@ -1232,11 +1270,12 @@ router.get('/matches-system', async (req: any, res) => {
         });
 
         const normalizedMatches = (matches || []).map((m: any) => normalizeMatchForFrontend(m));
+        const filteredMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
 
         res.json({
             success: true,
             data: {
-                matches: normalizedMatches,
+                matches: filteredMatches,
                 meta: { gtype, showtype, rtype, ltype, sorttype },
                 raw: xml,
                 source: 'fallback',
@@ -1635,16 +1674,7 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
           xml = result.xml;
         }
 
-        // 根据前端的 showtype 参数过滤比赛
-        // state: 0=未开赛(早盘), 1=滚球中, -1=已结束
-        if (showtype === 'live') {
-          // 只显示滚球中的比赛
-          matches = matches.filter((m: any) => m.state === 1);
-        } else if (showtype === 'early') {
-          // 只显示未开赛的比赛
-          matches = matches.filter((m: any) => m.state === 0);
-        }
-        // showtype === 'today' 时不过滤，显示所有比赛
+        matches = filterMatchesByShowtype(matches, showtype);
 
         const payload = JSON.stringify({ matches, meta: { gtype, showtype, rtype, ltype, sorttype }, ts: Date.now() });
         res.write(`event: matches\n`);
