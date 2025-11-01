@@ -542,8 +542,9 @@ function saveData(matches: any[]) {
 function updateOddsCache(odds: any) {
   ['handicap', 'europeOdds', 'overUnder', 'handicapHalf', 'overUnderHalf'].forEach((key) => {
     odds[key]?.forEach((item: any) => {
-      if (!oddsCache.has(item.matchId)) {
-        oddsCache.set(item.matchId, {
+      const matchIdKey = String(item.matchId);
+      if (!oddsCache.has(matchIdKey)) {
+        oddsCache.set(matchIdKey, {
           handicap: [],
           europeOdds: [],
           overUnder: [],
@@ -552,12 +553,12 @@ function updateOddsCache(odds: any) {
         });
       }
 
-      const matchCache = oddsCache.get(item.matchId);
+      const matchCache = oddsCache.get(matchIdKey);
 
       if (key === 'europeOdds') {
         // 独赢盘只有一个，合并后替换
         const existing = matchCache[key][0];
-        matchCache[key] = [existing ? { ...existing, ...item } : item];
+        matchCache[key] = [existing ? { ...existing, ...item, matchId: matchIdKey } : { ...item, matchId: matchIdKey }];
       } else if (key === 'handicap' || key === 'overUnder' || key === 'handicapHalf' || key === 'overUnderHalf') {
         // 让球盘和大小球可能有多个，按 handicapIndex 更新
         const existingIndex = matchCache[key].findIndex((existing: any) =>
@@ -565,9 +566,9 @@ function updateOddsCache(odds: any) {
         );
 
         if (existingIndex >= 0) {
-          matchCache[key][existingIndex] = { ...matchCache[key][existingIndex], ...item };
+          matchCache[key][existingIndex] = { ...matchCache[key][existingIndex], ...item, matchId: matchIdKey };
         } else {
-          matchCache[key].push(item);
+          matchCache[key].push({ ...item, matchId: matchIdKey });
         }
 
         // 按 handicapIndex 排序
@@ -579,8 +580,12 @@ function updateOddsCache(odds: any) {
 
 function generateOutput() {
   const convertedMatches = matchesCache
-    .filter((match) => oddsCache.has(match.matchId))
-    .map((match) => convertToCrownFormat(match, oddsCache.get(match.matchId)));
+    .map((match) => {
+      const matchIdKey = String(match.matchId ?? match.match_id ?? match.gid ?? '');
+      return { match, matchIdKey };
+    })
+    .filter(({ matchIdKey }) => matchIdKey && oddsCache.has(matchIdKey))
+    .map(({ match, matchIdKey }) => convertToCrownFormat(match, oddsCache.get(matchIdKey)));
   saveData(convertedMatches);
 }
 
@@ -592,6 +597,10 @@ async function fullUpdate() {
     return;
   }
   matchesCache = matches;
+  matchesCache = matchesCache.map((match) => ({
+    ...match,
+    matchId: String(match.matchId ?? match.match_id ?? match.gid ?? ''),
+  }));
   console.log(`✅ 获取到 ${matches.length} 场比赛`);
 
   const oddsData = await fetchMainOdds();
