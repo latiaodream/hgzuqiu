@@ -417,10 +417,10 @@ function convertToCrownFormat(match: any, matchOdds: any) {
     IOR_REH: h?.instantHome || '0',
     IOR_REC: h?.instantAway || '0',
 
-    // 独赢盘 - 使用后端期望的字段名（优先从 raw 纠正）
-    IOR_RMH: e?.raw ? (e.raw.split(',')[5] || e.instantHome || '0') : (e?.instantHome || '0'),
-    IOR_RMN: e?.raw ? (e.raw.split(',')[6] || e.instantDraw || '0') : (e?.instantDraw || '0'),
-    IOR_RMC: e?.raw ? (e.raw.split(',')[7] || e.instantAway || '0') : (e?.instantAway || '0'),
+    // 独赢盘
+    IOR_RMH: e?.instantHome || '0',
+    IOR_RMN: e?.instantDraw || '0',
+    IOR_RMC: e?.instantAway || '0',
 
     // 大小球 - 使用后端期望的字段名（主盘口）
     RATIO_ROUO: o?.instantHandicap || '0',
