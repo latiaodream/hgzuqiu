@@ -4,6 +4,7 @@ import path from 'path';
 import axios from 'axios';
 import { pinyin } from 'pinyin-pro';
 import { parseISO, addDays, differenceInMinutes } from 'date-fns';
+import { ISportsLanguageService } from '../src/services/isports-language';
 
 interface CrownMatchFile {
   generatedAt: string;
@@ -29,8 +30,10 @@ interface ISportsMatch {
   status: number;
   homeId: string;
   homeName: string;
+  homeNameTc?: string; // 繁体中文名称
   awayId: string;
   awayName: string;
+  awayNameTc?: string; // 繁体中文名称
   raw?: any;
 }
 
@@ -66,7 +69,11 @@ function loadCrownMatches(file: string): CrownMatchFile {
   return JSON.parse(content);
 }
 
-async function fetchISportsSchedule(apiKey: string, date: string): Promise<ISportsMatch[]> {
+async function fetchISportsSchedule(
+  apiKey: string,
+  date: string,
+  languageService?: ISportsLanguageService
+): Promise<ISportsMatch[]> {
   const url = `${ISPORTS_API_BASE}/schedule/basic`;
   const response = await axios.get(url, {
     params: { api_key: apiKey, date },
@@ -77,18 +84,29 @@ async function fetchISportsSchedule(apiKey: string, date: string): Promise<ISpor
     throw new Error(`iSports Schedule 接口返回错误: ${JSON.stringify(response.data)}`);
   }
 
-  return (response.data.data || []).map((item: any) => ({
-    matchId: String(item.matchId),
-    leagueName: String(item.leagueName || ''),
-    leagueId: String(item.leagueId || ''),
-    matchTime: Number(item.matchTime) * 1000, // convert to ms
-    status: Number(item.status),
-    homeId: String(item.homeId || ''),
-    homeName: String(item.homeName || ''),
-    awayId: String(item.awayId || ''),
-    awayName: String(item.awayName || ''),
-    raw: item,
-  }));
+  return (response.data.data || []).map((item: any) => {
+    const homeId = String(item.homeId || '');
+    const awayId = String(item.awayId || '');
+
+    // 获取繁体中文名称
+    const homeNameTc = languageService?.getTeamName(homeId);
+    const awayNameTc = languageService?.getTeamName(awayId);
+
+    return {
+      matchId: String(item.matchId),
+      leagueName: String(item.leagueName || ''),
+      leagueId: String(item.leagueId || ''),
+      matchTime: Number(item.matchTime) * 1000, // convert to ms
+      status: Number(item.status),
+      homeId,
+      homeName: String(item.homeName || ''),
+      homeNameTc,
+      awayId,
+      awayName: String(item.awayName || ''),
+      awayNameTc,
+      raw: item,
+    };
+  });
 }
 
 function normalize(str: string): string {
@@ -117,11 +135,18 @@ function similarity(a: string, b: string): number {
   return matches / maxLen;
 }
 
-function similarityWithPinyin(chinese: string, english: string): number {
+function similarityWithPinyin(chinese: string, english: string, chineseTc?: string): number {
   const pinyinValue = toPinyin(chinese);
   const score1 = similarity(pinyinValue, english);
   const score2 = similarity(chinese, english);
-  return Math.max(score1, score2);
+
+  // 如果有繁体中文名称，也计算相似度
+  let score3 = 0;
+  if (chineseTc) {
+    score3 = similarity(chinese, chineseTc);
+  }
+
+  return Math.max(score1, score2, score3);
 }
 
 function parseCrownDate(datetimeStr: string, reference: Date): Date | null {
@@ -173,6 +198,13 @@ async function main() {
     process.exit(1);
   }
 
+  // 初始化语言包服务
+  console.log('🌐 初始化语言包服务...');
+  const languageService = new ISportsLanguageService(apiKey, path.join(__dirname, '..', '..', 'fetcher-isports', 'data'));
+  await languageService.ensureCache();
+  const stats = languageService.getCacheStats();
+  console.log(`✅ 语言包已加载: ${stats.leagues} 联赛, ${stats.teams} 球队`);
+
   const crownData = loadCrownMatches(crownFilePath);
   const crownContext = buildMatchContext(crownData);
 
@@ -192,7 +224,7 @@ async function main() {
   for (const date of datesToFetch) {
     try {
       console.log(`📥 获取 iSports 赛事: ${date}`);
-      const matches = await fetchISportsSchedule(apiKey, date);
+      const matches = await fetchISportsSchedule(apiKey, date, languageService);
       console.log(`   获取到 ${matches.length} 场`);
       isportsMatches.push(...matches);
     } catch (error: any) {
@@ -220,8 +252,10 @@ async function main() {
       const timeScore = crownDate ? Math.max(0, 1 - timeDiffMinutes / 240) : 0.2;
 
       const leagueScore = similarityWithPinyin(crownMatch.league, isMatch.leagueName);
-      const homeScore = similarityWithPinyin(crownMatch.home, isMatch.homeName);
-      const awayScore = similarityWithPinyin(crownMatch.away, isMatch.awayName);
+
+      // 使用繁体中文名称提高匹配准确度
+      const homeScore = similarityWithPinyin(crownMatch.home, isMatch.homeName, isMatch.homeNameTc);
+      const awayScore = similarityWithPinyin(crownMatch.away, isMatch.awayName, isMatch.awayNameTc);
 
       const combined =
         timeScore * 0.2 +
