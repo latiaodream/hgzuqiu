@@ -31,9 +31,11 @@ interface ISportsMatch {
   homeId: string;
   homeName: string;
   homeNameTc?: string; // 繁体中文名称
+  homeNameCn?: string; // 简体中文名称
   awayId: string;
   awayName: string;
   awayNameTc?: string; // 繁体中文名称
+  awayNameCn?: string; // 简体中文名称
   raw?: any;
 }
 
@@ -88,9 +90,11 @@ async function fetchISportsSchedule(
     const homeId = String(item.homeId || '');
     const awayId = String(item.awayId || '');
 
-    // 获取繁体中文名称
+    // 获取繁体中文名称和简体中文名称
     const homeNameTc = languageService?.getTeamName(homeId);
+    const homeNameCn = languageService?.getTeamNameSimplified(homeId);
     const awayNameTc = languageService?.getTeamName(awayId);
+    const awayNameCn = languageService?.getTeamNameSimplified(awayId);
 
     return {
       matchId: String(item.matchId),
@@ -101,9 +105,11 @@ async function fetchISportsSchedule(
       homeId,
       homeName: String(item.homeName || ''),
       homeNameTc,
+      homeNameCn,
       awayId,
       awayName: String(item.awayName || ''),
       awayNameTc,
+      awayNameCn,
       raw: item,
     };
   });
@@ -135,7 +141,12 @@ function similarity(a: string, b: string): number {
   return matches / maxLen;
 }
 
-function similarityWithPinyin(chinese: string, english: string, chineseTc?: string): number {
+function similarityWithPinyin(
+  chinese: string,
+  english: string,
+  chineseTc?: string,
+  chineseCn?: string
+): number {
   const pinyinValue = toPinyin(chinese);
   const score1 = similarity(pinyinValue, english);
   const score2 = similarity(chinese, english);
@@ -146,7 +157,13 @@ function similarityWithPinyin(chinese: string, english: string, chineseTc?: stri
     score3 = similarity(chinese, chineseTc);
   }
 
-  return Math.max(score1, score2, score3);
+  // 如果有简体中文名称，也计算相似度（优先级最高）
+  let score4 = 0;
+  if (chineseCn) {
+    score4 = similarity(chinese, chineseCn);
+  }
+
+  return Math.max(score1, score2, score3, score4);
 }
 
 function parseCrownDate(datetimeStr: string, reference: Date): Date | null {
@@ -253,9 +270,19 @@ async function main() {
 
       const leagueScore = similarityWithPinyin(crownMatch.league, isMatch.leagueName);
 
-      // 使用繁体中文名称提高匹配准确度
-      const homeScore = similarityWithPinyin(crownMatch.home, isMatch.homeName, isMatch.homeNameTc);
-      const awayScore = similarityWithPinyin(crownMatch.away, isMatch.awayName, isMatch.awayNameTc);
+      // 使用简体中文名称提高匹配准确度（优先级最高）
+      const homeScore = similarityWithPinyin(
+        crownMatch.home,
+        isMatch.homeName,
+        isMatch.homeNameTc,
+        isMatch.homeNameCn
+      );
+      const awayScore = similarityWithPinyin(
+        crownMatch.away,
+        isMatch.awayName,
+        isMatch.awayNameTc,
+        isMatch.awayNameCn
+      );
 
       const combined =
         timeScore * 0.2 +

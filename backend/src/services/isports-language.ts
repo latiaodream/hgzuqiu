@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Converter } from 'opencc-js';
 
 /**
  * iSportsAPI 语言包服务
@@ -36,6 +37,7 @@ export class ISportsLanguageService {
   private cache: LanguageCache;
   private cacheFile: string;
   private cacheExpiry: number = 24 * 60 * 60 * 1000; // 24小时
+  private converter: any; // 繁简转换器
 
   constructor(apiKey: string, cacheDir: string = './data') {
     this.apiKey = apiKey;
@@ -52,6 +54,9 @@ export class ISportsLanguageService {
       players: new Map(),
       lastUpdated: 0,
     };
+
+    // 初始化繁简转换器（繁体转简体）
+    this.converter = Converter({ from: 'tw', to: 'cn' });
 
     // 确保缓存目录存在
     if (!fs.existsSync(cacheDir)) {
@@ -193,6 +198,15 @@ export class ISportsLanguageService {
    */
   getTeamName(teamId: string): string | null {
     return this.cache.teams.get(teamId) || null;
+  }
+
+  /**
+   * 获取球队的简体中文名称（繁体转简体）
+   */
+  getTeamNameSimplified(teamId: string): string | null {
+    const traditionalName = this.cache.teams.get(teamId);
+    if (!traditionalName) return null;
+    return this.converter(traditionalName);
   }
 
   /**
