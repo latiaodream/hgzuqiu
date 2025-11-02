@@ -2,9 +2,7 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { pinyin } from 'pinyin-pro';
 import { parseISO, addDays, differenceInMinutes } from 'date-fns';
-import { ISportsLanguageService } from '../src/services/isports-language';
 
 interface CrownMatchFile {
   generatedAt: string;
@@ -30,12 +28,8 @@ interface ISportsMatch {
   status: number;
   homeId: string;
   homeName: string;
-  homeNameTc?: string; // 繁体中文名称
-  homeNameCn?: string; // 简体中文名称
   awayId: string;
   awayName: string;
-  awayNameTc?: string; // 繁体中文名称
-  awayNameCn?: string; // 简体中文名称
   raw?: any;
 }
 
@@ -73,8 +67,7 @@ function loadCrownMatches(file: string): CrownMatchFile {
 
 async function fetchISportsSchedule(
   apiKey: string,
-  date: string,
-  languageService?: ISportsLanguageService
+  date: string
 ): Promise<ISportsMatch[]> {
   const url = `${ISPORTS_API_BASE}/schedule/basic`;
   const response = await axios.get(url, {
@@ -86,36 +79,18 @@ async function fetchISportsSchedule(
     throw new Error(`iSports Schedule 接口返回错误: ${JSON.stringify(response.data)}`);
   }
 
-  // 获取所有球队的简体中文名称映射
-  const teamsSimplified = languageService?.getAllTeamsSimplified() || new Map();
-
-  return (response.data.data || []).map((item: any) => {
-    const homeId = String(item.homeId || '');
-    const awayId = String(item.awayId || '');
-
-    // 获取繁体中文名称和简体中文名称
-    const homeNameTc = languageService?.getTeamName(homeId);
-    const homeNameCn = teamsSimplified.get(homeId);
-    const awayNameTc = languageService?.getTeamName(awayId);
-    const awayNameCn = teamsSimplified.get(awayId);
-
-    return {
-      matchId: String(item.matchId),
-      leagueName: String(item.leagueName || ''),
-      leagueId: String(item.leagueId || ''),
-      matchTime: Number(item.matchTime) * 1000, // convert to ms
-      status: Number(item.status),
-      homeId,
-      homeName: String(item.homeName || ''),
-      homeNameTc,
-      homeNameCn,
-      awayId,
-      awayName: String(item.awayName || ''),
-      awayNameTc,
-      awayNameCn,
-      raw: item,
-    };
-  });
+  return (response.data.data || []).map((item: any) => ({
+    matchId: String(item.matchId),
+    leagueName: String(item.leagueName || ''),
+    leagueId: String(item.leagueId || ''),
+    matchTime: Number(item.matchTime) * 1000, // convert to ms
+    status: Number(item.status),
+    homeId: String(item.homeId || ''),
+    homeName: String(item.homeName || ''),
+    awayId: String(item.awayId || ''),
+    awayName: String(item.awayName || ''),
+    raw: item,
+  }));
 }
 
 function normalize(str: string): string {
@@ -144,30 +119,7 @@ function similarity(a: string, b: string): number {
   return matches / maxLen;
 }
 
-function similarityWithPinyin(
-  chinese: string,
-  english: string,
-  chineseTc?: string,
-  chineseCn?: string
-): number {
-  const pinyinValue = toPinyin(chinese);
-  const score1 = similarity(pinyinValue, english);
-  const score2 = similarity(chinese, english);
 
-  // 如果有繁体中文名称，也计算相似度
-  let score3 = 0;
-  if (chineseTc) {
-    score3 = similarity(chinese, chineseTc);
-  }
-
-  // 如果有简体中文名称，也计算相似度（优先级最高）
-  let score4 = 0;
-  if (chineseCn) {
-    score4 = similarity(chinese, chineseCn);
-  }
-
-  return Math.max(score1, score2, score3, score4);
-}
 
 function parseCrownDate(datetimeStr: string, reference: Date): Date | null {
   if (!datetimeStr) return null;
@@ -218,13 +170,6 @@ async function main() {
     process.exit(1);
   }
 
-  // 初始化语言包服务
-  console.log('🌐 初始化语言包服务...');
-  const languageService = new ISportsLanguageService(apiKey, path.join(__dirname, '..', '..', 'fetcher-isports', 'data'));
-  await languageService.ensureCache();
-  const stats = languageService.getCacheStats();
-  console.log(`✅ 语言包已加载: ${stats.leagues} 联赛, ${stats.teams} 球队`);
-
   const crownData = loadCrownMatches(crownFilePath);
   const crownContext = buildMatchContext(crownData);
 
@@ -244,7 +189,7 @@ async function main() {
   for (const date of datesToFetch) {
     try {
       console.log(`📥 获取 iSports 赛事: ${date}`);
-      const matches = await fetchISportsSchedule(apiKey, date, languageService);
+      const matches = await fetchISportsSchedule(apiKey, date);
       console.log(`   获取到 ${matches.length} 场`);
       isportsMatches.push(...matches);
     } catch (error: any) {
@@ -271,21 +216,10 @@ async function main() {
         : 720;
       const timeScore = crownDate ? Math.max(0, 1 - timeDiffMinutes / 240) : 0.2;
 
-      const leagueScore = similarityWithPinyin(crownMatch.league, isMatch.leagueName);
-
-      // 使用简体中文名称提高匹配准确度（优先级最高）
-      const homeScore = similarityWithPinyin(
-        crownMatch.home,
-        isMatch.homeName,
-        isMatch.homeNameTc,
-        isMatch.homeNameCn
-      );
-      const awayScore = similarityWithPinyin(
-        crownMatch.away,
-        isMatch.awayName,
-        isMatch.awayNameTc,
-        isMatch.awayNameCn
-      );
+      // 直接使用英文名称进行匹配
+      const leagueScore = similarity(crownMatch.league, isMatch.leagueName);
+      const homeScore = similarity(crownMatch.home, isMatch.homeName);
+      const awayScore = similarity(crownMatch.away, isMatch.awayName);
 
       const combined =
         timeScore * 0.2 +

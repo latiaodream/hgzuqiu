@@ -237,7 +237,7 @@ export class CrownApiClient {
     // 构建请求参数
     const params = new URLSearchParams({
       p: 'chk_login',
-      langx: 'zh-cn',
+      langx: 'en-us',  // 使用英文版本
       ver: this.version,
       username,
       password,
@@ -625,7 +625,7 @@ export class CrownApiClient {
     const requestParams = new URLSearchParams({
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-cn',
+      langx: 'en-us',  // 使用英文版本
       p: 'get_game_list',
       p3type: '',
       date: '',
@@ -712,7 +712,7 @@ export class CrownApiClient {
     const requestParams = new URLSearchParams({
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-cn',
+      langx: 'en-us',  // 使用英文版本
       p: 'get_game_more',
       gtype: params.gtype || 'ft',
       showtype: params.showtype || 'live',
@@ -839,7 +839,7 @@ export class CrownApiClient {
       p: `${params.gtype}_order_view`,
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-cn',
+      langx: 'en-us',  // 使用英文版本
       odd_f_type: 'H',
       gid: params.gid,
       gtype: params.gtype,
@@ -1078,7 +1078,7 @@ export class CrownApiClient {
       p: `${params.gtype}_bet`,  // 操作类型：FT_bet, BK_bet 等
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-cn',
+      langx: 'en-us',  // 使用英文版本
       odd_f_type: 'H',           // 赔率格式类型（香港盘）
       golds: params.gold,        // 注意：是 golds 不是 gold
       gid: params.gid,
@@ -1213,7 +1213,7 @@ export class CrownApiClient {
     const params = new URLSearchParams({
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-cn',
+      langx: 'en-us',  // 使用英文版本
       p: 'get_account_set',
       gtype: gtype,
     });
@@ -1254,7 +1254,7 @@ export class CrownApiClient {
     const requestParams = new URLSearchParams({
       p: 'get_history_data',
       uid: this.uid,
-      langx: 'zh-cn',
+      langx: 'en-us',  // 使用英文版本
       gtype: params.gtype || 'ALL',
       isAll: params.isAll || 'N',
       startdate: params.startdate || '',
