@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { parseISO, addDays, differenceInMinutes } from 'date-fns';
+import { ISportsLanguageService } from '../src/services/isports-language';
 
 interface CrownMatchFile {
   generatedAt: string;
@@ -23,13 +24,16 @@ interface CrownMatch {
 interface ISportsMatch {
   matchId: string;
   leagueName: string;
+  leagueNameTc?: string;  // 繁体中文联赛名称
   leagueId: string;
   matchTime: number;
   status: number;
   homeId: string;
   homeName: string;
+  homeNameTc?: string;  // 繁体中文主队名称
   awayId: string;
   awayName: string;
+  awayNameTc?: string;  // 繁体中文客队名称
   raw?: any;
 }
 
@@ -79,7 +83,8 @@ function loadCrownMatches(file: string): CrownMatchFile {
 
 async function fetchISportsSchedule(
   apiKey: string,
-  date: string
+  date: string,
+  languageService?: ISportsLanguageService
 ): Promise<ISportsMatch[]> {
   const url = `${ISPORTS_API_BASE}/schedule/basic`;
   const response = await axios.get(url, {
@@ -91,18 +96,27 @@ async function fetchISportsSchedule(
     throw new Error(`iSports Schedule 接口返回错误: ${JSON.stringify(response.data)}`);
   }
 
-  return (response.data.data || []).map((item: any) => ({
-    matchId: String(item.matchId),
-    leagueName: String(item.leagueName || ''),
-    leagueId: String(item.leagueId || ''),
-    matchTime: Number(item.matchTime) * 1000, // convert to ms
-    status: Number(item.status),
-    homeId: String(item.homeId || ''),
-    homeName: String(item.homeName || ''),
-    awayId: String(item.awayId || ''),
-    awayName: String(item.awayName || ''),
-    raw: item,
-  }));
+  return (response.data.data || []).map((item: any) => {
+    const homeId = String(item.homeId || '');
+    const awayId = String(item.awayId || '');
+    const leagueId = String(item.leagueId || '');
+
+    return {
+      matchId: String(item.matchId),
+      leagueName: String(item.leagueName || ''),
+      leagueNameTc: languageService?.getLeagueName(leagueId) || undefined,
+      leagueId,
+      matchTime: Number(item.matchTime) * 1000, // convert to ms
+      status: Number(item.status),
+      homeId,
+      homeName: String(item.homeName || ''),
+      homeNameTc: languageService?.getTeamName(homeId) || undefined,
+      awayId,
+      awayName: String(item.awayName || ''),
+      awayNameTc: languageService?.getTeamName(awayId) || undefined,
+      raw: item,
+    };
+  });
 }
 
 function normalize(str: string): string {
@@ -205,6 +219,13 @@ async function main() {
     process.exit(1);
   }
 
+  // 初始化语言包服务
+  console.log('🌐 初始化语言包服务...');
+  const languageService = new ISportsLanguageService(apiKey, path.join(__dirname, '..', '..', 'fetcher-isports', 'data'));
+  await languageService.ensureCache();
+  const stats = languageService.getCacheStats();
+  console.log(`✅ 语言包已加载: ${stats.leagues} 联赛, ${stats.teams} 球队`);
+
   const crownData = loadCrownMatches(crownFilePath);
   const crownContext = buildMatchContext(crownData);
 
@@ -224,7 +245,7 @@ async function main() {
   for (const date of datesToFetch) {
     try {
       console.log(`📥 获取 iSports 赛事: ${date}`);
-      const matches = await fetchISportsSchedule(apiKey, date);
+      const matches = await fetchISportsSchedule(apiKey, date, languageService);
       console.log(`   获取到 ${matches.length} 场`);
       isportsMatches.push(...matches);
     } catch (error: any) {
@@ -251,10 +272,26 @@ async function main() {
         : 720;
       const timeScore = crownDate ? Math.max(0, 1 - timeDiffMinutes / 240) : 0.2;
 
-      // 使用英文名称进行匹配（改进的相似度算法支持包含匹配）
-      const leagueScore = similarity(crownMatch.league, isMatch.leagueName);
-      const homeScore = similarity(crownMatch.home, isMatch.homeName);
-      const awayScore = similarity(crownMatch.away, isMatch.awayName);
+      // 优先使用繁体中文名称匹配，如果没有则使用英文
+      let leagueScore = 0;
+      let homeScore = 0;
+      let awayScore = 0;
+
+      // 如果有繁体中文名称，使用繁体中文匹配
+      if (isMatch.homeNameTc && isMatch.awayNameTc) {
+        homeScore = similarity(crownMatch.home, isMatch.homeNameTc);
+        awayScore = similarity(crownMatch.away, isMatch.awayNameTc);
+        if (isMatch.leagueNameTc) {
+          leagueScore = similarity(crownMatch.league, isMatch.leagueNameTc);
+        } else {
+          leagueScore = similarity(crownMatch.league, isMatch.leagueName);
+        }
+      } else {
+        // 降级使用英文名称匹配
+        homeScore = similarity(crownMatch.home, isMatch.homeName);
+        awayScore = similarity(crownMatch.away, isMatch.awayName);
+        leagueScore = similarity(crownMatch.league, isMatch.leagueName);
+      }
 
       // 增加球队名称的权重，降低时间和联赛的权重
       const combined =

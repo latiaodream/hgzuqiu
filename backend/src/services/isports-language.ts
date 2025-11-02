@@ -126,9 +126,16 @@ export class ISportsLanguageService {
       });
 
       if (response.data.code === 0) {
-        const data = response.data.data[0] || {};
-        console.log(`✅ 获取成功: ${data.leagues?.length || 0} 联赛, ${data.teams?.length || 0} 球队`);
-        return data;
+        // API 返回的 data 是数组，第一个元素包含 leagues, teams, players
+        const dataArray = response.data.data;
+        if (Array.isArray(dataArray) && dataArray.length > 0) {
+          const data = dataArray[0];
+          console.log(`✅ 获取成功: ${data.leagues?.length || 0} 联赛, ${data.teams?.length || 0} 球队, ${data.players?.length || 0} 球员`);
+          return data;
+        } else {
+          console.error('❌ 语言包数据格式错误:', response.data);
+          return null;
+        }
       } else {
         console.error('❌ 获取语言包失败:', response.data);
         return null;
