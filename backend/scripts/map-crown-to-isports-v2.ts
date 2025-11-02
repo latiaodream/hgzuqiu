@@ -371,7 +371,15 @@ async function main() {
   const unmatchedCrown: MatchContext[] = [];
   const usedCrownGids = new Set<string>();
 
+  let processedCount = 0;
+  const totalCount = isportsMatches.length;
+
   for (const isMatch of isportsMatches) {
+    processedCount++;
+    if (processedCount % 100 === 0) {
+      console.log(`  进度: ${processedCount}/${totalCount} (${(processedCount / totalCount * 100).toFixed(1)}%)`);
+    }
+
     let best: { ctx: MatchContext; score: number; timeDiff: number } | null = null;
 
     for (const ctx of crownContext) {
@@ -380,9 +388,13 @@ async function main() {
       const crownMatch = ctx.crown;
       const crownDate = ctx.crownDate;
 
+      // 早期过滤：时间差超过 12 小时的直接跳过
       const timeDiffMinutes = crownDate
         ? Math.abs(differenceInMinutes(new Date(isMatch.matchTime), crownDate))
         : 720;
+
+      if (timeDiffMinutes > 720) continue; // 跳过时间差超过 12 小时的
+
       const timeScore = crownDate ? Math.max(0, 1 - timeDiffMinutes / 240) : 0.2;
 
       const leagueScore = calculateSimilarity(crownMatch.league, isMatch.leagueName);
@@ -423,6 +435,8 @@ async function main() {
       });
     }
   }
+
+  console.log(`✅ 匹配完成: ${processedCount}/${totalCount}`);
 
   for (const ctx of crownContext) {
     if (!usedCrownGids.has(ctx.crown.crown_gid)) {
