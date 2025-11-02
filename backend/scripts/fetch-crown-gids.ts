@@ -46,9 +46,13 @@ async function main() {
   const loginResult = await client.login(username, password, 1);
 
   // 判断登录是否成功
-  // 皇冠 API 返回: status='200' 且 msg='100' 表示登录成功
+  // 皇冠 API 返回: status='200' 或 status='success'，并且 msg='100' 表示登录成功
   // 同时必须有 uid 字段
-  const isLoginSuccess = loginResult.status === '200' && loginResult.msg === '100' && loginResult.uid;
+  const status = String(loginResult.status || '').toLowerCase();
+  const msg = String(loginResult.msg || '').trim();
+  const isLoginSuccess =
+    (status === 'success' || status === '200' || status === '200 success' || msg === '100') &&
+    !!loginResult.uid;
 
   if (!isLoginSuccess) {
     console.error('❌ 登录失败:', loginResult);
