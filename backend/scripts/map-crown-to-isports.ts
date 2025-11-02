@@ -86,15 +86,18 @@ async function fetchISportsSchedule(
     throw new Error(`iSports Schedule 接口返回错误: ${JSON.stringify(response.data)}`);
   }
 
+  // 获取所有球队的简体中文名称映射
+  const teamsSimplified = languageService?.getAllTeamsSimplified() || new Map();
+
   return (response.data.data || []).map((item: any) => {
     const homeId = String(item.homeId || '');
     const awayId = String(item.awayId || '');
 
     // 获取繁体中文名称和简体中文名称
     const homeNameTc = languageService?.getTeamName(homeId);
-    const homeNameCn = languageService?.getTeamNameSimplified(homeId);
+    const homeNameCn = teamsSimplified.get(homeId);
     const awayNameTc = languageService?.getTeamName(awayId);
-    const awayNameCn = languageService?.getTeamNameSimplified(awayId);
+    const awayNameCn = teamsSimplified.get(awayId);
 
     return {
       matchId: String(item.matchId),
@@ -295,7 +298,8 @@ async function main() {
       }
     }
 
-    if (best && best.score >= 0.55) {
+    // 降低阈值到 0.8，因为中文名称匹配度很高
+    if (best && best.score >= 0.8) {
       matchedEntries.push({
         isports_match_id: best.match.matchId,
         crown_gid: crownMatch.crown_gid,

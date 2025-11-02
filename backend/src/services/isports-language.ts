@@ -211,6 +211,28 @@ export class ISportsLanguageService {
   }
 
   /**
+   * 根据英文名称查找简体中文名称
+   * 遍历所有球队，返回第一个匹配的简体中文名称
+   */
+  findTeamNameByEnglishName(englishName: string): string | null {
+    // 由于语言包只有 teamId -> name_tc 的映射
+    // 我们需要从赛程数据中获取 teamId，然后查找中文名称
+    // 这个方法在映射脚本中会被优化使用
+    return null;
+  }
+
+  /**
+   * 获取所有球队的简体中文名称（用于映射脚本）
+   */
+  getAllTeamsSimplified(): Map<string, string> {
+    const result = new Map<string, string>();
+    for (const [teamId, traditionalName] of this.cache.teams.entries()) {
+      result.set(teamId, this.converter(traditionalName));
+    }
+    return result;
+  }
+
+  /**
    * 获取球员的繁体中文名称
    */
   getPlayerName(playerId: string): string | null {
