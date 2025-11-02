@@ -97,11 +97,6 @@ function normalize(str: string): string {
   return str.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 }
 
-function toPinyin(str: string): string {
-  if (!str) return '';
-  return pinyin(str, { toneType: 'none', type: 'array', v: true }).join('');
-}
-
 function similarity(a: string, b: string): number {
   const normA = normalize(a);
   const normB = normalize(b);
