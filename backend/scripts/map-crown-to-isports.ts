@@ -258,15 +258,25 @@ async function main() {
     process.exit(1);
   }
 
+  // 反向匹配：从 iSports 赛事出发，在皇冠中查找最佳匹配
+  // 这样可以确保每个 iSports 赛事只匹配一个皇冠 GID
+  console.log('🔄 开始匹配（从 iSports → 皇冠）...');
   const matchedEntries: MappingEntry[] = [];
-  const unmatched: MatchContext[] = [];
+  const unmatchedCrown: MatchContext[] = [];
+  const usedCrownGids = new Set<string>();
 
-  for (const ctx of crownContext) {
-    const crownMatch = ctx.crown;
-    const crownDate = ctx.crownDate;
-    let best: { match: ISportsMatch; score: number; timeDiff: number } | null = null;
+  for (const isMatch of isportsMatches) {
+    let best: { ctx: MatchContext; score: number; timeDiff: number } | null = null;
 
-    for (const isMatch of isportsMatches) {
+    for (const ctx of crownContext) {
+      // 跳过已经被匹配的皇冠赛事
+      if (usedCrownGids.has(ctx.crown.crown_gid)) {
+        continue;
+      }
+
+      const crownMatch = ctx.crown;
+      const crownDate = ctx.crownDate;
+
       const timeDiffMinutes = crownDate
         ? Math.abs(differenceInMinutes(new Date(isMatch.matchTime), crownDate))
         : 720;
@@ -301,33 +311,39 @@ async function main() {
         awayScore * 0.35;
 
       if (!best || combined > best.score) {
-        best = { match: isMatch, score: combined, timeDiff: timeDiffMinutes };
+        best = { ctx, score: combined, timeDiff: timeDiffMinutes };
       }
     }
 
     // 降低阈值到 0.45，支持缩写和部分匹配
     if (best && best.score >= 0.45) {
+      usedCrownGids.add(best.ctx.crown.crown_gid);
       matchedEntries.push({
-        isports_match_id: best.match.matchId,
-        crown_gid: crownMatch.crown_gid,
+        isports_match_id: isMatch.matchId,
+        crown_gid: best.ctx.crown.crown_gid,
         similarity: Number(best.score.toFixed(3)),
         time_diff_minutes: best.timeDiff,
         crown: {
-          league: crownMatch.league,
-          home: crownMatch.home,
-          away: crownMatch.away,
-          datetime: crownMatch.datetime,
-          source_showtype: crownMatch.source_showtype,
+          league: best.ctx.crown.league,
+          home: best.ctx.crown.home,
+          away: best.ctx.crown.away,
+          datetime: best.ctx.crown.datetime,
+          source_showtype: best.ctx.crown.source_showtype,
         },
         isports: {
-          league: best.match.leagueName,
-          home: best.match.homeName,
-          away: best.match.awayName,
-          match_time: new Date(best.match.matchTime).toISOString(),
+          league: isMatch.leagueName,
+          home: isMatch.homeName,
+          away: isMatch.awayName,
+          match_time: new Date(isMatch.matchTime).toISOString(),
         },
       });
-    } else {
-      unmatched.push(ctx);
+    }
+  }
+
+  // 找出未匹配的皇冠赛事
+  for (const ctx of crownContext) {
+    if (!usedCrownGids.has(ctx.crown.crown_gid)) {
+      unmatchedCrown.push(ctx);
     }
   }
 
@@ -344,9 +360,9 @@ async function main() {
     crownMatchCount: crownContext.length,
     isportsMatchCount: isportsMatches.length,
     matchedCount: matchedEntries.length,
-    unmatchedCount: unmatched.length,
+    unmatchedCount: unmatchedCrown.length,
     matches: matchedEntries,
-    unmatched: unmatched.slice(0, 50).map((ctx) => ({
+    unmatched: unmatchedCrown.slice(0, 50).map((ctx) => ({
       crown_gid: ctx.crown.crown_gid,
       league: ctx.crown.league,
       home: ctx.crown.home,
