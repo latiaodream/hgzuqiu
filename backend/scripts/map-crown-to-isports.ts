@@ -374,8 +374,8 @@ async function main() {
   fs.writeFileSync(outputPath, JSON.stringify(mappingOutput, null, 2), 'utf-8');
   console.log(`\n✅ 映射完成，匹配成功 ${matchedEntries.length}/${crownContext.length} 场`);
   console.log(`💾 映射文件已保存到 ${outputPath}`);
-  if (unmatched.length) {
-    console.log(`⚠️  尚有 ${unmatched.length} 场未匹配，可在文件 unmatched 字段查看前 50 条`);
+  if (unmatchedCrown.length) {
+    console.log(`⚠️  尚有 ${unmatchedCrown.length} 场未匹配，可在文件 unmatched 字段查看前 50 条`);
   }
 }
 
