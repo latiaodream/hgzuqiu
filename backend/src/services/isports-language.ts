@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
+// @ts-ignore - opencc-js 没有类型定义
 import { Converter } from 'opencc-js';
 
 /**
