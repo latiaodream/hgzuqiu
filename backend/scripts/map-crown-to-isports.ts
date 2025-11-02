@@ -101,17 +101,35 @@ function similarity(a: string, b: string): number {
   const normA = normalize(a);
   const normB = normalize(b);
   if (!normA || !normB) return 0;
-  const maxLen = Math.max(normA.length, normB.length);
-  let matches = 0;
-  const minLen = Math.min(normA.length, normB.length);
 
-  for (let i = 0; i < minLen; i++) {
-    if (normA[i] === normB[i]) {
-      matches += 1;
+  const longer = normA.length > normB.length ? normA : normB;
+  const shorter = normA.length > normB.length ? normB : normA;
+
+  if (longer.length === 0) return 1.0;
+
+  // 编辑距离算法
+  const editDistance = (s1: string, s2: string): number => {
+    const costs: number[] = [];
+    for (let i = 0; i <= s1.length; i++) {
+      let lastValue = i;
+      for (let j = 0; j <= s2.length; j++) {
+        if (i === 0) {
+          costs[j] = j;
+        } else if (j > 0) {
+          let newValue = costs[j - 1];
+          if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+          }
+          costs[j - 1] = lastValue;
+          lastValue = newValue;
+        }
+      }
+      if (i > 0) costs[s2.length] = lastValue;
     }
-  }
+    return costs[s2.length];
+  };
 
-  return matches / maxLen;
+  return (longer.length - editDistance(longer, shorter)) / longer.length;
 }
 
 
@@ -216,19 +234,20 @@ async function main() {
       const homeScore = similarity(crownMatch.home, isMatch.homeName);
       const awayScore = similarity(crownMatch.away, isMatch.awayName);
 
+      // 增加球队名称的权重，降低时间和联赛的权重
       const combined =
-        timeScore * 0.2 +
-        leagueScore * 0.2 +
-        homeScore * 0.3 +
-        awayScore * 0.3;
+        timeScore * 0.15 +
+        leagueScore * 0.15 +
+        homeScore * 0.35 +
+        awayScore * 0.35;
 
       if (!best || combined > best.score) {
         best = { match: isMatch, score: combined, timeDiff: timeDiffMinutes };
       }
     }
 
-    // 降低阈值到 0.8，因为中文名称匹配度很高
-    if (best && best.score >= 0.8) {
+    // 降低阈值到 0.55，适应英文名称匹配
+    if (best && best.score >= 0.55) {
       matchedEntries.push({
         isports_match_id: best.match.matchId,
         crown_gid: crownMatch.crown_gid,
