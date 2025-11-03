@@ -351,6 +351,8 @@ async function main() {
     process.exit(1);
   }
 
+  const totalStartTime = Date.now();
+
   console.log(`🔧 配置:`);
   console.log(`  皇冠文件: ${crownFilePath}`);
   console.log(`  输出文件: ${outputPath}`);
@@ -378,28 +380,43 @@ async function main() {
     }
   }
 
-  console.log('📥 获取 iSports 赛事...');
+  console.log('📥 获取 iSports 赛事（并行）...');
+  const fetchStartTime = Date.now();
   const isportsMatches: ISportsMatch[] = [];
 
-  for (const date of datesToFetch) {
+  // 并行获取所有日期的数据
+  const fetchPromises = datesToFetch.map(async (date) => {
     try {
       console.log(`  ${date}...`);
       const matches = await fetchISportsSchedule(apiKey, date);
-      console.log(`    获取到 ${matches.length} 场`);
-      isportsMatches.push(...matches);
+      console.log(`    ✅ ${date}: ${matches.length} 场`);
+      return matches;
     } catch (error: any) {
-      console.error(`  ❌ 获取失败 (${date}):`, error.message);
+      console.error(`  ❌ ${date}: ${error.message}`);
+      return [];
     }
-  }
+  });
 
-  console.log(`✅ 总共获取 ${isportsMatches.length} 场 iSports 赛事`);
+  const results = await Promise.all(fetchPromises);
+  results.forEach(matches => isportsMatches.push(...matches));
+
+  const fetchTime = ((Date.now() - fetchStartTime) / 1000).toFixed(1);
+  console.log(`✅ 总共获取 ${isportsMatches.length} 场 iSports 赛事 (用时: ${fetchTime}s)`);
   console.log('');
 
   const cacheDir = path.resolve(process.cwd(), '../fetcher-isports/data');
   const languageService = getLanguageService(apiKey, cacheDir);
+
+  console.log('🌐 加载语言包...');
+  const langStartTime = Date.now();
   await languageService.ensureCache();
+  const langTime = ((Date.now() - langStartTime) / 1000).toFixed(1);
+  console.log(`✅ 语言包加载完成 (用时: ${langTime}s)`);
+
   const converter = Converter({ from: 'tw', to: 'cn' });
 
+  console.log('🔄 添加中文翻译...');
+  const translateStartTime = Date.now();
   const matchesForMapping: ISportsMatchExtended[] = isportsMatches.map((match) => {
     const leagueNameTc = match.leagueId ? languageService.getLeagueName(match.leagueId) : null;
     const leagueNameCn = leagueNameTc ? converter(leagueNameTc) : null;
@@ -422,6 +439,10 @@ async function main() {
       awayNameCn,
     };
   });
+
+  const translateTime = ((Date.now() - translateStartTime) / 1000).toFixed(1);
+  console.log(`✅ 翻译完成 (用时: ${translateTime}s)`);
+  console.log('');
 
   if (!matchesForMapping.length) {
     console.error('❌ 未获取到任何 iSports 赛事，无法建立映射');
@@ -470,6 +491,7 @@ async function main() {
   // 正向匹配：从皇冠赛事出发，在 iSports 中查找最佳匹配
   // 这样只需要遍历 601 场皇冠赛事，而不是 3214 场 iSports 赛事
   console.log('🔄 开始匹配（从皇冠 → iSports）...');
+  const startTime = Date.now();
   const matchedEntries: MappingEntry[] = [];
   const unmatchedCrown: MatchContext[] = [];
   const usedIsportsIds = new Set<string>();
@@ -480,7 +502,9 @@ async function main() {
   for (const ctx of crownContext) {
     processedCount++;
     if (processedCount % 50 === 0) {
-      console.log(`  进度: ${processedCount}/${totalCount} (${(processedCount / totalCount * 100).toFixed(1)}%)`);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      const speed = (processedCount / (Date.now() - startTime) * 1000).toFixed(1);
+      console.log(`  进度: ${processedCount}/${totalCount} (${(processedCount / totalCount * 100).toFixed(1)}%) - 用时: ${elapsed}s - 速度: ${speed} 场/秒`);
     }
 
     const crownMatch = ctx.crown;
@@ -564,7 +588,9 @@ async function main() {
     }
   }
 
-  console.log(`✅ 匹配完成: ${processedCount}/${totalCount}`);
+  const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
+  const avgSpeed = (totalCount / (Date.now() - startTime) * 1000).toFixed(1);
+  console.log(`✅ 匹配完成: ${processedCount}/${totalCount} - 总用时: ${totalTime}s - 平均速度: ${avgSpeed} 场/秒`);
 
   matchedEntries.sort((a, b) => b.similarity - a.similarity);
 
@@ -591,8 +617,11 @@ async function main() {
   };
 
   fs.writeFileSync(outputPath, JSON.stringify(mappingOutput, null, 2), 'utf-8');
+
+  const totalTime = ((Date.now() - totalStartTime) / 1000).toFixed(1);
   console.log(`\n✅ 映射完成，匹配成功 ${matchedEntries.length}/${crownContext.length} 场 (${(matchedEntries.length / crownContext.length * 100).toFixed(1)}%)`);
   console.log(`💾 映射文件已保存到 ${outputPath}`);
+  console.log(`⏱️  总用时: ${totalTime}s`);
   if (unmatchedCrown.length) {
     console.log(`⚠️  尚有 ${unmatchedCrown.length} 场未匹配，可在文件 unmatched 字段查看前 50 条`);
   }
