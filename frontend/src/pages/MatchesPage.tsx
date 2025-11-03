@@ -10,9 +10,12 @@ const { Title } = Typography;
 
 const NAME_REPLACEMENTS: Record<string, string> = {
   'colombia copa cup': '哥伦比亚杯',
+  'brazil serie b': '巴西乙级联赛',
   'envigado': '依维加杜',
   'independiente medellin': '曼特宁独立',
   'independiente medellín': '曼特宁独立',
+  'volta redonda': '沃尔特雷东达',
+  'botafogo sp': '保地花高SP',
 };
 
 const normalizeNameKey = (value: string): string =>
