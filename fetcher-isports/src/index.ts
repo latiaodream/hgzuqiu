@@ -42,6 +42,30 @@ const missingOddsAttempts: Map<string, number> = new Map();
 const MISSING_ODDS_RETRY_INTERVAL = 15000;
 const MAX_LIVE_FETCH_BATCH = 20;
 
+const MANUAL_NAME_REPLACEMENTS: Record<string, string> = {
+  'colombia copa cup': '哥伦比亚杯',
+  '☆ colombia copa cup': '☆ 哥伦比亚杯',
+  'envigado': '恩维加多',
+  'independiente medellin': '独立麦德林',
+  'independiente medellín': '独立麦德林',
+  '曼特宁独立': '独立麦德林',
+};
+
+const normalizeNameKey = (value: string): string =>
+  value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[·•]/g, ' ')
+    .replace(/[。.,、]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+const applyManualReplacement = (value: string): string => {
+  const key = normalizeNameKey(value);
+  return MANUAL_NAME_REPLACEMENTS[key] ?? value;
+};
+
 function loadCrownMatchMap() {
   try {
     if (!fs.existsSync(CROWN_MAP_PATH)) {
@@ -340,7 +364,7 @@ const preferName = (...values: Array<string | null | undefined>) => {
     if (typeof value !== 'string') continue;
     const trimmed = value.trim();
     if (trimmed.length > 0) {
-      return trimmed;
+      return applyManualReplacement(trimmed);
     }
   }
   return undefined;
@@ -659,6 +683,13 @@ function convertToCrownFormat(match: any, matchOdds: any, crownGid?: string) {
     strong: resolveStrongSide(mainHandicap?.line),
   };
 
+  result.league = applyManualReplacement(result.league);
+  result.league_short_name = applyManualReplacement(result.league_short_name);
+  result.team_h = applyManualReplacement(result.team_h);
+  result.team_c = applyManualReplacement(result.team_c);
+  result.home = applyManualReplacement(result.home);
+  result.away = applyManualReplacement(result.away);
+
   handicapLines.forEach((line, idx) => {
     const index = line.index ?? idx + 1;
     if (index === 1) return;
@@ -959,6 +990,13 @@ function convertCrownOnlyMatch(crownMatch: any): any | null {
         }
       },
     };
+
+    result.league = applyManualReplacement(result.league);
+    result.league_short_name = applyManualReplacement(result.league_short_name);
+    result.team_h = applyManualReplacement(result.team_h);
+    result.team_c = applyManualReplacement(result.team_c);
+    result.home = applyManualReplacement(result.home);
+    result.away = applyManualReplacement(result.away);
 
     return result;
   } catch (error: any) {
