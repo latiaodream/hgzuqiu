@@ -17,13 +17,38 @@ interface SearchResult {
   fullData?: any;
 }
 
+// 简繁体转换映射表（常用字）
+const s2tMap: { [key: string]: string } = {
+  '尔': '爾', '哈': '哈', '瓦': '瓦', '亚': '亞',
+  '沙特': '沙特', '联赛': '聯賽', '组': '組',
+  '曼联': '曼聯', '利物浦': '利物浦', '皇马': '皇馬',
+  '巴萨': '巴薩', '国际': '國際', '米兰': '米蘭',
+};
+
+function toTraditional(text: string): string {
+  let result = text;
+  for (const [s, t] of Object.entries(s2tMap)) {
+    result = result.replace(new RegExp(s, 'g'), t);
+  }
+  return result;
+}
+
 function normalizeText(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, '');
+  const lower = text.toLowerCase().replace(/\s+/g, '');
+  // 同时返回简体和繁体的标准化版本
+  return lower;
+}
+
+function normalizeTextWithVariants(text: string): string[] {
+  const normalized = normalizeText(text);
+  const traditional = normalizeText(toTraditional(text));
+  // 返回简体和繁体两个版本
+  return [normalized, traditional];
 }
 
 function searchInCrown(homeTeam: string, awayTeam: string, league?: string): SearchResult[] {
   const crownGidsPath = path.resolve(process.cwd(), 'crown-gids.json');
-  
+
   if (!fs.existsSync(crownGidsPath)) {
     console.log('❌ crown-gids.json 不存在');
     return [];
@@ -32,9 +57,10 @@ function searchInCrown(homeTeam: string, awayTeam: string, league?: string): Sea
   const crownData = JSON.parse(fs.readFileSync(crownGidsPath, 'utf-8'));
   const matches = crownData.matches || [];
 
-  const homeNorm = normalizeText(homeTeam);
-  const awayNorm = normalizeText(awayTeam);
-  const leagueNorm = league ? normalizeText(league) : '';
+  // 获取简繁体变体
+  const homeVariants = normalizeTextWithVariants(homeTeam);
+  const awayVariants = normalizeTextWithVariants(awayTeam);
+  const leagueVariants = league ? normalizeTextWithVariants(league) : [];
 
   const results: SearchResult[] = [];
 
@@ -43,50 +69,38 @@ function searchInCrown(homeTeam: string, awayTeam: string, league?: string): Sea
     const matchAwayNorm = normalizeText(match.away || '');
     const matchLeagueNorm = normalizeText(match.league || '');
 
+    // 检查是否匹配（支持简繁体）
+    const homeMatches = homeVariants.some(v => matchHomeNorm.includes(v) || v.includes(matchHomeNorm));
+    const awayMatches = awayVariants.some(v => matchAwayNorm.includes(v) || v.includes(matchAwayNorm));
+    const homeMatchesReverse = homeVariants.some(v => matchAwayNorm.includes(v) || v.includes(matchAwayNorm));
+    const awayMatchesReverse = awayVariants.some(v => matchHomeNorm.includes(v) || v.includes(matchHomeNorm));
+    const leagueMatches = leagueVariants.length === 0 || leagueVariants.some(v =>
+      matchLeagueNorm.includes(v) || v.includes(matchLeagueNorm)
+    );
+
     // 精确匹配
-    if (matchHomeNorm.includes(homeNorm) && matchAwayNorm.includes(awayNorm)) {
-      if (!league || matchLeagueNorm.includes(leagueNorm)) {
-        results.push({
-          source: 'Crown',
-          league: match.league,
-          home: match.home,
-          away: match.away,
-          time: match.datetime,
-          gid: match.crown_gid,
-          fullData: match,
-        });
-      }
+    if (homeMatches && awayMatches && leagueMatches) {
+      results.push({
+        source: 'Crown',
+        league: match.league,
+        home: match.home,
+        away: match.away,
+        time: match.datetime,
+        gid: match.crown_gid,
+        fullData: match,
+      });
     }
     // 反向匹配（主客队可能颠倒）
-    else if (matchHomeNorm.includes(awayNorm) && matchAwayNorm.includes(homeNorm)) {
-      if (!league || matchLeagueNorm.includes(leagueNorm)) {
-        results.push({
-          source: 'Crown (主客队颠倒)',
-          league: match.league,
-          home: match.home,
-          away: match.away,
-          time: match.datetime,
-          gid: match.crown_gid,
-          fullData: match,
-        });
-      }
-    }
-    // 模糊匹配
-    else if (
-      (matchHomeNorm.includes(homeNorm) || homeNorm.includes(matchHomeNorm)) &&
-      (matchAwayNorm.includes(awayNorm) || awayNorm.includes(matchAwayNorm))
-    ) {
-      if (!league || matchLeagueNorm.includes(leagueNorm) || leagueNorm.includes(matchLeagueNorm)) {
-        results.push({
-          source: 'Crown (模糊匹配)',
-          league: match.league,
-          home: match.home,
-          away: match.away,
-          time: match.datetime,
-          gid: match.crown_gid,
-          fullData: match,
-        });
-      }
+    else if (homeMatchesReverse && awayMatchesReverse && leagueMatches) {
+      results.push({
+        source: 'Crown (主客队颠倒)',
+        league: match.league,
+        home: match.home,
+        away: match.away,
+        time: match.datetime,
+        gid: match.crown_gid,
+        fullData: match,
+      });
     }
   });
 
