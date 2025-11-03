@@ -617,7 +617,12 @@ const MatchesPage: React.FC = () => {
                 let timeLabel = m.time || '';
                 if (!timeLabel && m.match_time) {
                   try {
-                    timeLabel = new Date(m.match_time).toLocaleString('zh-CN', { hour12: false });
+                    const date = new Date(m.match_time);
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    timeLabel = `${month}-${day} ${hours}:${minutes}`;
                   } catch {
                     timeLabel = m.match_time;
                   }
