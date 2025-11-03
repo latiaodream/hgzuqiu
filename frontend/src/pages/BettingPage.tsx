@@ -76,13 +76,13 @@ const formatOdds = (value?: number | null | string) => {
 };
 
 const resolveOfficialOdds = (bet: Bet): number | undefined => {
-  if (typeof bet.official_odds === 'number') {
-    return bet.official_odds;
-  }
-  if (typeof bet.odds === 'number') {
-    return bet.odds;
-  }
-  return undefined;
+  const tryParse = (value: any): number | undefined => {
+    if (value === null || value === undefined) return undefined;
+    const num = Number(value);
+    return Number.isFinite(num) ? num : undefined;
+  };
+
+  return tryParse(bet.official_odds) ?? tryParse(bet.odds);
 };
 
 const BettingPage: React.FC = () => {
