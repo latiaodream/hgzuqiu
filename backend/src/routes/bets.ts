@@ -504,11 +504,13 @@ router.post('/', async (req: any, res) => {
                 // 创建数据库记录
                 const initialStatus = betResult.success ? 'confirmed' : 'cancelled';
 
+                const finalOddsValue = betResult.actualOdds || betData.odds;
+
                 const insertResult = await query(`
                     INSERT INTO bets (
                         user_id, account_id, match_id, bet_type, bet_option, bet_amount, odds,
-                        single_limit, interval_seconds, quantity, status, official_bet_id
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                        single_limit, interval_seconds, quantity, status, official_bet_id, official_odds
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                     RETURNING *
                 `, [
                     userId,
@@ -517,12 +519,13 @@ router.post('/', async (req: any, res) => {
                     betData.bet_type,
                     betData.bet_option,
                     betData.bet_amount,
-                    betResult.actualOdds || betData.odds,
+                    finalOddsValue,
                     betData.single_limit || betData.bet_amount,
                     betData.interval_seconds || 3,
                     betData.quantity || 1,
                     initialStatus,
-                    betResult.betId || null
+                    betResult.betId || null,
+                    finalOddsValue
                 ]);
 
                 const createdRecord = insertResult.rows[0];
