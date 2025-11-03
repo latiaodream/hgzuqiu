@@ -617,8 +617,13 @@ function convertToCrownFormat(match: any, matchOdds: any, crownGid?: string) {
   const matchIdKey = String(match.matchId);
   const mappingDetails = crownMatchDetails.get(matchIdKey);
 
-  // 优先使用映射中的中文名称，否则使用原始英文名称
-  const leagueName = mappingDetails?.isports?.league_cn || mappingDetails?.isports?.league_tc || match.leagueName;
+  // 联赛名优先级：iSports中文 > 皇冠联赛名 > iSports英文
+  const leagueName = mappingDetails?.isports?.league_cn
+    || mappingDetails?.isports?.league_tc
+    || mappingDetails?.crown?.league
+    || match.leagueName;
+
+  // 球队名优先级：iSports中文 > iSports英文
   const homeName = mappingDetails?.isports?.home_cn || mappingDetails?.isports?.home_tc || match.homeName;
   const awayName = mappingDetails?.isports?.away_cn || mappingDetails?.isports?.away_tc || match.awayName;
 
