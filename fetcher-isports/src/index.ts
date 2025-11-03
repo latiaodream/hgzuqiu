@@ -33,6 +33,9 @@ if (!fs.existsSync(DATA_DIR)) {
 let matchesCache: any[] = [];
 let oddsCache: Map<string, any> = new Map();
 let crownMatchMap: Map<string, string> = new Map();
+const missingOddsAttempts: Map<string, number> = new Map();
+const MISSING_ODDS_RETRY_INTERVAL = 15000;
+const MAX_LIVE_FETCH_BATCH = 20;
 
 function loadCrownMatchMap() {
   try {
@@ -97,29 +100,25 @@ function printStats() {
 }
 
 // 使用 Common API 中的 /schedule/basic 接口（应该在套餐内）
-async function fetchSchedule() {
-  checkAndResetStats();
-  apiCallStats.schedule++;
-
+async function fetchScheduleByDate(date: string, countStats: boolean) {
+  if (countStats) {
+    apiCallStats.schedule++;
+  }
   try {
-    const today = new Date().toISOString().split('T')[0];
     const response = await axios.get(`${BASE_URL}/schedule/basic`, {
-      params: { api_key: API_KEY, date: today },
+      params: { api_key: API_KEY, date },
       timeout: 30000,
     });
 
     if (response.data.code === 0) {
       const allMatches = response.data.data || [];
 
-      // 统计各状态比赛数量（注意：字段名是 status 不是 state）
-      // status: -1=已结束, 0=未开始(早盘), 1=进行中(滚球)
+      // 统计各状态比赛数量
       const liveCount = allMatches.filter((m: any) => m.status === 1).length;
       const earlyCount = allMatches.filter((m: any) => m.status === 0).length;
       const finishedCount = allMatches.filter((m: any) => m.status === -1).length;
 
-      console.log(`📊 今日比赛: 总数 ${allMatches.length} (滚球 ${liveCount}, 早盘 ${earlyCount}, 已结束 ${finishedCount})`);
-
-      // 返回所有比赛，让后端根据前端的 showtype 参数过滤
+      console.log(`📊 赛程(${date}): 总数 ${allMatches.length} (滚球 ${liveCount}, 早盘 ${earlyCount}, 已结束 ${finishedCount})`);
       return allMatches;
     } else {
       apiCallStats.errors++;
@@ -138,6 +137,61 @@ async function fetchSchedule() {
     console.error('❌ 获取赛程失败:', error.message);
     return [];
   }
+}
+
+async function fetchSchedule() {
+  checkAndResetStats();
+
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+
+  const yesterday = new Date(today);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+  const dates = [
+    { value: todayStr, label: '今日' },
+    { value: yesterdayStr, label: '昨日' },
+  ];
+
+  const seenMatches: Map<string, any> = new Map();
+
+  for (const [index, dateInfo] of dates.entries()) {
+    const matches = await fetchScheduleByDate(dateInfo.value, true);
+    for (const match of matches) {
+      const key = String(match.matchId ?? match.match_id ?? match.gid ?? '');
+      if (!key) continue;
+
+      if (!seenMatches.has(key)) {
+        seenMatches.set(key, match);
+      } else {
+        // 如果已存在，优先保留状态更实时的数据（滚球 > 未开赛 > 已结束）
+        const existing = seenMatches.get(key);
+        const existingStatus = normalizeStatus(existing.status);
+        const newStatus = normalizeStatus(match.status);
+        if (newStatus > existingStatus) {
+          seenMatches.set(key, match);
+        } else if (newStatus === existingStatus) {
+          // 如果状态相同，使用较新的 matchTime
+          const existingTime = existing.matchTime ?? existing.match_time ?? 0;
+          const newTime = match.matchTime ?? match.match_time ?? 0;
+          if (newTime > existingTime) {
+            seenMatches.set(key, match);
+          }
+        }
+      }
+    }
+  }
+
+  const combinedMatches = Array.from(seenMatches.values());
+
+  const liveCount = combinedMatches.filter((m: any) => normalizeStatus(m.status) === 1).length;
+  const earlyCount = combinedMatches.filter((m: any) => normalizeStatus(m.status) === 0).length;
+  const finishedCount = combinedMatches.filter((m: any) => normalizeStatus(m.status) === -1).length;
+
+  console.log(`📊 合并赛程: 总数 ${combinedMatches.length} (滚球 ${liveCount}, 早盘 ${earlyCount}, 已结束 ${finishedCount})`);
+
+  return combinedMatches;
 }
 
 async function fetchMainOdds() {
@@ -209,6 +263,32 @@ const parseIntSafe = (value?: string) => {
   if (value === undefined || value === '') return undefined;
   const parsed = parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : undefined;
+};
+const normalizeStatus = (value: any) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return 0;
+    const parsed = parseInt(trimmed, 10);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+};
+const hasNonZeroNumber = (value?: string) => {
+  if (value === undefined || value === null) return false;
+  const trimmed = String(value).trim();
+  if (trimmed.length === 0) return false;
+  const parsed = Number(trimmed);
+  if (Number.isFinite(parsed)) {
+    return parsed !== 0;
+  }
+  return true;
+};
+const hasOddsData = (entry: any) => {
+  if (!entry) return false;
+  return ['handicap', 'europeOdds', 'overUnder', 'handicapHalf', 'overUnderHalf'].some(
+    (key) => Array.isArray(entry[key]) && entry[key].length > 0
+  );
 };
 
 function parseOdds(data: string[], type: string) {
@@ -419,6 +499,14 @@ const resolveStrongSide = (handicap?: string) => {
 };
 
 function convertToCrownFormat(match: any, matchOdds: any, crownGid?: string) {
+  const odds = matchOdds ?? {
+    handicap: [],
+    europeOdds: [],
+    overUnder: [],
+    handicapHalf: [],
+    overUnderHalf: [],
+  };
+
   const timerIso = new Date(match.matchTime * 1000).toISOString();
   const score = formatScore(match.homeScore, match.awayScore);
   const period = derivePeriod(match.status);
@@ -438,15 +526,27 @@ function convertToCrownFormat(match: any, matchOdds: any, crownGid?: string) {
       .sort((a, b) => (a.index || 1) - (b.index || 1));
   };
 
-  const handicapLines = mapLines(matchOdds.handicap, { line: 'instantHandicap', home: 'instantHome', away: 'instantAway' });
-  const overUnderLines = mapLines(matchOdds.overUnder, { line: 'instantHandicap', over: 'instantOver', under: 'instantUnder' });
-  const halfHandicapLines = mapLines(matchOdds.handicapHalf, { line: 'instantHandicap', home: 'instantHome', away: 'instantAway' });
-  const halfOverUnderLines = mapLines(matchOdds.overUnderHalf, { line: 'instantHandicap', over: 'instantOver', under: 'instantUnder' });
+  const handicapLines = mapLines(odds.handicap, { line: 'instantHandicap', home: 'instantHome', away: 'instantAway' });
+  const overUnderLines = mapLines(odds.overUnder, { line: 'instantHandicap', over: 'instantOver', under: 'instantUnder' });
+  const halfHandicapLines = mapLines(odds.handicapHalf, { line: 'instantHandicap', home: 'instantHome', away: 'instantAway' });
+  const halfOverUnderLines = mapLines(odds.overUnderHalf, { line: 'instantHandicap', over: 'instantOver', under: 'instantUnder' });
   const mainHandicap = handicapLines[0];
   const mainOverUnder = overUnderLines[0];
   const mainHalfHandicap = halfHandicapLines[0];
   const mainHalfOverUnder = halfOverUnderLines[0];
-  const mainEurope = matchOdds.europeOdds?.find((eo: any) => (eo.oddsIndex ?? 1) === 1) || matchOdds.europeOdds?.[0];
+  const mainEurope = odds.europeOdds?.find((eo: any) => (eo.oddsIndex ?? 1) === 1) || odds.europeOdds?.[0];
+
+  const hasHandicapOdds = handicapLines.some((line) => hasNonZeroNumber(line.home) || hasNonZeroNumber(line.away));
+  const hasOverUnderOdds = overUnderLines.some((line) => hasNonZeroNumber(line.over) || hasNonZeroNumber(line.under));
+  const hasHalfHandicapOdds = halfHandicapLines.some((line) => hasNonZeroNumber(line.home) || hasNonZeroNumber(line.away));
+  const hasHalfOverUnderOdds = halfOverUnderLines.some((line) => hasNonZeroNumber(line.over) || hasNonZeroNumber(line.under));
+  const hasEuropeOdds = !!mainEurope && (hasNonZeroNumber(mainEurope.instantHome) || hasNonZeroNumber(mainEurope.instantAway) || hasNonZeroNumber(mainEurope.instantDraw));
+
+  const hasAnyOdds = hasHandicapOdds || hasOverUnderOdds || hasHalfHandicapOdds || hasHalfOverUnderOdds || hasEuropeOdds;
+
+  if (!hasAnyOdds) {
+    return null;
+  }
 
   const result: any = {
     gid: match.matchId,
@@ -624,11 +724,109 @@ function generateOutput() {
       const matchIdKey = String(match.matchId ?? match.match_id ?? match.gid ?? '');
       return { match, matchIdKey };
     })
-    .filter(({ matchIdKey }) => matchIdKey && oddsCache.has(matchIdKey))
-    .map(({ match, matchIdKey }) =>
-      convertToCrownFormat(match, oddsCache.get(matchIdKey), crownMatchMap.get(matchIdKey))
-    );
+    .filter(({ matchIdKey }) => matchIdKey)
+    .map(({ match, matchIdKey }) => {
+      const odds = oddsCache.get(matchIdKey);
+      const status = normalizeStatus(match.status ?? match.state);
+      if (!odds && status !== 1) {
+        return null;
+      }
+      const converted = convertToCrownFormat(
+        match,
+        odds ?? {
+          handicap: [],
+          europeOdds: [],
+          overUnder: [],
+          handicapHalf: [],
+          overUnderHalf: []
+        },
+        crownMatchMap.get(matchIdKey)
+      );
+      return converted;
+    })
+    .filter((match): match is any => match !== null);
   saveData(convertedMatches);
+}
+
+async function ensureLiveOdds() {
+  if (matchesCache.length === 0) return false;
+
+  const now = Date.now();
+  const liveMatches = matchesCache.filter(
+    (match) => normalizeStatus(match.status ?? match.state) === 1
+  );
+
+  if (liveMatches.length === 0) return false;
+
+  const candidates: string[] = [];
+
+  for (const match of liveMatches) {
+    const matchId = String(match.matchId ?? match.match_id ?? match.gid ?? '').trim();
+    if (!matchId) continue;
+
+    const cached = oddsCache.get(matchId);
+    if (hasOddsData(cached)) {
+      missingOddsAttempts.delete(matchId);
+      continue;
+    }
+
+    const lastAttempt = missingOddsAttempts.get(matchId) || 0;
+    if (now - lastAttempt < MISSING_ODDS_RETRY_INTERVAL) {
+      continue;
+    }
+
+    missingOddsAttempts.set(matchId, now);
+    candidates.push(matchId);
+
+    if (candidates.length >= MAX_LIVE_FETCH_BATCH) {
+      break;
+    }
+  }
+
+  if (candidates.length === 0) return false;
+
+  try {
+    const response = await axios.get(`${BASE_URL}/odds/all`, {
+      params: { api_key: API_KEY, companyId: '3', matchId: candidates.join(',') },
+      timeout: 30000,
+    });
+
+    if (response.data.code === 0) {
+      const oddsData = response.data.data || {};
+      const odds = {
+        handicap: parseOdds(oddsData.handicap || [], 'handicap'),
+        europeOdds: parseOdds(oddsData.europeOdds || [], 'europeOdds'),
+        overUnder: parseOdds(oddsData.overUnder || [], 'overUnder'),
+        handicapHalf: parseOdds(oddsData.handicapHalf || [], 'handicapHalf'),
+        overUnderHalf: parseOdds(oddsData.overUnderHalf || [], 'overUnderHalf'),
+      };
+
+      updateOddsCache(odds);
+
+      let updatedMatches = 0;
+      for (const matchId of candidates) {
+        const cacheEntry = oddsCache.get(matchId);
+        if (hasOddsData(cacheEntry)) {
+          missingOddsAttempts.delete(matchId);
+          updatedMatches++;
+        }
+      }
+
+      if (updatedMatches > 0) {
+        console.log(`✅ 补充滚球赔率成功: ${updatedMatches}/${candidates.length} 场`);
+        return true;
+      }
+
+      console.log(`⚠️ 补充滚球赔率无数据返回 (${candidates.length} 场)`);
+      return false;
+    }
+
+    console.warn('⚠️ 补充滚球赔率失败:', response.data);
+  } catch (error: any) {
+    console.error('❌ 补充滚球赔率请求失败:', error.message);
+  }
+
+  return false;
 }
 
 async function fullUpdate() {
@@ -660,6 +858,7 @@ async function fullUpdate() {
 
   console.log(`✅ 获取到皇冠赔率：让球 ${odds.handicap.length}，独赢 ${odds.europeOdds.length}，大小 ${odds.overUnder.length}`);
   updateOddsCache(odds);
+  await ensureLiveOdds();
   generateOutput();
 }
 
@@ -680,6 +879,7 @@ async function changesUpdate() {
 
   console.log(`🔄 赔率变化：让球 ${changes.handicap.length}，独赢 ${changes.europeOdds.length}，大小 ${changes.overUnder.length}`);
   updateOddsCache(changes);
+  await ensureLiveOdds();
   generateOutput();
 }
 

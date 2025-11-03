@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import { query } from '../models/database';
-import { BetCreateRequest, ApiResponse, Bet, AccountSelectionEntry } from '../types';
+import { BetCreateRequest, ApiResponse, Bet, AccountSelectionEntry, CrownAccount } from '../types';
 import { getCrownAutomation } from '../services/crown-automation';
 import { selectAccounts } from '../services/account-selection';
 
@@ -427,6 +427,7 @@ router.post('/', async (req: any, res) => {
             });
         }
 
+        const automation = getCrownAutomation();
         const createdBets: Array<{ record: any; crown_result: any; accountId: number; match: any }> = [];
         const verifiableBets: Array<{ record: any; crown_result: any; accountId: number; match: any }> = [];
         const failedBets: Array<{ accountId: number; error: string }> = [];
@@ -434,27 +435,53 @@ router.post('/', async (req: any, res) => {
         // 为每个账号创建下注记录并执行真实下注
         for (const accountId of validatedAccountIds) {
             try {
-                // 首先检查账号是否在线
-                if (!getCrownAutomation().isAccountOnline(accountId)) {
+                // 获取账号完整信息（用于自动登录与折扣计算）
+                const accountResult = await query(
+                    'SELECT * FROM crown_accounts WHERE id = $1',
+                    [accountId]
+                );
+
+                if (accountResult.rows.length === 0) {
                     failedBets.push({
                         accountId,
-                        error: '账号未登录'
+                        error: '账号不存在或已被删除',
                     });
                     continue;
                 }
 
-                // 获取账号信息以计算折扣后的金额
-                const accountInfo = await query(
-                    'SELECT discount FROM crown_accounts WHERE id = $1',
-                    [accountId]
-                );
+                const accountRow = accountResult.rows[0] as CrownAccount;
 
-                const discount = accountInfo.rows[0]?.discount || 1;
+                // 确保账号会话可用，必要时自动登录
+                if (!automation.isAccountOnline(accountId)) {
+                    const loginAttempt = await automation.loginAccountWithApi(accountRow);
+                    if (!loginAttempt.success) {
+                        failedBets.push({
+                            accountId,
+                            error: loginAttempt.message || '账号登录失败',
+                        });
+
+                        await query(
+                            `UPDATE crown_accounts
+                             SET is_online = false,
+                                 status = 'error',
+                                 error_message = $2,
+                                 updated_at = CURRENT_TIMESTAMP
+                             WHERE id = $1`,
+                            [accountId, (loginAttempt.message || '登录失败').slice(0, 255)]
+                        ).catch((err) => {
+                            console.warn('⚠️ 更新账号状态失败:', err);
+                        });
+
+                        continue;
+                    }
+                }
+
+                const discount = Number(accountRow.discount) || 1;
                 const platformAmount = betData.bet_amount;
                 const crownAmount = parseFloat((platformAmount / discount).toFixed(2));
 
                 // 调用真实的Crown下注API
-                const betResult = await getCrownAutomation().placeBet(accountId, {
+                const betResult = await automation.placeBet(accountId, {
                     betType: betData.bet_type,
                     betOption: betData.bet_option,
                     amount: crownAmount,
@@ -557,8 +584,6 @@ router.post('/', async (req: any, res) => {
                 });
             }
         }
-
-        const automation = getCrownAutomation();
 
         for (const created of verifiableBets) {
             const betRecord = created.record;
