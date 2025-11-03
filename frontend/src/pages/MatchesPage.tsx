@@ -159,9 +159,19 @@ const MatchesPage: React.FC = () => {
   }, [mode, useSSE, showtype, gtype]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return matches;
+    // 首先过滤掉没有赔率的比赛
+    const matchesWithOdds = matches.filter((m: any) => {
+      // 检查是否有任何赔率数据
+      const hasHandicap = m.RATIO_RE || m.IOR_REH || m.IOR_REC;
+      const hasOverUnder = m.RATIO_ROUO || m.IOR_ROUH || m.IOR_ROUC;
+      const hasEuropeOdds = m.IOR_EOH || m.IOR_EOC || m.IOR_EON;
+      return hasHandicap || hasOverUnder || hasEuropeOdds;
+    });
+
+    // 然后根据搜索关键词过滤
+    if (!search.trim()) return matchesWithOdds;
     const k = search.trim().toLowerCase();
-    return matches.filter((m: any) => {
+    return matchesWithOdds.filter((m: any) => {
       const leagueLabel = m.league || m.league_name;
       const homeLabel = m.home || m.home_team;
       const awayLabel = m.away || m.away_team;
