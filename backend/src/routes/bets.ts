@@ -431,6 +431,7 @@ router.post('/', async (req: any, res) => {
         const createdBets: Array<{ record: any; crown_result: any; accountId: number; match: any }> = [];
         const verifiableBets: Array<{ record: any; crown_result: any; accountId: number; match: any }> = [];
         const failedBets: Array<{ accountId: number; error: string }> = [];
+        const verificationWarnings: Array<{ accountId: number; warning: string }> = [];
 
         // 为每个账号创建下注记录并执行真实下注
         for (const accountId of validatedAccountIds) {
@@ -501,7 +502,7 @@ router.post('/', async (req: any, res) => {
                 });
 
                 // 创建数据库记录
-                const initialStatus = betResult.success ? 'pending' : 'cancelled';
+                const initialStatus = betResult.success ? 'confirmed' : 'cancelled';
 
                 const insertResult = await query(`
                     INSERT INTO bets (
@@ -538,10 +539,10 @@ router.post('/', async (req: any, res) => {
                 if (betResult.success) {
                     verifiableBets.push(payload);
                 } else {
-                    failedBets.push({
-                        accountId,
-                        error: betResult.message || '下注失败',
-                    });
+                failedBets.push({
+                    accountId,
+                    error: betResult.message || '下注失败',
+                });
                 }
 
                 // 创建金币流水记录(消耗) - 仅当下注成功时
@@ -591,9 +592,9 @@ router.post('/', async (req: any, res) => {
             const matchInfo = created.match || {};
 
             if (!automation.isAccountOnline(created.accountId)) {
-                failedBets.push({
+                verificationWarnings.push({
                     accountId: created.accountId,
-                    error: '下注完成后账号离线，无法匹配官网注单'
+                    warning: '下注完成后账号离线，无法匹配官网注单'
                 });
                 continue;
             }
@@ -630,18 +631,18 @@ router.post('/', async (req: any, res) => {
 
             if (!matchedWager) {
                 const reason = betResult.message || '官网未找到对应注单';
-                failedBets.push({
+                verificationWarnings.push({
                     accountId: created.accountId,
-                    error: reason
+                    warning: reason
                 });
                 continue;
             }
 
             const ticketId = String(matchedWager.ticketId || '').trim();
             if (!ticketId) {
-                failedBets.push({
+                verificationWarnings.push({
                     accountId: created.accountId,
-                    error: '官网注单号为空'
+                    warning: '官网注单号为空'
                 });
                 continue;
             }
@@ -673,6 +674,7 @@ router.post('/', async (req: any, res) => {
                     crown_result: entry.crown_result,
                 })),
                 failed: failedBets,
+                warnings: verificationWarnings,
                 stats: {
                     total: totalRequested,
                     success: successCount,
