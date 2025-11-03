@@ -588,9 +588,9 @@ async function main() {
     }
   }
 
-  const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
+  const matchTime = ((Date.now() - startTime) / 1000).toFixed(2);
   const avgSpeed = (totalCount / (Date.now() - startTime) * 1000).toFixed(1);
-  console.log(`✅ 匹配完成: ${processedCount}/${totalCount} - 总用时: ${totalTime}s - 平均速度: ${avgSpeed} 场/秒`);
+  console.log(`✅ 匹配完成: ${processedCount}/${totalCount} - 用时: ${matchTime}s - 平均速度: ${avgSpeed} 场/秒`);
 
   matchedEntries.sort((a, b) => b.similarity - a.similarity);
 
