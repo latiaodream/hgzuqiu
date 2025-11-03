@@ -531,8 +531,8 @@ async function main() {
         (isMatch.leagueNameCn && crownMatch.league.includes(isMatch.leagueNameCn.substring(0, 2))) ||
         (isMatch.leagueNameTc && crownMatch.league.includes(isMatch.leagueNameTc.substring(0, 2)));
 
-      // 如果联赛名完全不相关，跳过（节省 90% 的计算）
-      if (!leagueQuickCheck && timeDiffMinutes > 120) continue;
+      // 放宽过滤条件：只有时间差很大且联赛完全不匹配才跳过
+      if (!leagueQuickCheck && timeDiffMinutes > 360) continue;
 
       const timeScore = crownDate ? Math.max(0, 1 - timeDiffMinutes / 240) : 0.2;
 
@@ -543,8 +543,8 @@ async function main() {
         isMatch.leagueNameCn || undefined
       );
 
-      // 如果联赛相似度太低，直接跳过后续计算
-      if (leagueScore < 0.3) continue;
+      // 放宽联赛相似度阈值
+      if (leagueScore < 0.2) continue;
 
       const homeScore = calculateSimilarity(
         crownMatch.home,
