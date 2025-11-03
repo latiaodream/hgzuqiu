@@ -161,10 +161,17 @@ const MatchesPage: React.FC = () => {
   const filtered = useMemo(() => {
     // 首先过滤掉没有赔率的比赛
     const matchesWithOdds = matches.filter((m: any) => {
-      // 检查是否有任何赔率数据
-      const hasHandicap = m.RATIO_RE || m.IOR_REH || m.IOR_REC;
-      const hasOverUnder = m.RATIO_ROUO || m.IOR_ROUH || m.IOR_ROUC;
-      const hasEuropeOdds = m.IOR_EOH || m.IOR_EOC || m.IOR_EON;
+      // 检查是否有任何有效赔率数据（不为 '0' 或空）
+      const isValidOdds = (value: any) => {
+        if (!value) return false;
+        const str = String(value).trim();
+        return str !== '' && str !== '0' && str !== '0.00';
+      };
+
+      const hasHandicap = isValidOdds(m.IOR_REH) || isValidOdds(m.IOR_REC);
+      const hasOverUnder = isValidOdds(m.IOR_ROUH) || isValidOdds(m.IOR_ROUC);
+      const hasEuropeOdds = isValidOdds(m.IOR_RMH) || isValidOdds(m.IOR_RMC) || isValidOdds(m.IOR_RMN);
+
       return hasHandicap || hasOverUnder || hasEuropeOdds;
     });
 
