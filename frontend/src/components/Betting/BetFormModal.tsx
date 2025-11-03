@@ -489,11 +489,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
               <div className="bet-quick-sub">
                 <span className="league">[{match.league_name}]</span>
                 <span className="time">{matchTimeLabel}</span>
-                {(match as any).source === 'crown' && (
-                  <span style={{ marginLeft: '8px', color: '#ff9800', fontSize: '12px' }}>
-                    [皇冠独有]
-                  </span>
-                )}
               </div>
             </div>
 
