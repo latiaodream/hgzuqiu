@@ -1251,27 +1251,58 @@ export class CrownApiClient {
       throw new Error('未登录，无法获取历史记录');
     }
 
+    const commonHeaders = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': this.cookies,
+    };
+
+    // 预热接口，保持与官网一致的调用流程
+    const warmupParams = new URLSearchParams({
+      p: 'history_data',
+      uid: this.uid,
+      ver: this.version,
+      langx: 'zh-cn',
+    });
+
+    try {
+      await this.httpClient.post('/transform.php', warmupParams.toString(), {
+        headers: commonHeaders,
+      });
+    } catch (warmupError: any) {
+      console.warn('⚠️ 历史记录预热失败（将继续尝试获取数据）:', warmupError?.message || warmupError);
+    }
+
     const requestParams = new URLSearchParams({
       p: 'get_history_data',
       uid: this.uid,
-      langx: 'zh-tw',  // 使用繁体中文版本
+      langx: 'zh-cn',
       gtype: params.gtype || 'ALL',
       isAll: params.isAll || 'N',
       startdate: params.startdate || '',
       enddate: params.enddate || '',
       filter: params.filter || 'Y',
+      format: 'json',
+      ts: Date.now().toString(),
     });
 
     try {
       const response = await this.httpClient.post('/transform.php', requestParams.toString(), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Cookie': this.cookies,
-        },
+        headers: commonHeaders,
       });
 
-      console.log('✅ 历史记录响应:', JSON.stringify(response.data).substring(0, 500));
-      return response.data;
+      let payload = response.data;
+
+      if (typeof payload === 'string') {
+        const cleaned = payload.replace(/^\uFEFF/, '').trim();
+        try {
+          payload = JSON.parse(cleaned);
+        } catch (parseError: any) {
+          console.warn('⚠️ 历史记录 JSON 解析失败，返回原始数据:', parseError?.message || parseError);
+        }
+      }
+
+      console.log('✅ 历史记录响应:', JSON.stringify(payload).substring(0, 500));
+      return payload;
     } catch (error: any) {
       console.error('❌ 获取历史记录失败:', error.message);
       throw error;

@@ -119,58 +119,130 @@ const REMOVE_WORDS = [
   'reserves', 'ii', 'iii', 'b', 'c',
 ];
 
+const REMOVE_WORD_REGEXES = REMOVE_WORDS.map(
+  (word) => new RegExp(`\\b${word}\\b`, 'gi')
+);
+
 const DEFAULT_CROWN_FILE = path.resolve(process.cwd(), 'crown-gids.json');
 const DEFAULT_OUTPUT = path.resolve(process.cwd(), '../fetcher-isports/data/crown-match-map.json');
 const ISPORTS_API_BASE = 'http://api.isportsapi.com/sport/football';
+
+const normalizeCache = new Map<string, string>();
+const variantsCache = new Map<string, string[]>();
+const aliasVariantMap = new Map<string, string[]>();
+const jaccardCache = new Map<string, number>();
+const ngramCache = new Map<string, string[]>();
+const levenshteinCache = new Map<string, number>();
+const variantSimilarityCache = new Map<string, number>();
 
 /**
  * 标准化球队/联赛名称
  */
 function normalizeTeamName(name: string): string {
-  let normalized = name.toLowerCase().trim();
-  
+  const cacheKey = name.toLowerCase().trim();
+  const cached = normalizeCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  let normalized = cacheKey;
+
   // 检查是否包含中文字符
-  const hasChinese = /[\u4e00-\u9fa5]/.test(normalized);
-  if (hasChinese) {
+  if (/[\u4e00-\u9fa5]/.test(normalized)) {
     // 转换为拼音（不带音调）
     normalized = pinyin(normalized, { toneType: 'none', type: 'array' }).join('');
   }
-  
+
   // 移除无效词
-  for (const word of REMOVE_WORDS) {
-    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+  for (const regex of REMOVE_WORD_REGEXES) {
     normalized = normalized.replace(regex, ' ');
   }
-  
+
   // 只保留字母和数字
   normalized = normalized.replace(/[^a-z0-9]/g, '');
-  
+
+  normalizeCache.set(cacheKey, normalized);
   return normalized;
+}
+
+function buildAliasVariantMap(): void {
+  if (aliasVariantMap.size > 0) return;
+
+  for (const [canonical, aliases] of Object.entries(TEAM_ALIASES)) {
+    const allNames = [canonical, ...aliases]
+      .map((entry) => normalizeTeamName(entry))
+      .filter((item) => !!item);
+
+    if (allNames.length === 0) continue;
+
+    const unique = Array.from(new Set(allNames));
+    for (const variant of unique) {
+      aliasVariantMap.set(variant, unique);
+    }
+  }
 }
 
 /**
  * 获取球队的所有可能名称（包括别名）
  */
 function getTeamVariants(name: string): string[] {
-  const normalized = normalizeTeamName(name);
-  const variants = [normalized];
-  
-  // 检查别名映射
-  for (const [canonical, aliases] of Object.entries(TEAM_ALIASES)) {
-    const canonicalNorm = normalizeTeamName(canonical);
-    if (normalized === canonicalNorm) {
-      variants.push(...aliases.map(a => normalizeTeamName(a)));
-    }
-    for (const alias of aliases) {
-      const aliasNorm = normalizeTeamName(alias);
-      if (normalized === aliasNorm) {
-        variants.push(canonicalNorm);
-        variants.push(...aliases.filter(a => a !== alias).map(a => normalizeTeamName(a)));
-      }
-    }
+  const cacheKey = name.toLowerCase().trim();
+  const cached = variantsCache.get(cacheKey);
+  if (cached) {
+    return cached;
   }
-  
-  return [...new Set(variants)];
+
+  const variants = new Set<string>();
+  const normalized = normalizeTeamName(name);
+  if (normalized) {
+    variants.add(normalized);
+  }
+
+  buildAliasVariantMap();
+  const aliasVariants = aliasVariantMap.get(normalized);
+  if (aliasVariants) {
+    aliasVariants.forEach((variant) => variants.add(variant));
+  }
+
+  const result = Array.from(variants).filter(Boolean);
+  variantsCache.set(cacheKey, result);
+  return result;
+}
+
+function computeVariantSimilarity(a: string, b: string): number {
+  if (!a || !b) return 0;
+
+  const key = a <= b ? `${a}|${b}` : `${b}|${a}`;
+  const cachedFinal = variantSimilarityCache.get(key);
+  if (cachedFinal !== undefined) {
+    return cachedFinal;
+  }
+
+  if (a === b) {
+    const perfect = 1;
+    levenshteinCache.set(key, perfect);
+    jaccardCache.set(key, perfect);
+    variantSimilarityCache.set(key, perfect);
+    return perfect;
+  }
+
+  let maxScore = 0;
+
+  if (a.includes(b) || b.includes(a)) {
+    const shorter = a.length < b.length ? a : b;
+    const longer = a.length < b.length ? b : a;
+    const containScore = 0.85 + (shorter.length / longer.length) * 0.15;
+    maxScore = Math.max(maxScore, containScore);
+  }
+
+  const jaccardScore = jaccardSimilarity(a, b);
+  maxScore = Math.max(maxScore, jaccardScore);
+
+  const levenScore = levenshteinSimilarity(a, b);
+  maxScore = Math.max(maxScore, levenScore);
+
+  variantSimilarityCache.set(key, maxScore);
+  return maxScore;
 }
 
 /**
@@ -178,13 +250,36 @@ function getTeamVariants(name: string): string[] {
  */
 function jaccardSimilarity(a: string, b: string): number {
   if (!a || !b) return 0;
-  const tokensA = new Set(a.match(/.{1,3}/g) || []);
-  const tokensB = new Set(b.match(/.{1,3}/g) || []);
-  
-  const intersection = new Set([...tokensA].filter(x => tokensB.has(x)));
-  const union = new Set([...tokensA, ...tokensB]);
-  
-  return union.size === 0 ? 0 : intersection.size / union.size;
+  const key = a <= b ? `${a}|${b}` : `${b}|${a}`;
+  const cached = jaccardCache.get(key);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const getTokens = (value: string): string[] => {
+    const tokenCached = ngramCache.get(value);
+    if (tokenCached) {
+      return tokenCached;
+    }
+    const tokens = value.match(/.{1,3}/g) || [];
+    ngramCache.set(value, tokens);
+    return tokens;
+  };
+
+  const tokensA = new Set(getTokens(a));
+  const tokensB = new Set(getTokens(b));
+
+  let intersection = 0;
+  for (const token of tokensA) {
+    if (tokensB.has(token)) {
+      intersection++;
+    }
+  }
+
+  const union = tokensA.size + tokensB.size - intersection;
+  const score = union === 0 ? 0 : intersection / union;
+  jaccardCache.set(key, score);
+  return score;
 }
 
 /**
@@ -193,6 +288,12 @@ function jaccardSimilarity(a: string, b: string): number {
 function levenshteinSimilarity(a: string, b: string): number {
   if (!a || !b) return 0;
   if (a === b) return 1;
+
+  const key = a <= b ? `${a}|${b}` : `${b}|${a}`;
+  const cached = levenshteinCache.get(key);
+  if (cached !== undefined) {
+    return cached;
+  }
   
   const matrix: number[][] = [];
   
@@ -219,7 +320,9 @@ function levenshteinSimilarity(a: string, b: string): number {
   }
   
   const maxLen = Math.max(a.length, b.length);
-  return maxLen === 0 ? 1 : 1 - matrix[b.length][a.length] / maxLen;
+  const score = maxLen === 0 ? 1 : 1 - matrix[b.length][a.length] / maxLen;
+  levenshteinCache.set(key, score);
+  return score;
 }
 
 /**
@@ -248,25 +351,11 @@ function calculateSimilarity(name1: string, ...otherNames: Array<string | null |
   for (const v1 of variants1) {
     for (const v2 of variants2) {
       if (!v1 || !v2) continue;
-      
-      // 完全匹配
-      if (v1 === v2) return 1.0;
-      
-      // 包含匹配
-      if (v1.includes(v2) || v2.includes(v1)) {
-        const shorter = v1.length < v2.length ? v1 : v2;
-        const longer = v1.length < v2.length ? v2 : v1;
-        const containScore = 0.85 + (shorter.length / longer.length) * 0.15;
-        maxScore = Math.max(maxScore, containScore);
+      const score = computeVariantSimilarity(v1, v2);
+      if (score >= 1) {
+        return 1;
       }
-      
-      // Jaccard 相似度
-      const jaccardScore = jaccardSimilarity(v1, v2);
-      maxScore = Math.max(maxScore, jaccardScore);
-      
-      // Levenshtein 相似度
-      const levenScore = levenshteinSimilarity(v1, v2);
-      maxScore = Math.max(maxScore, levenScore);
+      maxScore = Math.max(maxScore, score);
     }
   }
   

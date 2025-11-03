@@ -276,6 +276,55 @@ const AccountsPage: React.FC = () => {
     }
   };
 
+  const normalizeHistoryPayload = (raw: any) => {
+    let payload = raw;
+    if (typeof payload === 'string') {
+      const cleaned = payload.replace(/^\uFEFF/, '').trim();
+      if (cleaned) {
+        try {
+          payload = JSON.parse(cleaned);
+        } catch (error) {
+          try {
+            payload = JSON.parse(cleaned.replace(/'/g, '"'));
+          } catch {
+            return { payload: raw, wagers: [] as any[] };
+          }
+        }
+      }
+    }
+
+    const wagers: any[] = [];
+    const visited = new Set<any>();
+
+    const isObjectCandidate = (value: any) =>
+      value && typeof value === 'object' && !Array.isArray(value);
+
+    const traverse = (value: any) => {
+      if (!value || visited.has(value)) {
+        return;
+      }
+
+      if (Array.isArray(value)) {
+        visited.add(value);
+        const objectCandidates = value.filter(isObjectCandidate);
+        if (objectCandidates.length > 0) {
+          wagers.push(...objectCandidates);
+        }
+        value.forEach(traverse);
+        return;
+      }
+
+      if (isObjectCandidate(value)) {
+        visited.add(value);
+        Object.values(value).forEach(traverse);
+      }
+    };
+
+    traverse(payload);
+
+    return { payload, wagers };
+  };
+
   // 查账 - 查询账号下注历史记录（最近7天）
   const handleCheckHistory = async (account: CrownAccount) => {
     const key = `check-history-${account.id}`;
@@ -304,38 +353,21 @@ const AccountsPage: React.FC = () => {
       });
 
       if (response.success) {
-        const data = response.data;
+        const { payload, wagers } = normalizeHistoryPayload(response.data);
 
-        // 解析返回的数据
-        let wagers: any[] = [];
         let totalAmount = 0;
 
-        if (data && typeof data === 'object') {
-          // 如果返回的是数组
-          if (Array.isArray(data)) {
-            wagers = data;
-          }
-          // 如果返回的是对象，尝试提取 wagers 字段
-          else if (data.wagers && Array.isArray(data.wagers)) {
-            wagers = data.wagers;
-          }
-          // 如果有其他字段包含下注记录
-          else {
-            // 尝试从对象中提取所有可能的下注记录
-            Object.keys(data).forEach(key => {
-              if (Array.isArray(data[key])) {
-                wagers = [...wagers, ...data[key]];
-              }
-            });
-          }
-
-          // 计算总金额
-          wagers.forEach((wager: any) => {
-            if (wager.gold || wager.amount || wager.bet_amount) {
-              totalAmount += parseFloat(wager.gold || wager.amount || wager.bet_amount || 0);
+        wagers.forEach((wager: any) => {
+          if (wager && typeof wager === 'object') {
+            const amount = wager.gold ?? wager.amount ?? wager.bet_amount ?? wager.stake;
+            const numeric = amount !== undefined
+              ? Number(String(amount).replace(/,/g, ''))
+              : NaN;
+            if (!Number.isNaN(numeric)) {
+              totalAmount += numeric;
             }
-          });
-        }
+          }
+        });
 
         message.success({ content: `成功获取账号 ${account.username} 的下注记录`, key, duration: 2 });
 
@@ -372,7 +404,27 @@ const AccountsPage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <Empty description="最近7天暂无下注记录" />
+                <div>
+                  <Empty description="最近7天暂无下注记录" />
+                  {payload && (
+                    <div style={{
+                      marginTop: '16px',
+                      padding: '12px',
+                      border: '1px solid #f0f0f0',
+                      borderRadius: '4px',
+                      background: '#fafafa',
+                      maxHeight: '260px',
+                      overflow: 'auto'
+                    }}>
+                      <Text type="secondary">原始响应：</Text>
+                      <pre style={{ fontSize: '12px', margin: 0 }}>
+                        {typeof payload === 'string'
+                          ? payload
+                          : JSON.stringify(payload, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           ),
