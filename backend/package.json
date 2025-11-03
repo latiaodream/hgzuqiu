@@ -17,7 +17,10 @@
     "search:match": "ts-node scripts/search-match.ts",
     "list:leagues": "ts-node scripts/list-leagues.ts",
     "diagnose:isports": "ts-node scripts/diagnose-isports.ts",
-    "analyze:unmatched": "ts-node scripts/analyze-unmatched-details.ts"
+    "analyze:unmatched": "ts-node scripts/analyze-unmatched-details.ts",
+    "cron:install": "bash scripts/install-cron.sh",
+    "cron:uninstall": "bash scripts/uninstall-cron.sh",
+    "cron:update": "bash scripts/cron-update-mapping.sh"
   },
   "keywords": [],
   "author": "",
