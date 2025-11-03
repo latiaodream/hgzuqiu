@@ -183,15 +183,26 @@ async function fetchSchedule() {
   yesterday.setUTCDate(yesterday.getUTCDate() - 1);
   const yesterdayStr = yesterday.toISOString().split('T')[0];
 
+  // 添加未来7天的日期，以匹配皇冠的 early 比赛
   const dates = [
-    { value: todayStr, label: '今日' },
     { value: yesterdayStr, label: '昨日' },
+    { value: todayStr, label: '今日' },
   ];
+
+  // 添加未来7天
+  for (let i = 1; i <= 7; i++) {
+    const futureDate = new Date(today);
+    futureDate.setUTCDate(futureDate.getUTCDate() + i);
+    const futureDateStr = futureDate.toISOString().split('T')[0];
+    dates.push({ value: futureDateStr, label: `未来${i}天` });
+  }
 
   const seenMatches: Map<string, any> = new Map();
 
   for (const [index, dateInfo] of dates.entries()) {
     const matches = await fetchScheduleByDate(dateInfo.value, true);
+    console.log(`📊 赛程(${dateInfo.value}): 总数 ${matches.length} (${dateInfo.label})`);
+
     for (const match of matches) {
       const key = String(match.matchId ?? match.match_id ?? match.gid ?? '');
       if (!key) continue;
