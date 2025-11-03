@@ -15,9 +15,9 @@ import {
   Spin,
   Empty,
 } from 'antd';
-import { TrophyOutlined } from '@ant-design/icons';
+import { TrophyOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { Match, CrownAccount, BetCreateRequest, AccountSelectionResponse } from '../../types';
-import { betApi, accountApi } from '../../services/api';
+import { betApi, accountApi, crownApi } from '../../services/api';
 import dayjs from 'dayjs';
 import type { AxiosError } from 'axios';
 
@@ -53,6 +53,9 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   const [betMode, setBetMode] = useState<'优选' | '平均'>('优选');
   const [autoSelection, setAutoSelection] = useState<AccountSelectionResponse | null>(null);
   const [autoLoading, setAutoLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [oddsPreview, setOddsPreview] = useState<{ odds: number | null; closed: boolean; message?: string } | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const accountDict = useMemo(() => {
     const map = new Map<number, CrownAccount>();
@@ -85,6 +88,8 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       setSelectionLabel(defaultSelection?.label || '');
       setAutoSelection(null);
       setAutoLoading(false);
+      setOddsPreview(null);
+      setPreviewError(null);
       // 设置默认值
       form.setFieldsValue({
         bet_type: defaults.bet_type,
@@ -144,6 +149,78 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     return false;
   }, [accountMetaMap, accountDict]);
 
+  const previewOddsRequest = useCallback(async (silent = false) => {
+    if (!match) {
+      setOddsPreview(null);
+      setPreviewError(null);
+      return { success: false };
+    }
+
+    if (!selectedAccounts.length) {
+      setOddsPreview(null);
+      setPreviewError('请选择账号');
+      return { success: false, message: '请选择账号' };
+    }
+
+    const currentValues = form.getFieldsValue();
+    const betTypeValue = currentValues.bet_type ?? defaultSelection?.bet_type ?? '让球';
+    const betOptionValue = currentValues.bet_option ?? defaultSelection?.bet_option ?? '主队';
+    const oddsValue = currentValues.odds ?? defaultSelection?.odds ?? 1;
+
+    const payload = {
+      account_id: selectedAccounts[0],
+      match_id: match.id,
+      crown_match_id: match.crown_gid || match.match_id,
+      bet_type: betTypeValue,
+      bet_option: betOptionValue,
+      odds: oddsValue,
+      bet_amount: currentValues.bet_amount ?? 0,
+      league_name: match.league_name,
+      home_team: match.home_team,
+      away_team: match.away_team,
+    };
+
+    if (!silent) {
+      setPreviewLoading(true);
+    }
+
+    try {
+      const response = await crownApi.previewOdds(payload);
+      if (response.success && response.data) {
+        const previewData = response.data;
+        setOddsPreview({
+          odds: previewData.odds ?? null,
+          closed: !!previewData.closed,
+          message: previewData.message,
+        });
+        if (previewData.closed) {
+          setPreviewError(previewData.message || '盘口已封盘或暂时不可投注');
+        } else {
+          setPreviewError(null);
+        }
+        return { success: true, data: previewData };
+      }
+
+      const msg = response.error || response.message || '获取赔率失败';
+      setPreviewError(msg);
+      setOddsPreview(response.data?.closed ? {
+        odds: response.data.odds ?? null,
+        closed: true,
+        message: msg,
+      } : null);
+      return { success: false, message: msg, data: response.data };
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || error?.message || '获取赔率失败';
+      setPreviewError(msg);
+      setOddsPreview(null);
+      return { success: false, message: msg };
+    } finally {
+      if (!silent) {
+        setPreviewLoading(false);
+      }
+    }
+  }, [match, selectedAccounts, form, defaultSelection]);
+
   const fetchAutoSelection = useCallback(async (limit?: number, silent = false) => {
     if (!match) return;
 
@@ -181,17 +258,20 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       });
       const skippedCount = response.data.eligible_accounts.length - recommended.length;
       if (recommended.length === 0) {
-      setSelectedAccounts([]);
-      form.setFieldValue('account_ids', []);
-      if (!silent) {
-        message.warning('当前无符合条件的在线账号');
+        setSelectedAccounts([]);
+        form.setFieldValue('account_ids', []);
+        if (!silent) {
+          message.warning('当前无符合条件的在线账号');
+        }
+        return;
       }
-      return;
-    }
 
       setSelectedAccounts(recommended);
       form.setFieldValue('account_ids', recommended);
       calculatePayout(recommended.length);
+      setTimeout(() => {
+        previewOddsRequest(true);
+      }, 0);
 
       if (!silent) {
         const baseMsg = `已优选 ${recommended.length} 个在线账号`;
@@ -205,7 +285,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     } finally {
       setAutoLoading(false);
     }
-  }, [form, match, accountDict]);
+  }, [form, match, accountDict, previewOddsRequest]);
 
   useEffect(() => {
     if (!visible || !match) return;
@@ -219,6 +299,9 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     setSelectedAccounts(normalized);
     form.setFieldValue('account_ids', normalized);
     calculatePayout(normalized.length);
+    setTimeout(() => {
+      previewOddsRequest(true);
+    }, 0);
   };
 
   const calculatePayout = (accountCountOverride?: number) => {
@@ -233,6 +316,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
   const handleFormValuesChange = () => {
     calculatePayout();
+    previewOddsRequest(true);
   };
 
   const handleModeSwitch = (mode: '优选' | '平均') => {
@@ -273,13 +357,31 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
       setLoading(true);
 
+      const previewCheck = await previewOddsRequest(true);
+      if (!previewCheck.success) {
+        message.error(previewCheck.message || '获取最新赔率失败，请稍后再试');
+        setLoading(false);
+        return;
+      }
+
+      if (previewCheck.data?.closed) {
+        message.error(previewCheck.data.message || '盘口已封盘或暂时不可投注');
+        setLoading(false);
+        return;
+      }
+
+      const latestOddsValue = previewCheck.data?.odds;
+      const finalOdds = typeof latestOddsValue === 'number' && Number.isFinite(latestOddsValue)
+        ? latestOddsValue
+        : oddsValue;
+
       const requestData: BetCreateRequest = {
         account_ids: selectedAccounts,
         match_id: match.id,
         bet_type: betTypeValue,
         bet_option: betOptionValue,
         bet_amount: values.bet_amount,
-        odds: oddsValue,
+        odds: finalOdds,
         single_limit: values.single_limit,
         interval_seconds: values.interval_seconds,
         quantity: values.quantity,
@@ -423,6 +525,21 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
               {selectionLabel && (
                 <div className="bet-quick-selection">{selectionLabel}</div>
               )}
+
+              <div style={{ marginBottom: 12 }}>
+                <Space size={8} align="center">
+                  <Tag color={oddsPreview?.closed ? 'red' : 'blue'}>
+                    最新赔率：{oddsPreview ? (oddsPreview.odds ?? '-') : '--'}
+                  </Tag>
+                  {previewLoading && <Spin size="small" />}
+                  <Button size="small" icon={<ReloadOutlined />} onClick={() => previewOddsRequest(false)}>
+                    刷新赔率
+                  </Button>
+                </Space>
+                {previewError && (
+                  <div style={{ marginTop: 4, color: '#ff4d4f', fontSize: 12 }}>{previewError}</div>
+                )}
+              </div>
 
               <Row gutter={8} className="bet-quick-row">
                 <Col span={12}>

@@ -417,6 +417,21 @@ export const crownApi = {
   ): Promise<ApiResponse> =>
     apiClient.post(`/crown-automation/matches/sync/${accountId}`, undefined, { params, timeout: 120000 }).then(res => res.data),
 
+  // 预览最新赔率
+  previewOdds: (data: {
+    account_id: number;
+    match_id: number;
+    crown_match_id?: string;
+    bet_type: string;
+    bet_option: string;
+    odds?: number;
+    bet_amount?: number;
+    league_name?: string;
+    home_team?: string;
+    away_team?: string;
+  }): Promise<ApiResponse<{ odds: number | null; closed?: boolean; message?: string; raw?: any }>> =>
+    apiClient.post('/crown-automation/odds/preview', data, { timeout: 15000 }).then(res => res.data),
+
   // 获取账号额度设置
   getAccountSettings: (accountId: number, gtype?: string): Promise<ApiResponse> =>
     apiClient.get(`/crown-automation/account-settings/${accountId}`, { params: { gtype }, timeout: 30000 }).then(res => res.data),

@@ -6271,187 +6271,284 @@ export class CrownAutomationService {
     return { matches: [] };
   }
 
-  // 使用纯 API 方式下注
-  private async placeBetWithApi(accountId: number, betRequest: BetRequest): Promise<CrownBetResult> {
-    try {
-      const uid = this.apiUids.get(accountId);
-      if (!uid) {
-        return {
-          success: false,
-          message: '账号未登录（缺少 UID）',
-        };
-      }
+  private async prepareApiClient(accountId: number): Promise<{ success: boolean; client?: CrownApiClient; message: string }> {
+    const apiLoginTime = this.apiLoginSessions.get(accountId);
+    const uid = this.apiUids.get(accountId);
 
-      // 查询账号配置（包括 Cookie）
-      const accountResult = await query(
-        `SELECT username, device_type, user_agent, proxy_enabled, proxy_type, proxy_host, proxy_port, proxy_username, proxy_password, api_cookies
+    if (!apiLoginTime || !uid) {
+      return {
+        success: false,
+        message: '账号未登录（缺少纯 API 会话）',
+      };
+    }
+
+    const now = Date.now();
+    const apiSessionTtl = 2 * 60 * 60 * 1000; // 2 小时
+    if (now - apiLoginTime >= apiSessionTtl) {
+      return {
+        success: false,
+        message: '账号会话已过期，请重新登录',
+      };
+    }
+
+    const accountResult = await query(
+      `SELECT username, device_type, user_agent, proxy_enabled, proxy_type, proxy_host, proxy_port, proxy_username, proxy_password, api_cookies
          FROM crown_accounts WHERE id = $1`,
-        [accountId]
-      );
+      [accountId]
+    );
 
-      if (accountResult.rows.length === 0) {
-        return {
-          success: false,
-          message: '账号不存在',
-        };
+    if (accountResult.rows.length === 0) {
+      return {
+        success: false,
+        message: '账号不存在',
+      };
+    }
+
+    const row = accountResult.rows[0];
+
+    const apiClient = new CrownApiClient({
+      baseUrl: this.activeBaseUrl,
+      deviceType: row.device_type || 'iPhone 14',
+      userAgent: row.user_agent,
+      proxy: {
+        enabled: row.proxy_enabled || false,
+        type: row.proxy_type,
+        host: row.proxy_host,
+        port: row.proxy_port,
+        username: row.proxy_username,
+        password: row.proxy_password,
+      },
+    });
+
+    apiClient.setUid(uid);
+    if (row.api_cookies) {
+      apiClient.setCookies(row.api_cookies);
+      console.log('🍪 已恢复 Cookie 到 API 客户端');
+    } else {
+      console.warn('⚠️ 数据库中没有保存 Cookie，可能无法获取赔率');
+    }
+
+    return { success: true, client: apiClient, message: '准备完成' };
+  }
+
+  private async lookupLatestOdds(
+    apiClient: CrownApiClient,
+    betRequest: BetRequest
+  ): Promise<{
+    success: boolean;
+    message: string;
+    oddsResult?: any;
+    variant?: { wtype: string; rtype: string; chose_team: string };
+    crownMatchId?: string;
+    reasonCode?: string;
+  }> {
+    const crownMatchId = (betRequest.crown_match_id ?? betRequest.crownMatchId ?? '').toString().trim();
+    if (!crownMatchId) {
+      return {
+        success: false,
+        message: '缺少比赛 ID',
+      };
+    }
+
+    const { wtype, rtype, chose_team } = this.convertBetTypeToApiParams(
+      betRequest.betType,
+      betRequest.betOption,
+      {
+        homeName: betRequest.home_team || betRequest.homeTeam,
+        awayName: betRequest.away_team || betRequest.awayTeam,
       }
+    );
 
-      const row = accountResult.rows[0];
+    const variants = this.buildBetVariants({ wtype, rtype, chose_team });
 
-      // 创建 API 客户端
-      const apiClient = new CrownApiClient({
-        baseUrl: this.activeBaseUrl,
-        deviceType: row.device_type || 'iPhone 14',
-        userAgent: row.user_agent,
-        proxy: {
-          enabled: row.proxy_enabled || false,
-          type: row.proxy_type,
-          host: row.proxy_host,
-          port: row.proxy_port,
-          username: row.proxy_username,
-          password: row.proxy_password,
-        },
-      });
+    let oddsResult: any = null;
+    let selectedVariant: { wtype: string; rtype: string; chose_team: string } | null = null;
+    let lastErrorMessage = '';
+    let lastErrorCode: string | undefined;
 
-      try {
-        // 恢复 UID 和 Cookie（模拟已登录状态）
-        apiClient.setUid(uid);
-        if (row.api_cookies) {
-          apiClient.setCookies(row.api_cookies);
-          console.log('🍪 已恢复 Cookie 到 API 客户端');
-        } else {
-          console.warn('⚠️ 数据库中没有保存 Cookie，下注可能失败');
-        }
+    const maxRetries = 3;
+    const retryDelay = 2000;
 
-        // 获取比赛 ID
-        const crownMatchId = (betRequest.crown_match_id ?? betRequest.crownMatchId ?? '').toString().trim();
-        if (!crownMatchId) {
-          return {
-            success: false,
-            message: '缺少比赛 ID',
-          };
-        }
-
-        // 转换下注类型和选项为 API 参数
-        const { wtype, rtype, chose_team } = this.convertBetTypeToApiParams(
-          betRequest.betType,
-          betRequest.betOption,
-          {
-            homeName: betRequest.home_team || betRequest.homeTeam,
-            awayName: betRequest.away_team || betRequest.awayTeam,
-          }
-        );
-
-        const variants = this.buildBetVariants({ wtype, rtype, chose_team });
-
-        let oddsResult: any = null;
-        let selectedVariant: { wtype: string; rtype: string; chose_team: string } | null = null;
-        let lastErrorMessage = '';
-
-        const maxRetries = 3;
-        const retryDelay = 2000;
-
-        for (const variant of variants) {
-          console.log('🎯 尝试获取赔率组合:', variant);
-          for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            console.log(`🔄 获取赔率 [${variant.wtype}/${variant.rtype}] 尝试 ${attempt}/${maxRetries}`);
-            oddsResult = await apiClient.getLatestOdds({
-              gid: crownMatchId,
-              gtype: 'FT',
-              wtype: variant.wtype,
-              chose_team: variant.chose_team,
-            });
-
-            if (oddsResult.success) {
-              selectedVariant = variant;
-              console.log('✅ 获取赔率成功:', oddsResult);
-              break;
-            }
-
-            lastErrorMessage = oddsResult.message || oddsResult.code || '未知错误';
-
-            if (oddsResult.code === 'MARKET_CLOSED' && attempt < maxRetries) {
-              console.log(`⏳ 盘口暂时封盘，等待 ${retryDelay / 1000} 秒后重试...`);
-              await new Promise((resolve) => setTimeout(resolve, retryDelay));
-              continue;
-            }
-
-            if (attempt === maxRetries) {
-              console.log('⚠️ 该组合获取赔率失败:', oddsResult);
-            }
-          }
-
-          if (selectedVariant) {
-            break;
-          }
-        }
-
-        if (!selectedVariant || !oddsResult?.success) {
-          return {
-            success: false,
-            message: `获取赔率失败: ${lastErrorMessage || '未知错误'}`,
-          };
-        }
-
-        const chosenVariant = selectedVariant;
-
-        console.log('🎯 最终下注参数:', {
-          gid: crownMatchId,
-          wtype: chosenVariant.wtype,
-          rtype: chosenVariant.rtype,
-          chose_team: chosenVariant.chose_team,
-          amount: betRequest.amount,
-          odds: betRequest.odds,
-        });
-
-        // 执行下注（使用最新获取到的赔率）
-        const latestOdds = oddsResult.ioratio || betRequest.odds.toString();
-        console.log('💰 执行下注...');
-        console.log(`   使用赔率: ${latestOdds} (原始赔率: ${betRequest.odds})`);
-
-        const betResult = await apiClient.placeBet({
+    for (const variant of variants) {
+      console.log('🎯 尝试获取赔率组合:', variant);
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        console.log(`🔄 获取赔率 [${variant.wtype}/${variant.rtype}] 尝试 ${attempt}/${maxRetries}`);
+        oddsResult = await apiClient.getLatestOdds({
           gid: crownMatchId,
           gtype: 'FT',
-          wtype: chosenVariant.wtype,
-          rtype: chosenVariant.rtype,
-          chose_team: chosenVariant.chose_team,
-          ioratio: latestOdds,
-          gold: betRequest.amount.toString(),
-          con: oddsResult.con,
-          ratio: oddsResult.ratio,
-          isRB: chosenVariant.wtype.startsWith('R') ? 'Y' : 'N',
+          wtype: variant.wtype,
+          chose_team: variant.chose_team,
         });
 
-        console.log('📥 下注响应:', betResult);
-
-        // 解析下注结果（code=560 表示下注成功）
-        if (betResult.code === '560' || betResult.ticket_id) {
-          return {
-            success: true,
-            message: '下注成功',
-            betId: betResult.ticket_id,
-            actualOdds: parseFloat(betResult.ioratio || latestOdds),
-          };
-        } else {
-          // 如果是赔率变化错误，返回更详细的错误信息
-          let errorMessage = betResult.msg || '下注失败';
-          if (betResult.code === '555' && betResult.errormsg === '1X006') {
-            errorMessage = `赔率已变化 (原: ${betRequest.odds}, 新: ${latestOdds})，请重新下注`;
-          }
-          return {
-            success: false,
-            message: errorMessage,
-          };
+        if (oddsResult.success) {
+          selectedVariant = variant;
+          console.log('✅ 获取赔率成功:', oddsResult);
+          break;
         }
-      } finally {
-        await apiClient.close();
+
+        lastErrorMessage = oddsResult.message || oddsResult.code || '未知错误';
+        lastErrorCode = oddsResult.code || oddsResult.errormsg;
+
+        if (oddsResult.code === 'MARKET_CLOSED' && attempt < maxRetries) {
+          console.log(`⏳ 盘口暂时封盘，等待 ${retryDelay / 1000} 秒后重试...`);
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          continue;
+        }
+
+        if (attempt === maxRetries) {
+          console.log('⚠️ 该组合获取赔率失败:', oddsResult);
+        }
       }
+
+      if (selectedVariant) {
+        break;
+      }
+    }
+
+    if (!selectedVariant || !oddsResult?.success) {
+      const message = (lastErrorCode === '555' || lastErrorMessage === 'MARKET_CLOSED')
+        ? '盘口已封盘或暂时不可投注'
+        : `获取赔率失败: ${lastErrorMessage || '未知错误'}`;
+      return {
+        success: false,
+        message,
+        crownMatchId,
+        reasonCode: lastErrorCode,
+      };
+    }
+
+    return {
+      success: true,
+      message: '获取赔率成功',
+      oddsResult,
+      variant: selectedVariant,
+      crownMatchId,
+    };
+  }
+
+  async fetchLatestOdds(accountId: number, betRequest: BetRequest): Promise<{
+    success: boolean;
+    message: string;
+    closed?: boolean;
+    oddsResult?: any;
+    variant?: { wtype: string; rtype: string; chose_team: string };
+    crownMatchId?: string;
+    reasonCode?: string;
+  }> {
+    const prepared = await this.prepareApiClient(accountId);
+    if (!prepared.success || !prepared.client) {
+      return {
+        success: false,
+        message: prepared.message,
+      };
+    }
+
+    const apiClient = prepared.client;
+    try {
+      const lookup = await this.lookupLatestOdds(apiClient, betRequest);
+      if (!lookup.success) {
+        return {
+          success: false,
+          message: lookup.message,
+          closed: lookup.reasonCode === '555',
+          reasonCode: lookup.reasonCode,
+          crownMatchId: lookup.crownMatchId,
+        };
+      }
+
+      return {
+        success: true,
+        message: lookup.message,
+        oddsResult: lookup.oddsResult,
+        variant: lookup.variant,
+        crownMatchId: lookup.crownMatchId,
+      };
+    } finally {
+      await apiClient.close();
+    }
+  }
+
+  // 使用纯 API 方式下注
+  private async placeBetWithApi(accountId: number, betRequest: BetRequest): Promise<CrownBetResult> {
+    let apiClient: CrownApiClient | null = null;
+    try {
+      const prepared = await this.prepareApiClient(accountId);
+      if (!prepared.success || !prepared.client) {
+        return {
+          success: false,
+          message: prepared.message,
+        };
+      }
+
+      apiClient = prepared.client;
+
+      const lookup = await this.lookupLatestOdds(apiClient, betRequest);
+      if (!lookup.success || !lookup.oddsResult || !lookup.variant || !lookup.crownMatchId) {
+        return {
+          success: false,
+          message: lookup.message,
+        };
+      }
+
+      const oddsResult = lookup.oddsResult;
+      const chosenVariant = lookup.variant;
+      const crownMatchId = lookup.crownMatchId;
+
+      console.log('🎯 最终下注参数:', {
+        gid: crownMatchId,
+        wtype: chosenVariant.wtype,
+        rtype: chosenVariant.rtype,
+        chose_team: chosenVariant.chose_team,
+        amount: betRequest.amount,
+        odds: betRequest.odds,
+      });
+
+      const latestOdds = oddsResult.ioratio || betRequest.odds.toString();
+      console.log('💰 执行下注...');
+      console.log(`   使用赔率: ${latestOdds} (原始赔率: ${betRequest.odds})`);
+
+      const betResult = await apiClient.placeBet({
+        gid: crownMatchId,
+        gtype: 'FT',
+        wtype: chosenVariant.wtype,
+        rtype: chosenVariant.rtype,
+        chose_team: chosenVariant.chose_team,
+        ioratio: latestOdds,
+        gold: betRequest.amount.toString(),
+        con: oddsResult.con,
+        ratio: oddsResult.ratio,
+        isRB: chosenVariant.wtype.startsWith('R') ? 'Y' : 'N',
+      });
+
+      console.log('📥 下注响应:', betResult);
+
+      if (betResult.code === '560' || betResult.ticket_id) {
+        return {
+          success: true,
+          message: '下注成功',
+          betId: betResult.ticket_id,
+          actualOdds: parseFloat(betResult.ioratio || latestOdds),
+        };
+      }
+
+      let errorMessage = betResult.msg || '下注失败';
+      if (betResult.code === '555' && betResult.errormsg === '1X006') {
+        errorMessage = `赔率已变化 (原: ${betRequest.odds}, 新: ${latestOdds})，请重新下注`;
+      }
+      return {
+        success: false,
+        message: errorMessage,
+      };
     } catch (error: any) {
       console.error('❌ 纯 API 下注失败:', error);
       return {
         success: false,
         message: error.message || '下注失败',
       };
+    } finally {
+      if (apiClient) {
+        await apiClient.close();
+      }
     }
   }
 

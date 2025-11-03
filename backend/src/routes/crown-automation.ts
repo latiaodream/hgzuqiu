@@ -1284,6 +1284,81 @@ router.get('/matches-system', async (req: any, res) => {
     }
 });
 
+// 获取最新赔率预览
+router.post('/odds/preview', async (req: any, res) => {
+    try {
+        const body = req.body || {};
+        const accountId = parseInt(body.account_id ?? body.accountId, 10);
+
+        if (!Number.isFinite(accountId)) {
+            return res.status(400).json({ success: false, error: '请选择账号' });
+        }
+
+        const access = buildAccountAccess(req.user, { includeDisabled: true });
+        const accountResult = await query(
+            `SELECT ca.id FROM crown_accounts ca WHERE ca.id = $1${access.clause}`,
+            [accountId, ...access.params]
+        );
+
+        if (accountResult.rows.length === 0) {
+            return res.status(404).json({ success: false, error: '账号不存在或无权限' });
+        }
+
+        const betType = body.bet_type || body.betType || '让球';
+        const betOption = body.bet_option || body.betOption || '';
+        const payload = {
+            betType,
+            betOption,
+            amount: Number(body.bet_amount ?? 0),
+            odds: Number(body.odds ?? 0),
+            match_id: body.match_id,
+            matchId: body.match_id,
+            crown_match_id: body.crown_match_id || body.crownMatchId,
+            crownMatchId: body.crown_match_id || body.crownMatchId,
+            league_name: body.league_name || body.leagueName,
+            leagueName: body.league_name || body.leagueName,
+            home_team: body.home_team || body.homeTeam,
+            homeTeam: body.home_team || body.homeTeam,
+            away_team: body.away_team || body.awayTeam,
+            awayTeam: body.away_team || body.awayTeam,
+        };
+
+        const preview = await getCrownAutomation().fetchLatestOdds(accountId, payload as any);
+        if (!preview.success) {
+            res.json({
+                success: false,
+                error: preview.message,
+                data: {
+                    closed: preview.closed ?? preview.reasonCode === '555',
+                    reasonCode: preview.reasonCode,
+                    crown_match_id: preview.crownMatchId,
+                },
+            });
+            return;
+        }
+
+        const oddsValueRaw = preview.oddsResult?.ioratio ?? preview.oddsResult?.ioratio_now ?? null;
+        const oddsNumeric = oddsValueRaw !== null && oddsValueRaw !== undefined
+            ? parseFloat(String(oddsValueRaw))
+            : null;
+
+        res.json({
+            success: true,
+            data: {
+                odds: Number.isFinite(oddsNumeric) ? oddsNumeric : null,
+                closed: false,
+                market: preview.variant,
+                raw: preview.oddsResult,
+                crown_match_id: preview.crownMatchId,
+                message: preview.message,
+            },
+        });
+    } catch (error) {
+        console.error('获取最新赔率失败:', error);
+        res.status(500).json({ success: false, error: '获取最新赔率失败' });
+    }
+});
+
 // 抓取赛事并落库到 matches 表
 router.post('/matches/sync/:accountId', async (req: any, res) => {
     try {
