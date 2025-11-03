@@ -517,22 +517,9 @@ async function main() {
     for (const isMatch of candidateMatches) {
       if (usedIsportsIds.has(isMatch.matchId)) continue;
 
-      // 早期过滤：时间差超过 12 小时的直接跳过
       const timeDiffMinutes = crownDate
         ? Math.abs(differenceInMinutes(new Date(isMatch.matchTime), crownDate))
         : 720;
-
-      if (timeDiffMinutes > 720) continue;
-
-      // 早期过滤：联赛名快速检查（避免昂贵的相似度计算）
-      const leagueQuickCheck =
-        crownMatch.league.toLowerCase().includes(isMatch.leagueName.toLowerCase().substring(0, 3)) ||
-        isMatch.leagueName.toLowerCase().includes(crownMatch.league.toLowerCase().substring(0, 3)) ||
-        (isMatch.leagueNameCn && crownMatch.league.includes(isMatch.leagueNameCn.substring(0, 2))) ||
-        (isMatch.leagueNameTc && crownMatch.league.includes(isMatch.leagueNameTc.substring(0, 2)));
-
-      // 放宽过滤条件：只有时间差很大且联赛完全不匹配才跳过
-      if (!leagueQuickCheck && timeDiffMinutes > 360) continue;
 
       const timeScore = crownDate ? Math.max(0, 1 - timeDiffMinutes / 240) : 0.2;
 
@@ -542,9 +529,6 @@ async function main() {
         isMatch.leagueNameTc || undefined,
         isMatch.leagueNameCn || undefined
       );
-
-      // 放宽联赛相似度阈值
-      if (leagueScore < 0.2) continue;
 
       const homeScore = calculateSimilarity(
         crownMatch.home,
