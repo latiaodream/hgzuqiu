@@ -501,7 +501,7 @@ async function main() {
 
   for (const ctx of crownContext) {
     processedCount++;
-    if (processedCount % 50 === 0) {
+    if (processedCount % 10 === 0 || processedCount === 1) {
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       const speed = (processedCount / (Date.now() - startTime) * 1000).toFixed(1);
       console.log(`  进度: ${processedCount}/${totalCount} (${(processedCount / totalCount * 100).toFixed(1)}%) - 用时: ${elapsed}s - 速度: ${speed} 场/秒`);
@@ -524,6 +524,16 @@ async function main() {
 
       if (timeDiffMinutes > 720) continue;
 
+      // 早期过滤：联赛名快速检查（避免昂贵的相似度计算）
+      const leagueQuickCheck =
+        crownMatch.league.toLowerCase().includes(isMatch.leagueName.toLowerCase().substring(0, 3)) ||
+        isMatch.leagueName.toLowerCase().includes(crownMatch.league.toLowerCase().substring(0, 3)) ||
+        (isMatch.leagueNameCn && crownMatch.league.includes(isMatch.leagueNameCn.substring(0, 2))) ||
+        (isMatch.leagueNameTc && crownMatch.league.includes(isMatch.leagueNameTc.substring(0, 2)));
+
+      // 如果联赛名完全不相关，跳过（节省 90% 的计算）
+      if (!leagueQuickCheck && timeDiffMinutes > 120) continue;
+
       const timeScore = crownDate ? Math.max(0, 1 - timeDiffMinutes / 240) : 0.2;
 
       const leagueScore = calculateSimilarity(
@@ -532,6 +542,10 @@ async function main() {
         isMatch.leagueNameTc || undefined,
         isMatch.leagueNameCn || undefined
       );
+
+      // 如果联赛相似度太低，直接跳过后续计算
+      if (leagueScore < 0.3) continue;
+
       const homeScore = calculateSimilarity(
         crownMatch.home,
         isMatch.homeName,
