@@ -141,15 +141,16 @@ async function main() {
   console.log('============================================================\n');
 
   const unmatchedCrown = mappingData.unmatched || [];
-  
+
+  // 定义在外层作用域
+  const reasonStats: { [key: string]: number } = {};
+  const unmatchedByLeague: { [key: string]: CrownMatch[] } = {};
+  const potentialMatches: any[] = [];
+
   if (unmatchedCrown.length === 0) {
     console.log('✅ 所有皇冠比赛都已匹配！\n');
   } else {
     console.log(`共有 ${unmatchedCrown.length} 场皇冠比赛未匹配\n`);
-
-    // 分类统计
-    const reasonStats: { [key: string]: number } = {};
-    const unmatchedByLeague: { [key: string]: CrownMatch[] } = {};
 
     unmatchedCrown.forEach((match: CrownMatch) => {
       // 按联赛分类
@@ -173,8 +174,6 @@ async function main() {
     console.log('============================================================');
     console.log('🔎 为未匹配比赛寻找最佳候选');
     console.log('============================================================\n');
-
-    const potentialMatches: any[] = [];
 
     unmatchedCrown.slice(0, 20).forEach((crownMatch: CrownMatch) => {
       let bestMatch: any = null;
