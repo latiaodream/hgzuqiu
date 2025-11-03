@@ -428,6 +428,45 @@ async function main() {
     process.exit(1);
   }
 
+  const bucketMap = new Map<string, ISportsMatchExtended[]>();
+  const pushToBucket = (key: string, match: ISportsMatchExtended) => {
+    if (!bucketMap.has(key)) {
+      bucketMap.set(key, []);
+    }
+    bucketMap.get(key)!.push(match);
+  };
+
+  const dayKey = (time: number) => {
+    const date = new Date(time);
+    date.setUTCHours(0, 0, 0, 0);
+    return date.toISOString();
+  };
+
+  matchesForMapping.forEach((match) => {
+    const key = dayKey(match.matchTime);
+    pushToBucket(key, match);
+  });
+
+  const getCandidateMatches = (crownDate: Date | null): ISportsMatchExtended[] => {
+    if (!crownDate) {
+      return matchesForMapping;
+    }
+    const base = new Date(crownDate);
+    base.setUTCHours(0, 0, 0, 0);
+    const keys = [0, -1, 1].map((offset) => {
+      const date = addDays(base, offset);
+      return date.toISOString();
+    });
+    const candidates: ISportsMatchExtended[] = [];
+    for (const key of keys) {
+      const list = bucketMap.get(key);
+      if (list) {
+        candidates.push(...list);
+      }
+    }
+    return candidates.length ? candidates : matchesForMapping;
+  };
+
   // 正向匹配：从皇冠赛事出发，在 iSports 中查找最佳匹配
   // 这样只需要遍历 601 场皇冠赛事，而不是 3214 场 iSports 赛事
   console.log('🔄 开始匹配（从皇冠 → iSports）...');
@@ -449,7 +488,9 @@ async function main() {
 
     let best: { isMatch: ISportsMatchExtended; score: number; timeDiff: number } | null = null;
 
-    for (const isMatch of matchesForMapping) {
+    const candidateMatches = getCandidateMatches(crownDate);
+
+    for (const isMatch of candidateMatches) {
       if (usedIsportsIds.has(isMatch.matchId)) continue;
 
       // 早期过滤：时间差超过 12 小时的直接跳过

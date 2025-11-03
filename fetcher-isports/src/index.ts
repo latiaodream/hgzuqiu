@@ -744,6 +744,9 @@ function generateOutput() {
     .filter(({ matchIdKey }) => matchIdKey)
     .map(({ match, matchIdKey }) => {
       const mapping = crownMatchDetails.get(matchIdKey);
+      if (!mapping) {
+        return null;
+      }
       const isportsInfo = mapping?.isports;
       if (isportsInfo) {
         const leagueName = preferName(isportsInfo.league_cn, isportsInfo.league_tc, isportsInfo.league, match.leagueName, match.league);
