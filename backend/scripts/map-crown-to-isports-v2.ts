@@ -4,6 +4,9 @@ import path from 'path';
 import axios from 'axios';
 import { parseISO, addDays, differenceInMinutes } from 'date-fns';
 import { pinyin } from 'pinyin-pro';
+// @ts-ignore - opencc-js 没有类型定义
+import { Converter } from 'opencc-js';
+import { getLanguageService } from '../src/services/isports-language';
 
 interface CrownMatchFile {
   generatedAt: string;
@@ -33,6 +36,15 @@ interface ISportsMatch {
   raw?: any;
 }
 
+interface ISportsMatchExtended extends ISportsMatch {
+  leagueNameTc?: string | null;
+  leagueNameCn?: string | null;
+  homeNameTc?: string | null;
+  homeNameCn?: string | null;
+  awayNameTc?: string | null;
+  awayNameCn?: string | null;
+}
+
 interface MappingEntry {
   isports_match_id: string;
   crown_gid: string;
@@ -47,8 +59,14 @@ interface MappingEntry {
   };
   isports: {
     league: string;
+    league_tc?: string;
+    league_cn?: string;
     home: string;
+    home_tc?: string;
+    home_cn?: string;
     away: string;
+    away_tc?: string;
+    away_cn?: string;
     match_time: string;
   };
 }
@@ -207,9 +225,23 @@ function levenshteinSimilarity(a: string, b: string): number {
 /**
  * 综合相似度计算
  */
-function calculateSimilarity(name1: string, name2: string): number {
+function calculateSimilarity(name1: string, ...otherNames: Array<string | null | undefined>): number {
   const variants1 = getTeamVariants(name1);
-  const variants2 = getTeamVariants(name2);
+  const variants2Set = new Set<string>();
+
+  for (const name of otherNames) {
+    if (!name) continue;
+    const normalized = name.trim();
+    if (!normalized) continue;
+    for (const variant of getTeamVariants(normalized)) {
+      variants2Set.add(variant);
+    }
+  }
+
+  const variants2 = Array.from(variants2Set);
+  if (variants2.length === 0) {
+    return 0;
+  }
   
   let maxScore = 0;
   
@@ -335,13 +367,16 @@ async function main() {
 
   // 获取 iSports 赛事（昨天、今天、明天）
   const today = new Date();
-  const yesterday = addDays(today, -1);
-  const tomorrow = addDays(today, 1);
-  const datesToFetch = [
-    yesterday.toISOString().split('T')[0],
-    today.toISOString().split('T')[0],
-    tomorrow.toISOString().split('T')[0],
-  ];
+  const pastDays = Number(process.env.CROWN_MAP_FETCH_PAST_DAYS || '1');
+  const futureDays = Number(process.env.CROWN_MAP_FETCH_FUTURE_DAYS || '5');
+  const datesToFetch: string[] = [];
+
+  for (let offset = -pastDays; offset <= futureDays; offset++) {
+    const date = addDays(today, offset).toISOString().split('T')[0];
+    if (!datesToFetch.includes(date)) {
+      datesToFetch.push(date);
+    }
+  }
 
   console.log('📥 获取 iSports 赛事...');
   const isportsMatches: ISportsMatch[] = [];
@@ -360,7 +395,35 @@ async function main() {
   console.log(`✅ 总共获取 ${isportsMatches.length} 场 iSports 赛事`);
   console.log('');
 
-  if (!isportsMatches.length) {
+  const cacheDir = path.resolve(process.cwd(), '../fetcher-isports/data');
+  const languageService = getLanguageService(apiKey, cacheDir);
+  await languageService.ensureCache();
+  const converter = Converter({ from: 'tw', to: 'cn' });
+
+  const matchesForMapping: ISportsMatchExtended[] = isportsMatches.map((match) => {
+    const leagueNameTc = match.leagueId ? languageService.getLeagueName(match.leagueId) : null;
+    const leagueNameCn = leagueNameTc ? converter(leagueNameTc) : null;
+    const homeNameTc = match.homeId ? languageService.getTeamName(match.homeId) : null;
+    const homeNameCn = match.homeId
+      ? languageService.getTeamNameSimplified(match.homeId) || (homeNameTc ? converter(homeNameTc) : null)
+      : null;
+    const awayNameTc = match.awayId ? languageService.getTeamName(match.awayId) : null;
+    const awayNameCn = match.awayId
+      ? languageService.getTeamNameSimplified(match.awayId) || (awayNameTc ? converter(awayNameTc) : null)
+      : null;
+
+    return {
+      ...match,
+      leagueNameTc,
+      leagueNameCn,
+      homeNameTc,
+      homeNameCn,
+      awayNameTc,
+      awayNameCn,
+    };
+  });
+
+  if (!matchesForMapping.length) {
     console.error('❌ 未获取到任何 iSports 赛事，无法建立映射');
     process.exit(1);
   }
@@ -384,9 +447,9 @@ async function main() {
     const crownMatch = ctx.crown;
     const crownDate = ctx.crownDate;
 
-    let best: { isMatch: ISportsMatch; score: number; timeDiff: number } | null = null;
+    let best: { isMatch: ISportsMatchExtended; score: number; timeDiff: number } | null = null;
 
-    for (const isMatch of isportsMatches) {
+    for (const isMatch of matchesForMapping) {
       if (usedIsportsIds.has(isMatch.matchId)) continue;
 
       // 早期过滤：时间差超过 12 小时的直接跳过
@@ -398,9 +461,24 @@ async function main() {
 
       const timeScore = crownDate ? Math.max(0, 1 - timeDiffMinutes / 240) : 0.2;
 
-      const leagueScore = calculateSimilarity(crownMatch.league, isMatch.leagueName);
-      const homeScore = calculateSimilarity(crownMatch.home, isMatch.homeName);
-      const awayScore = calculateSimilarity(crownMatch.away, isMatch.awayName);
+      const leagueScore = calculateSimilarity(
+        crownMatch.league,
+        isMatch.leagueName,
+        isMatch.leagueNameTc || undefined,
+        isMatch.leagueNameCn || undefined
+      );
+      const homeScore = calculateSimilarity(
+        crownMatch.home,
+        isMatch.homeName,
+        isMatch.homeNameTc || undefined,
+        isMatch.homeNameCn || undefined
+      );
+      const awayScore = calculateSimilarity(
+        crownMatch.away,
+        isMatch.awayName,
+        isMatch.awayNameTc || undefined,
+        isMatch.awayNameCn || undefined
+      );
 
       const combined =
         timeScore * 0.15 +
@@ -429,8 +507,14 @@ async function main() {
         },
         isports: {
           league: best.isMatch.leagueName,
+          league_tc: best.isMatch.leagueNameTc || undefined,
+          league_cn: best.isMatch.leagueNameCn || undefined,
           home: best.isMatch.homeName,
+          home_tc: best.isMatch.homeNameTc || undefined,
+          home_cn: best.isMatch.homeNameCn || undefined,
           away: best.isMatch.awayName,
+          away_tc: best.isMatch.awayNameTc || undefined,
+          away_cn: best.isMatch.awayNameCn || undefined,
           match_time: new Date(best.isMatch.matchTime).toISOString(),
         },
       });
@@ -477,5 +561,3 @@ main().catch((error) => {
   console.error('❌ 构建映射失败:', error);
   process.exit(1);
 });
-
-
