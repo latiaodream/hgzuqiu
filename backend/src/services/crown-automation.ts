@@ -6473,8 +6473,18 @@ export class CrownAutomationService {
     const homeNameNormalized = normalize(context?.homeName);
     const awayNameNormalized = normalize(context?.awayName);
 
-    const containsHomeKeyword = optionNormalized.includes('主') || optionNormalized.includes('home') || optionNormalized.includes('h');
-    const containsAwayKeyword = optionNormalized.includes('客') || optionNormalized.includes('away') || optionNormalized.includes('c');
+    const containsHomeKeyword =
+      optionNormalized.includes('主') ||
+      optionNormalized.includes('主队') ||
+      optionNormalized.includes('主場') ||
+      optionNormalized.includes('主场') ||
+      optionNormalized.includes('home');
+    const containsAwayKeyword =
+      optionNormalized.includes('客') ||
+      optionNormalized.includes('客队') ||
+      optionNormalized.includes('客場') ||
+      optionNormalized.includes('客场') ||
+      optionNormalized.includes('away');
     const optionContainsHome = homeNameNormalized ? optionNormalized.includes(homeNameNormalized) : false;
     const optionContainsAway = awayNameNormalized ? optionNormalized.includes(awayNameNormalized) : false;
 
