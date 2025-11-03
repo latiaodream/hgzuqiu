@@ -45,10 +45,9 @@ const MAX_LIVE_FETCH_BATCH = 20;
 const MANUAL_NAME_REPLACEMENTS: Record<string, string> = {
   'colombia copa cup': '哥伦比亚杯',
   '☆ colombia copa cup': '☆ 哥伦比亚杯',
-  'envigado': '恩维加多',
-  'independiente medellin': '独立麦德林',
-  'independiente medellín': '独立麦德林',
-  '曼特宁独立': '独立麦德林',
+  'envigado': '依维加杜',
+  'independiente medellin': '曼特宁独立',
+  'independiente medellín': '曼特宁独立',
 };
 
 const normalizeNameKey = (value: string): string =>

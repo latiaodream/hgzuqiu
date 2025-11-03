@@ -8,6 +8,46 @@ import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
+const NAME_REPLACEMENTS: Record<string, string> = {
+  'colombia copa cup': '哥伦比亚杯',
+  'envigado': '依维加杜',
+  'independiente medellin': '曼特宁独立',
+  'independiente medellín': '曼特宁独立',
+};
+
+const normalizeNameKey = (value: string): string =>
+  value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[·•]/g, ' ')
+    .replace(/[。.,、]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+const manualName = (value: string | null | undefined, fallback: string): string => {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return fallback;
+  const mapped = NAME_REPLACEMENTS[normalizeNameKey(trimmed)];
+  return (mapped ?? trimmed) || fallback;
+};
+
+const buildLiveClock = (period?: string | null, clock?: string | null): string => {
+  const p = (period ?? '').trim();
+  const c = (clock ?? '').trim();
+  if (c.includes('^')) return c;
+  if (p.includes('^')) {
+    if (!c) return p;
+    const normalizedClock = c.startsWith('^') ? c.slice(1) : c;
+    return `${p}${normalizedClock.startsWith('^') ? '' : '^'}${normalizedClock}`;
+  }
+  if (p && c) {
+    const normalizedClock = c.startsWith('^') ? c.slice(1) : c;
+    return `${p}^${normalizedClock}`;
+  }
+  return c || p || '';
+};
+
 const MatchesPage: React.FC = () => {
   const [showtype, setShowtype] = useState<'live' | 'today' | 'early'>('live');
   const [gtype, setGtype] = useState<'ft' | 'bk'>('ft');
@@ -564,9 +604,9 @@ const MatchesPage: React.FC = () => {
             <div className="compact-matches-table">
               {/* 赛事列表 */}
               {filtered.map((m: any, idx: number) => {
-                const leagueLabel = m.league || m.league_name || '未识别联赛';
-                const homeLabel = m.home || m.home_team || '-';
-                const awayLabel = m.away || m.away_team || '-';
+                const leagueLabel = manualName(m.league ?? m.league_name, '未识别联赛');
+                const homeLabel = manualName(m.home ?? m.home_team, '-');
+                const awayLabel = manualName(m.away ?? m.away_team, '-');
                 const period = m.period || m.match_period || '';
                 const clock = m.clock || '';
                 const scoreLabel = m.score || m.current_score || '';
@@ -580,15 +620,14 @@ const MatchesPage: React.FC = () => {
                   }
                 }
 
+                const liveClock = buildLiveClock(period, clock);
                 const scoreDisplay = scoreLabel || '0-0';
                 const { home: homeScore, away: awayScore } = getScoreParts(scoreDisplay);
                 const fallbackScore = homeScore === '-' && awayScore === '-' ? '-' : `${homeScore}-${awayScore}`;
                 const scoreMain = scoreLabel ? String(scoreLabel).replace(/\s+/g, '') : fallbackScore;
-                const periodClock = [period, clock].filter(Boolean).join(' ');
-                const matchExtra = periodClock && periodClock !== timeLabel ? periodClock : '';
-                if (!timeLabel) {
-                  timeLabel = matchExtra || '-';
-                }
+                const scoreSub = liveClock || timeLabel;
+                const displaySub = scoreSub || '-';
+                const leagueDisplay = scoreMain && scoreMain !== '-' ? `${leagueLabel}(${scoreMain})` : leagueLabel;
                 const isEvenRow = idx % 2 === 0;
 
                 return (
@@ -598,13 +637,13 @@ const MatchesPage: React.FC = () => {
                   >
                     <div className="match-header-box">
                       <div className="match-league">
-                        ☆ {leagueLabel}
+                        ☆ {leagueDisplay}
                       </div>
                       <div className="match-score-box">
                         <span className="match-team home">{homeLabel}</span>
                         <div className="match-score-center">
                           <span className="score-main">{scoreMain}</span>
-                          <span className="score-sub">{matchExtra || timeLabel}</span>
+                          <span className="score-sub">{displaySub}</span>
                         </div>
                         <span className="match-team away">{awayLabel}</span>
                       </div>
