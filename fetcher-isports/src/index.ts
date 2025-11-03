@@ -33,6 +33,7 @@ if (!fs.existsSync(DATA_DIR)) {
 let matchesCache: any[] = [];
 let oddsCache: Map<string, any> = new Map();
 let crownMatchMap: Map<string, string> = new Map();
+let crownMatchDetails: Map<string, any> = new Map();
 const missingOddsAttempts: Map<string, number> = new Map();
 const MISSING_ODDS_RETRY_INTERVAL = 15000;
 const MAX_LIVE_FETCH_BATCH = 20;
@@ -47,13 +48,19 @@ function loadCrownMatchMap() {
     const raw = fs.readFileSync(CROWN_MAP_PATH, 'utf-8');
     const parsed = JSON.parse(raw);
     const entries = parsed?.matches || [];
-    crownMatchMap = new Map(
-      entries.map((entry: any) => [String(entry.isports_match_id), String(entry.crown_gid)])
-    );
+    crownMatchMap = new Map();
+    crownMatchDetails = new Map();
+    entries.forEach((entry: any) => {
+      const matchId = String(entry.isports_match_id);
+      const crownGid = String(entry.crown_gid);
+      crownMatchMap.set(matchId, crownGid);
+      crownMatchDetails.set(matchId, entry);
+    });
     console.log(`ℹ️  已加载 ${crownMatchMap.size} 条皇冠映射`);
   } catch (error: any) {
     console.error('⚠️  读取 crown-match-map.json 失败:', error.message);
     crownMatchMap = new Map();
+    crownMatchDetails = new Map();
   }
 }
 
@@ -289,6 +296,16 @@ const hasOddsData = (entry: any) => {
   return ['handicap', 'europeOdds', 'overUnder', 'handicapHalf', 'overUnderHalf'].some(
     (key) => Array.isArray(entry[key]) && entry[key].length > 0
   );
+};
+const preferName = (...values: Array<string | null | undefined>) => {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+  return undefined;
 };
 
 function parseOdds(data: string[], type: string) {
@@ -726,6 +743,30 @@ function generateOutput() {
     })
     .filter(({ matchIdKey }) => matchIdKey)
     .map(({ match, matchIdKey }) => {
+      const mapping = crownMatchDetails.get(matchIdKey);
+      const isportsInfo = mapping?.isports;
+      if (isportsInfo) {
+        const leagueName = preferName(isportsInfo.league_cn, isportsInfo.league_tc, isportsInfo.league, match.leagueName, match.league);
+        const homeName = preferName(isportsInfo.home_cn, isportsInfo.home_tc, isportsInfo.home, match.homeName, match.home);
+        const awayName = preferName(isportsInfo.away_cn, isportsInfo.away_tc, isportsInfo.away, match.awayName, match.away);
+
+        if (leagueName) {
+          match.leagueName = leagueName;
+          match.leagueShortName = leagueName;
+          match.league = leagueName;
+        }
+        if (homeName) {
+          match.homeName = homeName;
+          match.home = homeName;
+          match.team_h = homeName;
+        }
+        if (awayName) {
+          match.awayName = awayName;
+          match.away = awayName;
+          match.team_c = awayName;
+        }
+      }
+
       const odds = oddsCache.get(matchIdKey);
       const status = normalizeStatus(match.status ?? match.state);
       if (!odds && status !== 1) {
