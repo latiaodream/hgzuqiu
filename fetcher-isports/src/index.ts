@@ -21,7 +21,8 @@ const API_KEY = process.env.ISPORTS_API_KEY || 'GvpziueL9ouzIJNj';
 const BASE_URL = 'http://api.isportsapi.com/sport/football';
 const DATA_DIR = process.env.DATA_DIR || './data';
 const CROWN_MAP_PATH = path.join(DATA_DIR, 'crown-match-map.json');
-const CROWN_GIDS_PATH = path.join(DATA_DIR, 'crown-gids.json');
+// crown-gids.json 在 backend 目录，需要向上一级
+const CROWN_GIDS_PATH = process.env.CROWN_GIDS_PATH || path.join(__dirname, '../../backend/crown-gids.json');
 // 设置为 60 秒（60000ms），符合 /schedule/basic 接口的 "每 60 秒最多 1 次" 限制
 const FULL_FETCH_INTERVAL = parseInt(process.env.FULL_FETCH_INTERVAL || '60000');
 const CHANGES_INTERVAL = parseInt(process.env.CHANGES_INTERVAL || '2000');
