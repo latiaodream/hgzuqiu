@@ -536,17 +536,38 @@ const formatScore = (homeScore?: number, awayScore?: number) => {
   return `${home}-${away}`;
 };
 
-const derivePeriod = (status: number) => {
-  if (status === 1) return '滚球';
-  if (status === 0) return '未开赛';
-  if (status === -1) return '已结束';
-  return '';
+const derivePeriod = (status: number, match: any) => {
+  if (status !== 1) {
+    if (status === 0) return '未开赛';
+    if (status === -1 || status === 3) return '已结束';
+    return '';
+  }
+
+  // 进行中的比赛，尝试获取半场信息
+  const minute = match?.extraExplain?.minute ?? match?.minute ?? 0;
+  if (minute <= 45) return '1H';
+  if (minute > 45 && minute <= 90) return '2H';
+  if (minute > 90) return 'ET'; // 加时赛
+  return '滚球';
 };
 
 const deriveClock = (match: any) => {
   const minute = match?.extraExplain?.minute ?? match?.minute;
+  const second = match?.extraExplain?.second ?? match?.second ?? 0;
+
   if (typeof minute === 'number' && minute > 0) {
-    return `${minute}'`;
+    // 计算半场内的分钟数
+    let displayMinute = minute;
+    if (minute > 45 && minute <= 90) {
+      displayMinute = minute - 45; // 下半场从0开始
+    } else if (minute > 90) {
+      displayMinute = minute - 90; // 加时赛
+    }
+
+    if (second > 0) {
+      return `${displayMinute}:${String(second).padStart(2, '0')}`;
+    }
+    return `${displayMinute}:00`;
   }
   return '';
 };
@@ -574,7 +595,7 @@ function convertToCrownFormat(match: any, matchOdds: any, crownGid?: string) {
 
   const timerIso = new Date(match.matchTime * 1000).toISOString();
   const score = formatScore(match.homeScore, match.awayScore);
-  const period = derivePeriod(match.status);
+  const period = derivePeriod(match.status, match);
   const clock = deriveClock(match);
 
   const mapLines = (items: any[] | undefined, valueKeys: { line: string; home?: string; away?: string; over?: string; under?: string }) => {

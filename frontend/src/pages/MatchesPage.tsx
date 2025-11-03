@@ -617,11 +617,13 @@ const MatchesPage: React.FC = () => {
                 let timeLabel = m.time || '';
                 if (!timeLabel && m.match_time) {
                   try {
+                    // 转换为中国时区（UTC+8）
                     const date = new Date(m.match_time);
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    const hours = String(date.getHours()).padStart(2, '0');
-                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    const chinaTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+                    const month = String(chinaTime.getUTCMonth() + 1).padStart(2, '0');
+                    const day = String(chinaTime.getUTCDate()).padStart(2, '0');
+                    const hours = String(chinaTime.getUTCHours()).padStart(2, '0');
+                    const minutes = String(chinaTime.getUTCMinutes()).padStart(2, '0');
                     timeLabel = `${month}-${day} ${hours}:${minutes}`;
                   } catch {
                     timeLabel = m.match_time;
