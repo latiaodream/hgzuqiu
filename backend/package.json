@@ -16,7 +16,8 @@
     "analyze:matching": "ts-node scripts/analyze-match-mapping.ts",
     "search:match": "ts-node scripts/search-match.ts",
     "list:leagues": "ts-node scripts/list-leagues.ts",
-    "diagnose:isports": "ts-node scripts/diagnose-isports.ts"
+    "diagnose:isports": "ts-node scripts/diagnose-isports.ts",
+    "analyze:unmatched": "ts-node scripts/analyze-unmatched-details.ts"
   },
   "keywords": [],
   "author": "",
