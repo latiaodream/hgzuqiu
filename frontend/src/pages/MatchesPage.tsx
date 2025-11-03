@@ -574,13 +574,32 @@ const MatchesPage: React.FC = () => {
                 }
                 const isEvenRow = idx % 2 === 0;
 
+                // 数据来源标记
+                const source = m.source || 'isports';
+                const sourceLabel = source === 'crown' ? '皇冠' : source === 'isports' ? 'iSports' : '混合';
+                const sourceColor = source === 'crown' ? '#ff9800' : source === 'isports' ? '#4caf50' : '#2196f3';
+
                 return (
                   <div
                     key={`${m.gid || m.match_id || idx}-${idx}`}
                     className={`compact-match-card ${isEvenRow ? 'even' : 'odd'} ${isMobile ? 'mobile' : ''}`}
                   >
                     <div className="match-header-box">
-                      <div className="match-league">☆ {leagueLabel}</div>
+                      <div className="match-league">
+                        ☆ {leagueLabel}
+                        <span
+                          style={{
+                            marginLeft: '8px',
+                            fontSize: '11px',
+                            color: sourceColor,
+                            fontWeight: 'bold',
+                            opacity: 0.8
+                          }}
+                          title={source === 'crown' ? '数据来源：皇冠（无iSports匹配）' : source === 'isports' ? '数据来源：iSports（含中文翻译）' : '数据来源：混合'}
+                        >
+                          [{sourceLabel}]
+                        </span>
+                      </div>
                       <div className="match-score-box">
                         <span className="match-team home">{homeLabel}</span>
                         <div className="match-score-center">

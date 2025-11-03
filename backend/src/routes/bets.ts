@@ -130,10 +130,12 @@ router.get('/', async (req: any, res) => {
 
         let sql = `
             SELECT b.*, m.league_name, m.home_team, m.away_team, m.current_score,
-                   ca.username as account_username, ca.display_name as account_display_name
+                   ca.username AS account_username, ca.display_name AS account_display_name,
+                   u.username AS user_username, u.display_name AS user_display_name
             FROM bets b
             JOIN matches m ON b.match_id = m.id
             JOIN crown_accounts ca ON b.account_id = ca.id
+            JOIN users u ON b.user_id = u.id
             WHERE 1=1
         `;
         const params: any[] = [];

@@ -11,7 +11,8 @@
     "migrate": "node migrate.js",
     "ensure-admin": "node ensure-admin.js",
     "crown:fetch-gids": "ts-node scripts/fetch-crown-gids.ts",
-    "crown:build-map": "ts-node scripts/map-crown-to-isports-v2.ts"
+    "crown:build-map": "ts-node scripts/map-crown-to-isports-v2.ts",
+    "test:data-source": "ts-node scripts/test-data-source-integration.ts"
   },
   "keywords": [],
   "author": "",

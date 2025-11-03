@@ -21,6 +21,7 @@ const API_KEY = process.env.ISPORTS_API_KEY || 'GvpziueL9ouzIJNj';
 const BASE_URL = 'http://api.isportsapi.com/sport/football';
 const DATA_DIR = process.env.DATA_DIR || './data';
 const CROWN_MAP_PATH = path.join(DATA_DIR, 'crown-match-map.json');
+const CROWN_GIDS_PATH = path.join(DATA_DIR, 'crown-gids.json');
 // 设置为 60 秒（60000ms），符合 /schedule/basic 接口的 "每 60 秒最多 1 次" 限制
 const FULL_FETCH_INTERVAL = parseInt(process.env.FULL_FETCH_INTERVAL || '60000');
 const CHANGES_INTERVAL = parseInt(process.env.CHANGES_INTERVAL || '2000');
@@ -34,6 +35,8 @@ let matchesCache: any[] = [];
 let oddsCache: Map<string, any> = new Map();
 let crownMatchMap: Map<string, string> = new Map();
 let crownMatchDetails: Map<string, any> = new Map();
+let crownMatches: any[] = [];
+let crownMatchesByGid: Map<string, any> = new Map();
 const missingOddsAttempts: Map<string, number> = new Map();
 const MISSING_ODDS_RETRY_INTERVAL = 15000;
 const MAX_LIVE_FETCH_BATCH = 20;
@@ -65,6 +68,29 @@ function loadCrownMatchMap() {
 }
 
 loadCrownMatchMap();
+
+function loadCrownMatches() {
+  try {
+    if (!fs.existsSync(CROWN_GIDS_PATH)) {
+      console.log('ℹ️  未找到 crown-gids.json，无法使用皇冠赛事兜底数据');
+      crownMatches = [];
+      crownMatchesByGid = new Map();
+      return;
+    }
+    const raw = fs.readFileSync(CROWN_GIDS_PATH, 'utf-8');
+    const parsed = JSON.parse(raw);
+    const matches = parsed?.matches || [];
+    crownMatches = matches;
+    crownMatchesByGid = new Map(matches.map((match: any) => [String(match.crown_gid || match.GID || match.raw?.GID || ''), match]));
+    console.log(`ℹ️  已加载 ${crownMatchesByGid.size} 条皇冠赛事基准数据`);
+  } catch (error: any) {
+    console.error('⚠️  读取 crown-gids.json 失败:', error.message);
+    crownMatches = [];
+    crownMatchesByGid = new Map();
+  }
+}
+
+loadCrownMatches();
 
 // API 调用统计
 let apiCallStats = {
@@ -586,6 +612,7 @@ function convertToCrownFormat(match: any, matchOdds: any, crownGid?: string) {
     clock,
     state: match.status,
     crown_gid: crownGid,
+    source: 'isports', // 默认标记为 isports，会在 generateOutput 中根据情况修改
 
     RATIO_RE: mainHandicap?.line || '0',
     IOR_REH: mainHandicap?.home || '0',
@@ -736,7 +763,8 @@ function updateOddsCache(odds: any) {
 }
 
 function generateOutput() {
-  const convertedMatches = matchesCache
+  // 第一步：处理 iSports 匹配的比赛
+  const isportsMatches = matchesCache
     .map((match) => {
       const matchIdKey = String(match.matchId ?? match.match_id ?? match.gid ?? '');
       return { match, matchIdKey };
@@ -786,10 +814,136 @@ function generateOutput() {
         },
         crownMatchMap.get(matchIdKey)
       );
+      if (converted) {
+        // 标记为 iSports 数据源（有中文翻译）
+        converted.source = 'isports';
+      }
       return converted;
     })
     .filter((match): match is any => match !== null);
-  saveData(convertedMatches);
+
+  // 第二步：处理皇冠独有的比赛（未匹配到 iSports）
+  const usedCrownGids = new Set<string>();
+  isportsMatches.forEach(match => {
+    if (match.crown_gid) {
+      usedCrownGids.add(String(match.crown_gid));
+    }
+  });
+
+  const crownOnlyMatches: any[] = [];
+  crownMatches.forEach((crownMatch) => {
+    const gid = String(crownMatch.crown_gid || '');
+    if (!gid || usedCrownGids.has(gid)) {
+      return; // 已经被 iSports 匹配了
+    }
+
+    // 构造基本的比赛数据（使用皇冠原始信息）
+    const converted = convertCrownOnlyMatch(crownMatch);
+    if (converted) {
+      crownOnlyMatches.push(converted);
+    }
+  });
+
+  // 合并两部分数据
+  const allMatches = [...isportsMatches, ...crownOnlyMatches];
+
+  console.log(`📊 数据统计: iSports ${isportsMatches.length} 场, 皇冠独有 ${crownOnlyMatches.length} 场, 总计 ${allMatches.length} 场`);
+
+  saveData(allMatches);
+}
+
+// 新增：转换皇冠独有比赛数据
+function convertCrownOnlyMatch(crownMatch: any): any | null {
+  try {
+    // 解析皇冠的时间格式 "11-05 08:10p"
+    const datetime = crownMatch.datetime || '';
+    let matchTime: Date | null = null;
+
+    if (datetime) {
+      const match = datetime.match(/(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})([ap])/i);
+      if (match) {
+        const [, month, day, hour, minute, ampm] = match;
+        const currentYear = new Date().getFullYear();
+        let hours = parseInt(hour);
+        if (ampm.toLowerCase() === 'p' && hours !== 12) {
+          hours += 12;
+        } else if (ampm.toLowerCase() === 'a' && hours === 12) {
+          hours = 0;
+        }
+        matchTime = new Date(currentYear, parseInt(month) - 1, parseInt(day), hours, parseInt(minute));
+      }
+    }
+
+    const timerIso = matchTime ? matchTime.toISOString() : new Date().toISOString();
+
+    // 判断比赛状态
+    let status = 0; // 默认未开赛
+    const showtype = crownMatch.source_showtype || '';
+    if (showtype === 'live') {
+      status = 1; // 滚球
+    } else if (matchTime && matchTime < new Date()) {
+      status = -1; // 已结束
+    }
+
+    const result: any = {
+      gid: crownMatch.crown_gid,
+      crown_gid: crownMatch.crown_gid,
+      league: crownMatch.league || '未知联赛',
+      league_short_name: crownMatch.league || '未知联赛',
+      team_h: crownMatch.home || '主队',
+      team_c: crownMatch.away || '客队',
+      home: crownMatch.home || '主队',
+      away: crownMatch.away || '客队',
+      timer: timerIso,
+      time: timerIso,
+      match_time: timerIso,
+      score: '0-0',
+      current_score: '0-0',
+      homeScore: 0,
+      awayScore: 0,
+      homeHalfScore: 0,
+      awayHalfScore: 0,
+      period: status === 1 ? '滚球' : status === 0 ? '未开赛' : '已结束',
+      clock: '',
+      state: status,
+      source: 'crown', // 标记为皇冠独有数据
+
+      // 空赔率（需要从皇冠实时获取）
+      RATIO_RE: '0',
+      IOR_REH: '0',
+      IOR_REC: '0',
+      IOR_RMH: '0',
+      IOR_RMN: '0',
+      IOR_RMC: '0',
+      RATIO_ROUO: '0',
+      IOR_ROUC: '0',
+      IOR_ROUH: '0',
+      RATIO_HRE: '0',
+      IOR_HREH: '0',
+      IOR_HREC: '0',
+      RATIO_HROUO: '0',
+      IOR_HROUC: '0',
+      IOR_HROUH: '0',
+      more: 0,
+      strong: 'C',
+
+      markets: {
+        full: {
+          handicapLines: [],
+          overUnderLines: [],
+        },
+        half: {
+          handicapLines: [],
+          overUnderLines: [],
+        }
+      },
+    };
+
+    return result;
+  } catch (error: any) {
+    console.error('❌ 转换皇冠独有比赛失败:', error.message);
+    return null;
+  }
 }
 
 async function ensureLiveOdds() {
