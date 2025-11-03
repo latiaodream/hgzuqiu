@@ -41,6 +41,8 @@ interface BetGroup {
   time: string;
   bets: Bet[];
   status: 'completed' | 'pending';
+  user_username?: string;
+  user_display_name?: string;
 }
 
 // 子注单界面
@@ -267,6 +269,8 @@ const BettingPage: React.FC = () => {
         time: dayjs(firstBet.created_at).format('HH:mm:ss'),
         bets: groupBets,
         status: completedBets.length === groupBets.length ? 'completed' : 'pending',
+        user_username: firstBet.user_username,
+        user_display_name: (firstBet as any).user_display_name,
       };
     });
   };
@@ -420,7 +424,7 @@ const BettingPage: React.FC = () => {
       ),
     },
     {
-      title: '员工',
+      title: '下注员',
       dataIndex: 'user_username',
       key: 'user_username',
       width: 100,
@@ -500,7 +504,7 @@ const BettingPage: React.FC = () => {
     key: bet.id.toString(),
     status: bet.status,
     order_id: bet.official_bet_id || `OU${bet.id}`,
-    user_username: bet.user_username,  // 添加员工用户名
+    user_username: (bet as any).user_display_name || bet.user_username,  // 添加下注员名称
     account_username: bet.account_username || '',
     amount_display: `${bet.bet_amount}/${bet.single_limit}`,
     virtual_amount_display: bet.virtual_bet_amount !== undefined ? `${bet.virtual_bet_amount}/${bet.single_limit}` : undefined,
