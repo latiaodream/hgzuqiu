@@ -42,30 +42,14 @@ const missingOddsAttempts: Map<string, number> = new Map();
 const MISSING_ODDS_RETRY_INTERVAL = 15000;
 const MAX_LIVE_FETCH_BATCH = 20;
 
-const MANUAL_NAME_REPLACEMENTS: Record<string, string> = {
-  'colombia copa cup': '哥伦比亚杯',
-  '☆ colombia copa cup': '☆ 哥伦比亚杯',
-  'brazil serie b': '巴西乙级联赛',
-  'envigado': '依维加杜',
-  'independiente medellin': '曼特宁独立',
-  'independiente medellín': '曼特宁独立',
-  'volta redonda': '沃尔特雷东达',
-  'botafogo sp': '保地花高SP',
-};
-
-const normalizeNameKey = (value: string): string =>
-  value
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[·•]/g, ' ')
-    .replace(/[。.,、]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-
-const applyManualReplacement = (value: string): string => {
-  const key = normalizeNameKey(value);
-  return MANUAL_NAME_REPLACEMENTS[key] ?? value;
+const preferCrownName = (
+  crownValue?: string | null,
+  ...others: Array<string | null | undefined>
+): string | undefined => {
+  if (typeof crownValue === 'string' && crownValue.trim().length > 0) {
+    return crownValue.trim();
+  }
+  return preferName(...others);
 };
 
 function loadCrownMatchMap() {
@@ -366,7 +350,7 @@ const preferName = (...values: Array<string | null | undefined>) => {
     if (typeof value !== 'string') continue;
     const trimmed = value.trim();
     if (trimmed.length > 0) {
-      return applyManualReplacement(trimmed);
+      return trimmed;
     }
   }
   return undefined;
@@ -685,13 +669,6 @@ function convertToCrownFormat(match: any, matchOdds: any, crownGid?: string) {
     strong: resolveStrongSide(mainHandicap?.line),
   };
 
-  result.league = applyManualReplacement(result.league);
-  result.league_short_name = applyManualReplacement(result.league_short_name);
-  result.team_h = applyManualReplacement(result.team_h);
-  result.team_c = applyManualReplacement(result.team_c);
-  result.home = applyManualReplacement(result.home);
-  result.away = applyManualReplacement(result.away);
-
   handicapLines.forEach((line, idx) => {
     const index = line.index ?? idx + 1;
     if (index === 1) return;
@@ -829,27 +806,47 @@ function generateOutput() {
       if (!mapping) {
         return null;
       }
+      const crownInfo = mapping?.crown;
       const isportsInfo = mapping?.isports;
-      if (isportsInfo) {
-        const leagueName = preferName(isportsInfo.league_cn, isportsInfo.league_tc, isportsInfo.league, match.leagueName, match.league);
-        const homeName = preferName(isportsInfo.home_cn, isportsInfo.home_tc, isportsInfo.home, match.homeName, match.home);
-        const awayName = preferName(isportsInfo.away_cn, isportsInfo.away_tc, isportsInfo.away, match.awayName, match.away);
+      const leagueName = preferCrownName(
+        crownInfo?.league,
+        isportsInfo?.league_cn,
+        isportsInfo?.league_tc,
+        isportsInfo?.league,
+        match.leagueName,
+        match.league
+      );
+      const homeName = preferCrownName(
+        crownInfo?.home,
+        isportsInfo?.home_cn,
+        isportsInfo?.home_tc,
+        isportsInfo?.home,
+        match.homeName,
+        match.home
+      );
+      const awayName = preferCrownName(
+        crownInfo?.away,
+        isportsInfo?.away_cn,
+        isportsInfo?.away_tc,
+        isportsInfo?.away,
+        match.awayName,
+        match.away
+      );
 
-        if (leagueName) {
-          match.leagueName = leagueName;
-          match.leagueShortName = leagueName;
-          match.league = leagueName;
-        }
-        if (homeName) {
-          match.homeName = homeName;
-          match.home = homeName;
-          match.team_h = homeName;
-        }
-        if (awayName) {
-          match.awayName = awayName;
-          match.away = awayName;
-          match.team_c = awayName;
-        }
+      if (leagueName) {
+        match.leagueName = leagueName;
+        match.leagueShortName = leagueName;
+        match.league = leagueName;
+      }
+      if (homeName) {
+        match.homeName = homeName;
+        match.home = homeName;
+        match.team_h = homeName;
+      }
+      if (awayName) {
+        match.awayName = awayName;
+        match.away = awayName;
+        match.team_c = awayName;
       }
 
       const odds = oddsCache.get(matchIdKey);
@@ -992,13 +989,6 @@ function convertCrownOnlyMatch(crownMatch: any): any | null {
         }
       },
     };
-
-    result.league = applyManualReplacement(result.league);
-    result.league_short_name = applyManualReplacement(result.league_short_name);
-    result.team_h = applyManualReplacement(result.team_h);
-    result.team_c = applyManualReplacement(result.team_c);
-    result.home = applyManualReplacement(result.home);
-    result.away = applyManualReplacement(result.away);
 
     return result;
   } catch (error: any) {
