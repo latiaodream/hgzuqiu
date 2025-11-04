@@ -244,7 +244,8 @@ router.post('/login', async (req, res) => {
         }
 
         // 检查是否需要邮箱绑定（首次登录且邮箱未验证）
-        if (!user.email_verified) {
+        // Admin 角色跳过邮箱验证
+        if (!user.email_verified && user.role !== 'admin') {
             return res.status(403).json({
                 success: false,
                 error: '请先绑定邮箱',
@@ -255,7 +256,8 @@ router.post('/login', async (req, res) => {
         }
 
         // 检查 IP 是否可信
-        const ipTrusted = await isIpTrusted(user.id, clientIp);
+        // Admin 角色跳过 IP 验证
+        const ipTrusted = user.role === 'admin' ? true : await isIpTrusted(user.id, clientIp);
 
         if (!ipTrusted) {
             // 非常用 IP，需要验证码
