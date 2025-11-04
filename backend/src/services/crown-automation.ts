@@ -48,6 +48,12 @@ interface BetRequest {
   marketLine?: string;
   market_index?: number;
   marketIndex?: number;
+  market_wtype?: string;
+  marketWtype?: string;
+  market_rtype?: string;
+  marketRtype?: string;
+  market_chose_team?: string;
+  marketChoseTeam?: string;
 }
 
 interface CrownLoginResult {
@@ -6360,7 +6366,7 @@ export class CrownAutomationService {
       };
     }
 
-    const { wtype, rtype, chose_team } = this.convertBetTypeToApiParams(
+    const { wtype: baseWtype, rtype: baseRtype, chose_team: baseChoseTeam } = this.convertBetTypeToApiParams(
       betRequest.betType,
       betRequest.betOption,
       {
@@ -6374,7 +6380,22 @@ export class CrownAutomationService {
       }
     );
 
-    const variants = this.buildBetVariants({ wtype, rtype, chose_team });
+    const overrideWtypeRaw = betRequest.market_wtype ?? betRequest.marketWtype;
+    const overrideRtypeRaw = betRequest.market_rtype ?? betRequest.marketRtype;
+    const overrideChoseTeamRaw = betRequest.market_chose_team ?? betRequest.marketChoseTeam;
+
+    const sanitize = (value?: string | null) => {
+      const trimmed = (value ?? '').toString().trim();
+      return trimmed ? trimmed.toUpperCase() : undefined;
+    };
+
+    const effectiveParams = {
+      wtype: sanitize(overrideWtypeRaw) ?? baseWtype,
+      rtype: sanitize(overrideRtypeRaw) ?? baseRtype,
+      chose_team: (sanitize(overrideChoseTeamRaw) as 'H' | 'C' | 'N' | undefined) ?? baseChoseTeam,
+    };
+
+    const variants = this.buildBetVariants(effectiveParams);
 
     let oddsResult: any = null;
     let selectedVariant: { wtype: string; rtype: string; chose_team: string } | null = null;
@@ -6667,10 +6688,10 @@ export class CrownAutomationService {
       wtype = isHalfMarket ? 'HROU' : 'ROU';
       if (isOverSelection || optionNormalized.includes('大') || optionNormalized.includes('over')) {
         rtype = isHalfMarket ? 'HROUC' : 'ROUC';
-        chose_team = 'H';
+        chose_team = 'C';
       } else {
         rtype = isHalfMarket ? 'HROUH' : 'ROUH';
-        chose_team = 'C';
+        chose_team = 'H';
       }
     };
 
@@ -6711,14 +6732,24 @@ export class CrownAutomationService {
     const fallbackMap: Record<string, string[]> = {
       RE: ['R'],
       R: ['RE'],
+      RO: ['RE'],
+      RCO: ['RE'],
       ROU: ['OU'],
       OU: ['ROU'],
+      ROUHO: ['ROU', 'OUHO', 'OU'],
+      OUHO: ['ROUHO', 'ROU'],
+      ROUCO: ['ROU', 'OUCO', 'OU'],
+      OUCO: ['ROUCO', 'ROU'],
       RM: ['M'],
       M: ['RM'],
       HRE: ['HR'],
       HR: ['HRE'],
       HROU: ['HOU'],
       HOU: ['HROU'],
+      HROUHO: ['HROU', 'HOUHO', 'HOU'],
+      HOUHO: ['HROUHO', 'HROU'],
+      HROUCO: ['HROU', 'HOUCO', 'HOU'],
+      HOUCO: ['HROUCO', 'HROU'],
       HRM: ['HM'],
       HM: ['HRM'],
     };
@@ -7377,23 +7408,66 @@ export class CrownAutomationService {
       return this.pickString(event, keys);
     };
 
-    const addHandicapLine = (target: any[], ratioKeys: string[], homeKeys: string[], awayKeys: string[]) => {
+    const addHandicapLine = (
+      target: any[],
+      ratioKeys: string[],
+      homeKeys: string[],
+      awayKeys: string[],
+      meta?: {
+        wtype?: string;
+        homeRtype?: string;
+        awayRtype?: string;
+        homeChoseTeam?: string;
+        awayChoseTeam?: string;
+      },
+    ) => {
       const line = pick(ratioKeys);
       const home = pick(homeKeys);
       const away = pick(awayKeys);
       if (line || home || away) {
-        target.push({ line, home, away });
+        target.push({
+          line,
+          home,
+          away,
+          wtype: meta?.wtype,
+          home_rtype: meta?.homeRtype,
+          away_rtype: meta?.awayRtype,
+          home_chose_team: meta?.homeChoseTeam,
+          away_chose_team: meta?.awayChoseTeam,
+        });
       }
     };
 
-    const addOverUnderLine = (target: any[], ratioKeysO: string[], ratioKeysU: string[], overKeys: string[], underKeys: string[]) => {
+    const addOverUnderLine = (
+      target: any[],
+      ratioKeysO: string[],
+      ratioKeysU: string[],
+      overKeys: string[],
+      underKeys: string[],
+      meta?: {
+        wtype?: string;
+        overRtype?: string;
+        underRtype?: string;
+        overChoseTeam?: string;
+        underChoseTeam?: string;
+      },
+    ) => {
       const overLine = pick(ratioKeysO);
       const underLine = pick(ratioKeysU);
       const line = overLine || underLine;
       const over = pick(overKeys);
       const under = pick(underKeys);
       if (line || over || under) {
-        target.push({ line, over, under });
+        target.push({
+          line,
+          over,
+          under,
+          wtype: meta?.wtype,
+          over_rtype: meta?.overRtype,
+          under_rtype: meta?.underRtype,
+          over_chose_team: meta?.overChoseTeam,
+          under_chose_team: meta?.underChoseTeam,
+        });
       }
     };
 
@@ -7409,9 +7483,45 @@ export class CrownAutomationService {
       }
 
       const handicapLines: Array<{ line: string; home: string; away: string }> = [];
-      addHandicapLine(handicapLines, ['RATIO_RE', 'RATIO_R'], ['IOR_REH', 'IOR_RH'], ['IOR_REC', 'IOR_RC']);
-      addHandicapLine(handicapLines, ['RATIO_RO'], ['IOR_ROH'], ['IOR_ROC']);
-      addHandicapLine(handicapLines, ['RATIO_RCO'], ['IOR_RCOH'], ['IOR_RCOC']);
+      addHandicapLine(
+        handicapLines,
+        ['RATIO_RE', 'RATIO_R'],
+        ['IOR_REH', 'IOR_RH'],
+        ['IOR_REC', 'IOR_RC'],
+        {
+          wtype: 'RE',
+          homeRtype: 'REH',
+          awayRtype: 'REC',
+          homeChoseTeam: 'H',
+          awayChoseTeam: 'C',
+        },
+      );
+      addHandicapLine(
+        handicapLines,
+        ['RATIO_RO'],
+        ['IOR_ROH'],
+        ['IOR_ROC'],
+        {
+          wtype: 'RO',
+          homeRtype: 'ROH',
+          awayRtype: 'ROC',
+          homeChoseTeam: 'H',
+          awayChoseTeam: 'C',
+        },
+      );
+      addHandicapLine(
+        handicapLines,
+        ['RATIO_RCO'],
+        ['IOR_RCOH'],
+        ['IOR_RCOC'],
+        {
+          wtype: 'RCO',
+          homeRtype: 'RCOH',
+          awayRtype: 'RCOC',
+          homeChoseTeam: 'H',
+          awayChoseTeam: 'C',
+        },
+      );
       if (handicapLines.length > 0) {
         markets.handicap = { ...handicapLines[0] };
         markets.full.handicap = { ...handicapLines[0] };
@@ -7420,11 +7530,50 @@ export class CrownAutomationService {
 
       const ouLines: Array<{ line: string; over: string; under: string }> = [];
       // 主盘口
-      addOverUnderLine(ouLines, ['RATIO_ROUO', 'RATIO_OUO'], ['RATIO_ROUU', 'RATIO_OUU'], ['IOR_ROUC', 'IOR_OUC'], ['IOR_ROUH', 'IOR_OUH']);
+      addOverUnderLine(
+        ouLines,
+        ['RATIO_ROUO', 'RATIO_OUO'],
+        ['RATIO_ROUU', 'RATIO_OUU'],
+        ['IOR_ROUC', 'IOR_OUC'],
+        ['IOR_ROUH', 'IOR_OUH'],
+        {
+          wtype: 'ROU',
+          overRtype: 'ROUC',
+          underRtype: 'ROUH',
+          overChoseTeam: 'C',
+          underChoseTeam: 'H',
+        },
+      );
       // 第2个盘口
-      addOverUnderLine(ouLines, ['RATIO_ROUHO'], ['RATIO_ROUHU'], ['IOR_ROUHOC'], ['IOR_ROUHOH']);
+      addOverUnderLine(
+        ouLines,
+        ['RATIO_ROUHO'],
+        ['RATIO_ROUHU'],
+        ['IOR_ROUHOC'],
+        ['IOR_ROUHOH'],
+        {
+          wtype: 'ROUHO',
+          overRtype: 'ROUHOC',
+          underRtype: 'ROUHOH',
+          overChoseTeam: 'C',
+          underChoseTeam: 'H',
+        },
+      );
       // 第3个盘口
-      addOverUnderLine(ouLines, ['RATIO_ROUCO'], ['RATIO_ROUCU'], ['IOR_ROUCOC'], ['IOR_ROUCOH']);
+      addOverUnderLine(
+        ouLines,
+        ['RATIO_ROUCO'],
+        ['RATIO_ROUCU'],
+        ['IOR_ROUCOC'],
+        ['IOR_ROUCOH'],
+        {
+          wtype: 'ROUCO',
+          overRtype: 'ROUCOC',
+          underRtype: 'ROUCOH',
+          overChoseTeam: 'C',
+          underChoseTeam: 'H',
+        },
+      );
       if (ouLines.length > 0) {
         markets.ou = { ...ouLines[0] };
         markets.full.ou = { ...ouLines[0] };
@@ -7456,7 +7605,20 @@ export class CrownAutomationService {
       }
 
       const halfOuLines: Array<{ line: string; over: string; under: string }> = [];
-      addOverUnderLine(halfOuLines, ['RATIO_HROUO'], ['RATIO_HROUU'], ['IOR_HROUH'], ['IOR_HROUC']);
+      addOverUnderLine(
+        halfOuLines,
+        ['RATIO_HROUO'],
+        ['RATIO_HROUU'],
+        ['IOR_HROUH'],
+        ['IOR_HROUC'],
+        {
+          wtype: 'HROU',
+          overRtype: 'HROUC',
+          underRtype: 'HROUH',
+          overChoseTeam: 'C',
+          underChoseTeam: 'H',
+        },
+      );
       if (halfOuLines.length > 0) {
         markets.half.ou = { ...halfOuLines[0] };
         markets.half.overUnderLines = halfOuLines;

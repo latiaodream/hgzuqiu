@@ -1408,6 +1408,12 @@ router.post('/odds/preview', async (req: any, res) => {
             marketLine: typeof marketLine === 'string' ? marketLine : undefined,
             market_index: marketIndex,
             marketIndex: marketIndex,
+            market_wtype: body.market_wtype || body.marketWtype,
+            marketWtype: body.market_wtype || body.marketWtype,
+            market_rtype: body.market_rtype || body.marketRtype,
+            marketRtype: body.market_rtype || body.marketRtype,
+            market_chose_team: body.market_chose_team || body.marketChoseTeam,
+            marketChoseTeam: body.market_chose_team || body.marketChoseTeam,
         };
 
         const preview = await getCrownAutomation().fetchLatestOdds(accountId, payload as any);

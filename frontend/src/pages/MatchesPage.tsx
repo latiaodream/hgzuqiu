@@ -422,6 +422,11 @@ const MatchesPage: React.FC = () => {
           const line = data.line || '0';
           const lineNum = parseFloat(line);
           const absLine = Math.abs(lineNum);
+          const lineWtype = (data as any).wtype as string | undefined;
+          const homeRtype = (data as any).home_rtype as string | undefined;
+          const awayRtype = (data as any).away_rtype as string | undefined;
+          const homeChoseTeam = (((data as any).home_chose_team as string | undefined) || 'H') as 'H' | 'C' | 'N';
+          const awayChoseTeam = (((data as any).away_chose_team as string | undefined) || 'C') as 'H' | 'C' | 'N';
 
           // 格式化盘口数字（处理 0.5/1 这种格式）
           let formattedAbsLine = String(absLine);
@@ -453,6 +458,9 @@ const MatchesPage: React.FC = () => {
                     market_side: 'home',
                     market_line: marketLine,
                     market_index: index,
+                    market_wtype: lineWtype,
+                    market_rtype: homeRtype,
+                    market_chose_team: homeChoseTeam,
                   })}
                 >
                   <span className="odds-team">
@@ -474,6 +482,9 @@ const MatchesPage: React.FC = () => {
                     market_side: 'away',
                     market_line: marketLine,
                     market_index: index,
+                    market_wtype: lineWtype,
+                    market_rtype: awayRtype,
+                    market_chose_team: awayChoseTeam,
                   })}
                 >
                   <span className="odds-team">
@@ -503,6 +514,12 @@ const MatchesPage: React.FC = () => {
           const line = data.line || '';
           // 第一行显示"大/小"，其他行只显示盘口数字
           const showLabel = index === 0;
+          const lineMeta = data as any;
+          const lineWtype = lineMeta.wtype as string | undefined;
+          const overRtype = lineMeta.over_rtype as string | undefined;
+          const underRtype = lineMeta.under_rtype as string | undefined;
+          const overChoseTeam = ((lineMeta.over_chose_team as string | undefined) || 'C') as 'H' | 'C' | 'N';
+          const underChoseTeam = ((lineMeta.under_chose_team as string | undefined) || 'H') as 'H' | 'C' | 'N';
           const betType = scope === 'half' ? '半场大小球' : '大小球';
           const labelPrefix = scope === 'half' ? '[半场大小]' : '[大小]';
           const marketLine = typeof data.line === 'string' ? data.line : line;
@@ -521,6 +538,9 @@ const MatchesPage: React.FC = () => {
                     market_side: 'over',
                     market_line: marketLine,
                     market_index: index,
+                    market_wtype: lineWtype,
+                    market_rtype: overRtype,
+                    market_chose_team: overChoseTeam,
                   })}
                 >
                   <span className="odds-team">
@@ -542,6 +562,9 @@ const MatchesPage: React.FC = () => {
                     market_side: 'under',
                     market_line: marketLine,
                     market_index: index,
+                    market_wtype: lineWtype,
+                    market_rtype: underRtype,
+                    market_chose_team: underChoseTeam,
                   })}
                 >
                   <span className="odds-team">

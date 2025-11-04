@@ -535,6 +535,12 @@ router.post('/', async (req: any, res) => {
                     marketLine: betData.market_line,
                     market_index: betData.market_index,
                     marketIndex: betData.market_index,
+                    market_wtype: betData.market_wtype,
+                    marketWtype: betData.market_wtype,
+                    market_rtype: betData.market_rtype,
+                    marketRtype: betData.market_rtype,
+                    market_chose_team: betData.market_chose_team,
+                    marketChoseTeam: betData.market_chose_team,
                 });
 
                 // 创建数据库记录

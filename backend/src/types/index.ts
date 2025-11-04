@@ -251,6 +251,9 @@ export interface BetCreateRequest {
     market_side?: 'home' | 'away' | 'draw' | 'over' | 'under';
     market_line?: string;
     market_index?: number;
+    market_wtype?: string;
+    market_rtype?: string;
+    market_chose_team?: 'H' | 'C' | 'N';
 }
 
 // 金币流水相关类型

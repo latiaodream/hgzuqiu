@@ -37,6 +37,9 @@ export interface SelectionMeta {
   market_side?: MarketSide;
   market_line?: string;
   market_index?: number;
+  market_wtype?: string;
+  market_rtype?: string;
+  market_chose_team?: 'H' | 'C' | 'N';
 }
 
 interface BetFormModalProps {
@@ -304,6 +307,9 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       market_side: selectionMeta?.market_side,
       market_line: selectionMeta?.market_line,
       market_index: selectionMeta?.market_index,
+      market_wtype: selectionMeta?.market_wtype,
+      market_rtype: selectionMeta?.market_rtype,
+      market_chose_team: selectionMeta?.market_chose_team,
     };
 
     if (!silent) {
@@ -540,6 +546,9 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         market_side: selectionMeta?.market_side,
         market_line: selectionMeta?.market_line,
         market_index: selectionMeta?.market_index,
+        market_wtype: selectionMeta?.market_wtype,
+        market_rtype: selectionMeta?.market_rtype,
+        market_chose_team: selectionMeta?.market_chose_team,
       };
 
       const response = await betApi.createBet(requestData);
