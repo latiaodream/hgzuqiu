@@ -1291,28 +1291,51 @@ export class CrownApiClient {
 
       let payload = response.data;
 
-      // 尝试解析 XML 响应
-      if (typeof payload === 'string' && payload.trim().startsWith('<?xml')) {
-        console.log('📥 收到 XML 格式的历史记录响应');
-        console.log('📄 原始 XML（前 1000 字符）:', payload.substring(0, 1000));
-
-        try {
-          const parsed = await this.parseXmlResponse(payload);
-          console.log('✅ XML 解析成功，完整结构:', JSON.stringify(parsed, null, 2));
-          return parsed;
-        } catch (xmlError: any) {
-          console.error('❌ XML 解析失败:', xmlError?.message || xmlError);
-          throw new Error('历史记录响应格式错误');
-        }
-      }
-
-      // 尝试解析 JSON 响应（向后兼容）
+      // 处理特殊响应
       if (typeof payload === 'string') {
-        const cleaned = payload.replace(/^\uFEFF/, '').trim();
+        const trimmed = payload.trim();
+
+        // 处理 "VariableStandard" 响应（表示没有历史记录）
+        if (trimmed === 'VariableStandard' || trimmed === 'Variable Standard') {
+          console.log('📭 没有历史记录（VariableStandard）');
+          return {
+            total_gold: '0',
+            total_vgold: '0',
+            total_winloss: '0',
+            history: []
+          };
+        }
+
+        // 尝试解析 XML 响应
+        if (trimmed.startsWith('<?xml')) {
+          console.log('📥 收到 XML 格式的历史记录响应');
+          console.log('📄 原始 XML（前 1000 字符）:', trimmed.substring(0, 1000));
+
+          try {
+            const parsed = await this.parseXmlResponse(payload);
+            console.log('✅ XML 解析成功，完整结构:', JSON.stringify(parsed, null, 2));
+            return parsed;
+          } catch (xmlError: any) {
+            console.error('❌ XML 解析失败:', xmlError?.message || xmlError);
+            throw new Error('历史记录响应格式错误');
+          }
+        }
+
+        // 尝试解析 JSON 响应（向后兼容）
+        const cleaned = trimmed.replace(/^\uFEFF/, '');
         try {
           payload = JSON.parse(cleaned);
+          console.log('✅ 历史记录响应（JSON）:', JSON.stringify(payload).substring(0, 500));
+          return payload;
         } catch (parseError: any) {
-          console.warn('⚠️ 历史记录 JSON 解析失败，返回原始数据:', parseError?.message || parseError);
+          console.warn('⚠️ 未知的响应格式:', trimmed);
+          // 返回空数据而不是抛出错误
+          return {
+            total_gold: '0',
+            total_vgold: '0',
+            total_winloss: '0',
+            history: []
+          };
         }
       }
 
