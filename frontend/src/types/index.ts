@@ -220,6 +220,7 @@ export interface Bet {
   payout?: number;
   profit_loss?: number;
   virtual_profit_loss?: number;
+  score?: string;
   official_bet_id?: string;
   confirmed_at?: string;
   settled_at?: string;

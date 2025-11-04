@@ -472,6 +472,18 @@ const BettingPage: React.FC = () => {
       ),
     },
     {
+      title: '下注比分',
+      dataIndex: 'bet_score',
+      key: 'bet_score',
+      width: 100,
+      align: 'center',
+      render: (score?: string) => score ? (
+        <Text type="secondary" style={{ fontSize: 12 }}>{score}</Text>
+      ) : (
+        <Text type="secondary">-</Text>
+      ),
+    },
+    {
       title: '输赢(实/虚)',
       dataIndex: 'input_display',
       key: 'input_display',
@@ -537,6 +549,7 @@ const BettingPage: React.FC = () => {
       bet_amount: realAmount,
       single_limit: realLimit,
       official_odds: resolveOfficialOdds(bet),
+      bet_score: bet.score || bet.current_score || undefined,
       input_display: `${formatNumber(realProfit)}/${formatVirtual(virtualProfit)}`,
       input_amount: realProfit,
       result_score: bet.result_score,
