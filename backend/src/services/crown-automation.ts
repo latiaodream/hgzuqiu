@@ -6667,10 +6667,10 @@ export class CrownAutomationService {
       wtype = isHalfMarket ? 'HROU' : 'ROU';
       if (isOverSelection || optionNormalized.includes('大') || optionNormalized.includes('over')) {
         rtype = isHalfMarket ? 'HROUC' : 'ROUC';
-        chose_team = 'C';
+        chose_team = 'H';
       } else {
         rtype = isHalfMarket ? 'HROUH' : 'ROUH';
-        chose_team = 'H';
+        chose_team = 'C';
       }
     };
 
