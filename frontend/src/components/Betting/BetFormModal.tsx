@@ -17,25 +17,11 @@ import {
 } from 'antd';
 import { TrophyOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { Match, CrownAccount, BetCreateRequest, AccountSelectionResponse } from '../../types';
-import { betApi, accountApi } from '../../services/api';
+import { betApi, accountApi, crownApi } from '../../services/api';
 import dayjs from 'dayjs';
 import type { AxiosError } from 'axios';
 
 const { Option } = Select;
-
-export type MarketCategory = 'moneyline' | 'handicap' | 'overunder';
-export type MarketScope = 'full' | 'half';
-
-export interface BetSelectionMeta {
-  bet_type: string;
-  bet_option: string;
-  odds: number | string;
-  label?: string;
-  market_category: MarketCategory;
-  market_scope: MarketScope;
-  market_side: 'home' | 'away' | 'draw' | 'over' | 'under';
-  market_line?: string;
-}
 
 interface BetFormModalProps {
   visible: boolean;
@@ -43,8 +29,12 @@ interface BetFormModalProps {
   accounts: CrownAccount[];
   onCancel: () => void;
   onSubmit: () => void;
-  defaultSelection?: BetSelectionMeta | null;
-  getMatchSnapshot?: (matchId: string | number | undefined | null) => any;
+  defaultSelection?: {
+    bet_type: string;
+    bet_option: string;
+    odds: number;
+    label?: string;
+  } | null;
 }
 
 const BetFormModal: React.FC<BetFormModalProps> = ({
@@ -54,7 +44,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   onCancel,
   onSubmit,
   defaultSelection,
-  getMatchSnapshot,
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -64,45 +53,16 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   const [betMode, setBetMode] = useState<'优选' | '平均'>('优选');
   const [autoSelection, setAutoSelection] = useState<AccountSelectionResponse | null>(null);
   const [autoLoading, setAutoLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [oddsPreview, setOddsPreview] = useState<{ odds: number | null; closed: boolean; message?: string } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [autoRefreshOdds, setAutoRefreshOdds] = useState(true); // 自动刷新赔率开关
-  const lastRecommendedRef = React.useRef<string>('');
-  const hasAnnouncedRef = React.useRef(false);
-  const manualSelectionRef = React.useRef(false);
 
   const accountDict = useMemo(() => {
     const map = new Map<number, CrownAccount>();
     accounts.forEach(acc => map.set(acc.id, acc));
     return map;
   }, [accounts]);
-
-  const matchKey = match ? (match.crown_gid || match.match_id || match.id) : null;
-  const activeMatch = useMemo(() => {
-    if (!match) return null;
-    if (!matchKey || !getMatchSnapshot) return match;
-    const snapshot = getMatchSnapshot(matchKey);
-    if (!snapshot) return match;
-
-    const merged = {
-      ...match,
-      ...snapshot,
-    } as any;
-
-    merged.league_name = snapshot.league ?? snapshot.league_name ?? match.league_name;
-    merged.home_team = snapshot.home ?? snapshot.home_team ?? match.home_team;
-    merged.away_team = snapshot.away ?? snapshot.away_team ?? match.away_team;
-    merged.current_score = snapshot.score ?? snapshot.current_score ?? match.current_score;
-    merged.match_period = snapshot.period
-      ? [snapshot.period, snapshot.clock].filter(Boolean).join(' ')
-      : (snapshot.match_period ?? match.match_period);
-    merged.markets = snapshot.markets ?? match.markets;
-    merged.match_time = snapshot.time ?? snapshot.match_time ?? match.match_time;
-
-    return merged as Match;
-  }, [match, matchKey, getMatchSnapshot]);
-
-  const matchData = activeMatch ?? match;
 
   const getLineKey = useCallback((accountId: number): string => {
     const meta = autoSelection?.eligible_accounts.find(entry => entry.account.id === accountId)
@@ -116,88 +76,8 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     return base ? base.slice(0, 4).toUpperCase() : 'UNKNOWN';
   }, [accounts, autoSelection]);
 
-  const parseOddsNumber = (value: any): number | null => {
-    if (value === null || value === undefined) return null;
-    const numeric = Number(value);
-    return Number.isFinite(numeric) ? numeric : null;
-  };
-
-  const deriveOddsFromMarkets = useCallback(
-    (sourceMatch: any, meta: Partial<BetSelectionMeta>): { odds: number | null; message?: string } => {
-      if (!sourceMatch) {
-        return { odds: null, message: '未找到比赛数据' };
-      }
-
-      const markets = sourceMatch?.markets || {};
-      const scope = meta.market_scope || 'full';
-      const category = meta.market_category || 'handicap';
-      const side = meta.market_side || 'home';
-      const line = meta.market_line;
-
-      if (category === 'moneyline') {
-        const ml = scope === 'half'
-          ? markets.half?.moneyline || markets.half?.moneyLine
-          : markets.moneyline || markets.moneyLine;
-        if (!ml) {
-          return { odds: null, message: '未找到独赢盘口' };
-        }
-        const value = side === 'home'
-          ? ml.home
-          : side === 'away'
-            ? ml.away
-            : ml.draw;
-        return { odds: parseOddsNumber(value) };
-      }
-
-      if (category === 'handicap') {
-        const lines: Array<{ line?: string; home?: string; away?: string }> = scope === 'half'
-          ? (markets.half?.handicapLines || (markets.half?.handicap ? [markets.half.handicap] : []))
-          : (markets.full?.handicapLines || (markets.handicap ? [markets.handicap] : []));
-
-        if (!lines || lines.length === 0) {
-          return { odds: null, message: '未找到让球盘口' };
-        }
-
-        const target = line !== undefined && line !== null
-          ? lines.find(item => String(item.line ?? '') === String(line)) || lines[0]
-          : lines[0];
-
-        if (!target) {
-          return { odds: null, message: '未找到对应盘口' };
-        }
-
-        const value = side === 'away' ? target.away : target.home;
-        return { odds: parseOddsNumber(value) };
-      }
-
-      if (category === 'overunder') {
-        const lines: Array<{ line?: string; over?: string; under?: string }> = scope === 'half'
-          ? (markets.half?.overUnderLines || (markets.half?.ou ? [markets.half.ou] : []))
-          : (markets.full?.overUnderLines || (markets.ou ? [markets.ou] : []));
-
-        if (!lines || lines.length === 0) {
-          return { odds: null, message: '未找到大小盘口' };
-        }
-
-        const target = line !== undefined && line !== null
-          ? lines.find(item => String(item.line ?? '') === String(line)) || lines[0]
-          : lines[0];
-
-        if (!target) {
-          return { odds: null, message: '未找到对应盘口' };
-        }
-
-        const value = side === 'under' ? target.under : target.over;
-        return { odds: parseOddsNumber(value) };
-      }
-
-      return { odds: null, message: '不支持的盘口类型' };
-    },
-    []
-  );
-
   useEffect(() => {
-    if (visible && matchData) {
+    if (visible && match) {
       form.resetFields();
       setSelectedAccounts([]);
       setEstimatedPayout(0);
@@ -205,19 +85,12 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         bet_type: defaultSelection?.bet_type || '让球',
         bet_option: defaultSelection?.bet_option || '主队',
         odds: defaultSelection?.odds || 1.85,
-        market_category: defaultSelection?.market_category || 'handicap',
-        market_scope: defaultSelection?.market_scope || 'full',
-        market_side: defaultSelection?.market_side || 'home',
-        market_line: defaultSelection?.market_line,
       };
       setSelectionLabel(defaultSelection?.label || '');
       setAutoSelection(null);
       setAutoLoading(false);
       setOddsPreview(null);
       setPreviewError(null);
-      lastRecommendedRef.current = '';
-      hasAnnouncedRef.current = false;
-      manualSelectionRef.current = false;
       // 设置默认值
       form.setFieldsValue({
         bet_type: defaults.bet_type,
@@ -232,13 +105,24 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         interval_range: '1-3',
         group: undefined,
         account_ids: [],
-        market_category: defaults.market_category,
-        market_scope: defaults.market_scope,
-        market_side: defaults.market_side,
-        market_line: defaults.market_line,
       });
     }
-  }, [visible, matchData, form, defaultSelection]);
+  }, [visible, match, form, defaultSelection]);
+
+  // 自动刷新赔率：每 2 秒刷新一次
+  useEffect(() => {
+    if (!visible || !match || !autoRefreshOdds) return;
+
+    // 首次加载时立即获取赔率
+    previewOddsRequest(true);
+
+    // 设置定时器
+    const timer = setInterval(() => {
+      previewOddsRequest(true);
+    }, 2000); // 每 2 秒刷新一次
+
+    return () => clearInterval(timer);
+  }, [visible, match, autoRefreshOdds]);
 
   const isTruthy = (value: any): boolean => {
     if (typeof value === 'boolean') return value;
@@ -282,65 +166,92 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   }, [accountMetaMap, accountDict]);
 
   const previewOddsRequest = useCallback(async (silent = false) => {
-    if (!matchData) {
+    if (!match) {
       setOddsPreview(null);
       setPreviewError(null);
       return { success: false };
     }
 
-    const currentValues = form.getFieldsValue();
-    const meta: Partial<BetSelectionMeta> = {
-      bet_type: currentValues.bet_type ?? defaultSelection?.bet_type,
-      bet_option: currentValues.bet_option ?? defaultSelection?.bet_option,
-      market_category: currentValues.market_category ?? defaultSelection?.market_category,
-      market_scope: currentValues.market_scope ?? defaultSelection?.market_scope,
-      market_side: currentValues.market_side ?? defaultSelection?.market_side,
-      market_line: currentValues.market_line ?? defaultSelection?.market_line,
-    };
+    // 获取在线账号列表
+    const onlineAccounts = accounts.filter(acc => isAccountOnline(acc.id));
 
-    const matchKeyLocal = matchData.crown_gid || matchData.match_id || matchData.id;
-    const latestMatch = getMatchSnapshot ? getMatchSnapshot(matchKeyLocal) || matchData : matchData;
-
-    const derived = deriveOddsFromMarkets(latestMatch, meta);
-    if (derived.odds !== null && derived.odds !== undefined) {
-      setOddsPreview({
-        odds: derived.odds,
-        closed: false,
-        message: derived.message || '基于 iSports 实时赔率',
-      });
-      setPreviewError(null);
-      form.setFieldValue('odds', derived.odds);
-      return { success: true, data: { odds: derived.odds, closed: false, message: derived.message } };
+    // 如果没有选择账号，使用第一个在线账号
+    let accountId = selectedAccounts.length > 0 ? selectedAccounts[0] : null;
+    if (!accountId && onlineAccounts.length > 0) {
+      accountId = onlineAccounts[0].id;
     }
 
-    const msg = derived.message || '未找到可用赔率';
-    setPreviewError(msg);
-    setOddsPreview({
-      odds: null,
-      closed: true,
-      message: msg,
-    });
-    return { success: false, message: msg, data: { closed: true, message: msg } };
-  }, [matchData, form, defaultSelection, getMatchSnapshot, deriveOddsFromMarkets]);
+    if (!accountId) {
+      setOddsPreview(null);
+      setPreviewError('没有可用的在线账号');
+      return { success: false, message: '没有可用的在线账号' };
+    }
 
-  // 自动刷新赔率：每 2 秒刷新一次
-  useEffect(() => {
-    if (!visible || !match || !autoRefreshOdds) return;
+    const currentValues = form.getFieldsValue();
+    const betTypeValue = currentValues.bet_type ?? defaultSelection?.bet_type ?? '让球';
+    const betOptionValue = currentValues.bet_option ?? defaultSelection?.bet_option ?? '主队';
+    const oddsValue = currentValues.odds ?? defaultSelection?.odds ?? 1;
 
-    previewOddsRequest(true);
-    const timer = setInterval(() => {
-      previewOddsRequest(true);
-    }, 2000);
+    const payload = {
+      account_id: accountId,
+      match_id: match.id,
+      crown_match_id: match.crown_gid || match.match_id,
+      bet_type: betTypeValue,
+      bet_option: betOptionValue,
+      odds: oddsValue,
+      bet_amount: currentValues.bet_amount ?? 0,
+      league_name: match.league_name,
+      home_team: match.home_team,
+      away_team: match.away_team,
+    };
 
-    return () => clearInterval(timer);
-  }, [visible, match, autoRefreshOdds, previewOddsRequest]);
+    if (!silent) {
+      setPreviewLoading(true);
+    }
+
+    try {
+      const response = await crownApi.previewOdds(payload);
+      if (response.success && response.data) {
+        const previewData = response.data;
+        setOddsPreview({
+          odds: previewData.odds ?? null,
+          closed: !!previewData.closed,
+          message: previewData.message,
+        });
+        if (previewData.closed) {
+          setPreviewError(previewData.message || '盘口已封盘或暂时不可投注');
+        } else {
+          setPreviewError(null);
+        }
+        return { success: true, data: previewData };
+      }
+
+      const msg = response.error || response.message || '获取赔率失败';
+      setPreviewError(msg);
+      setOddsPreview(response.data?.closed ? {
+        odds: response.data.odds ?? null,
+        closed: true,
+        message: msg,
+      } : null);
+      return { success: false, message: msg, data: response.data };
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || error?.message || '获取赔率失败';
+      setPreviewError(msg);
+      setOddsPreview(null);
+      return { success: false, message: msg };
+    } finally {
+      if (!silent) {
+        setPreviewLoading(false);
+      }
+    }
+  }, [match, selectedAccounts, form, defaultSelection, accounts, isAccountOnline]);
 
   const fetchAutoSelection = useCallback(async (limit?: number, silent = false) => {
-    if (!matchData) return;
+    if (!match) return;
 
     try {
       setAutoLoading(true);
-      const response = await accountApi.autoSelect({ match_id: matchData.id, limit });
+      const response = await accountApi.autoSelect({ match_id: match.id, limit });
       if (!response.success || !response.data) {
         if (!silent) {
           message.error(response.error || '优选账号失败');
@@ -372,39 +283,24 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       });
       const skippedCount = response.data.eligible_accounts.length - recommended.length;
       if (recommended.length === 0) {
-        if (!manualSelectionRef.current) {
-          setSelectedAccounts([]);
-          form.setFieldValue('account_ids', []);
-        }
-        if (!(silent || manualSelectionRef.current)) {
+        setSelectedAccounts([]);
+        form.setFieldValue('account_ids', []);
+        if (!silent) {
           message.warning('当前无符合条件的在线账号');
         }
         return;
       }
 
-      const hash = recommended.join(',');
-      const selectionChanged = hash !== lastRecommendedRef.current;
-      lastRecommendedRef.current = hash;
+      setSelectedAccounts(recommended);
+      form.setFieldValue('account_ids', recommended);
+      calculatePayout(recommended.length);
+      setTimeout(() => {
+        previewOddsRequest(true);
+      }, 0);
 
-      if (!manualSelectionRef.current && selectionChanged) {
-        setSelectedAccounts(recommended);
-        form.setFieldValue('account_ids', recommended);
-        calculatePayout(recommended.length);
-        setTimeout(() => {
-          previewOddsRequest(true);
-        }, 0);
-      }
-
-      const effectiveSilent = silent || manualSelectionRef.current || !selectionChanged;
-      if (!effectiveSilent) {
+      if (!silent) {
         const baseMsg = `已优选 ${recommended.length} 个在线账号`;
-        message.success({
-          content: skippedCount > 0
-            ? `${baseMsg}（自动跳过 ${skippedCount} 个同线路账号）`
-            : baseMsg,
-          key: 'auto-select-result',
-          duration: 2,
-        });
+        message.success(skippedCount > 0 ? `${baseMsg}（自动跳过 ${skippedCount} 个同线路账号）` : baseMsg);
       }
     } catch (error) {
       console.error('Auto select accounts failed:', error);
@@ -414,19 +310,17 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     } finally {
       setAutoLoading(false);
     }
-  }, [form, matchData, accountDict, previewOddsRequest]);
+  }, [form, match, accountDict, previewOddsRequest]);
 
   useEffect(() => {
-    if (!visible || !matchData) return;
-    const needAnnouncement = betMode === '优选' && !hasAnnouncedRef.current;
-    fetchAutoSelection(undefined, !needAnnouncement);
-    if (needAnnouncement) {
-      hasAnnouncedRef.current = true;
-    }
-  }, [visible, matchData, betMode, fetchAutoSelection]);
+    if (!visible || !match) return;
+    // 始终调用优选 API 来获取符合条件的账号列表
+    // 在"优选"模式下会自动选中账号，其他模式只用于过滤显示
+    fetchAutoSelection(undefined, betMode !== '优选');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, match, betMode]);
 
   const handleAccountsChange = (accountIds: Array<number | string>) => {
-    manualSelectionRef.current = true;
     const normalized = accountIds.map(id => Number(id));
     setSelectedAccounts(normalized);
     form.setFieldValue('account_ids', normalized);
@@ -454,14 +348,12 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   const handleModeSwitch = (mode: '优选' | '平均') => {
     setBetMode(mode);
     if (mode === '优选') {
-      manualSelectionRef.current = false;
-      hasAnnouncedRef.current = false;
       fetchAutoSelection(undefined, true);
     }
   };
 
   const handleSubmit = async () => {
-    if (!matchData) return;
+    if (!match) return;
 
     try {
       const values = await form.validateFields();
@@ -513,7 +405,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       if (Number.isFinite(minOddsValue) && minOddsValue > 0) {
         const compareOdds = Number(finalOdds);
         if (!Number.isFinite(compareOdds) || compareOdds < minOddsValue) {
-          message.error(`实时赔率 ${compareOdds || '--'} 低于最低赔率 ${minOddsValue}，已取消下注`);
+          message.error(`实时赔率 ${Number.isFinite(compareOdds) ? compareOdds.toFixed(3) : '--'} 低于最低赔率 ${minOddsValue}，已取消下注`);
           setLoading(false);
           return;
         }
@@ -521,7 +413,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
       const requestData: BetCreateRequest = {
         account_ids: selectedAccounts,
-        match_id: matchData.id,
+        match_id: match.id,
         bet_type: betTypeValue,
         bet_option: betOptionValue,
         bet_amount: values.bet_amount,
@@ -529,14 +421,14 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         single_limit: values.single_limit,
         interval_seconds: values.interval_seconds,
         quantity: values.quantity,
-        crown_match_id: matchData.crown_gid || matchData.match_id,
-        league_name: matchData.league_name,
-        home_team: matchData.home_team,
-        away_team: matchData.away_team,
-        match_time: matchData.match_time,
-        match_status: matchData.status,
-        current_score: matchData.current_score,
-        match_period: matchData.match_period,
+        crown_match_id: match.crown_gid || match.match_id,
+        league_name: match.league_name,
+        home_team: match.home_team,
+        away_team: match.away_team,
+        match_time: match.match_time,
+        match_status: match.status,
+        current_score: match.current_score,
+        match_period: match.match_period,
         min_odds: Number.isFinite(minOddsValue) ? minOddsValue : undefined,
       };
 
@@ -570,13 +462,13 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   };
 
   const matchTimeLabel = useMemo(() => {
-    if (!matchData) {
+    if (!match) {
       return '-';
     }
-    return dayjs(matchData.match_time).isValid()
-      ? dayjs(matchData.match_time).format('YYYY-MM-DD HH:mm')
-      : (matchData.match_time || '-');
-  }, [matchData]);
+    return dayjs(match.match_time).isValid()
+      ? dayjs(match.match_time).format('YYYY-MM-DD HH:mm')
+      : (match.match_time || '-');
+  }, [match]);
 
   const recommendedOrder = useMemo(() => (
     autoSelection ? autoSelection.eligible_accounts.map(entry => entry.account.id) : []
@@ -646,15 +538,15 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       cancelButtonProps={{ style: { display: 'none' } }}
     >
       <div className="bet-modal-body compact">
-        {matchData ? (
+        {match ? (
           <>
             <div className="bet-quick-head">
               <div className="bet-quick-title">
-                <strong>{matchData.home_team} - {matchData.away_team}</strong>
-                {matchData.current_score && <span className="score">({matchData.current_score})</span>}
+                <strong>{match.home_team} - {match.away_team}</strong>
+                {match.current_score && <span className="score">({match.current_score})</span>}
               </div>
               <div className="bet-quick-sub">
-                <span className="league">[{matchData.league_name}]</span>
+                <span className="league">[{match.league_name}]</span>
                 <span className="time">{matchTimeLabel}</span>
               </div>
             </div>
@@ -689,19 +581,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
                 <InputNumber min={0} />
               </Form.Item>
 
-              <Form.Item name="market_category" hidden>
-                <Input />
-              </Form.Item>
-              <Form.Item name="market_scope" hidden>
-                <Input />
-              </Form.Item>
-              <Form.Item name="market_side" hidden>
-                <Input />
-              </Form.Item>
-              <Form.Item name="market_line" hidden>
-                <Input />
-              </Form.Item>
-
               {selectionLabel && (
                 <div className="bet-quick-selection">{selectionLabel}</div>
               )}
@@ -711,6 +590,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
                   <Tag color={oddsPreview?.closed ? 'red' : 'blue'} style={{ fontSize: 14, padding: '4px 8px' }}>
                     最新赔率：{oddsPreview ? (oddsPreview.odds ?? '-') : '--'}
                   </Tag>
+                  {previewLoading && <Spin size="small" />}
                   <Button
                     size="small"
                     icon={<ReloadOutlined />}

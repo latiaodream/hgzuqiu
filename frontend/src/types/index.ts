@@ -94,7 +94,6 @@ export interface CrownAccount {
   football_live_limit: number;
   basketball_prematch_limit: number;
   basketball_live_limit: number;
-  limits_data?: any; // 完整的限额数据（JSON 格式）
 
   // 状态字段
   is_enabled: boolean;
@@ -102,6 +101,7 @@ export interface CrownAccount {
   status?: string;
   last_login?: string;
   use_for_fetch?: boolean; // 是否用于赛事抓取
+  limits_data?: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
@@ -132,6 +132,7 @@ export interface CrownAccountCreateRequest {
   football_live_limit?: number;
   basketball_prematch_limit?: number;
   basketball_live_limit?: number;
+  limits_data?: Record<string, any>;
 }
 
 export interface AccountSelectionEntry {
