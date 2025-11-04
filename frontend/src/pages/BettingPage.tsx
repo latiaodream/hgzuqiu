@@ -135,6 +135,16 @@ const BettingPage: React.FC = () => {
     loadBets();
   }, [selectedAgent, selectedDate, selectedPlatform]);
 
+  // 自动刷新：每 3 秒刷新一次待确认订单
+  useEffect(() => {
+    const timer = setInterval(() => {
+      // 静默刷新（不显示 loading）
+      loadBets(true);
+    }, 3000); // 每 3 秒刷新一次
+
+    return () => clearInterval(timer);
+  }, [selectedAgent, selectedDate, selectedPlatform]);
+
   const loadInitialData = async () => {
     try {
       const [accountsRes, agentsPromise] = await Promise.allSettled([
@@ -154,9 +164,9 @@ const BettingPage: React.FC = () => {
     }
   };
 
-  const loadBets = async () => {
+  const loadBets = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const params: any = {};
       if (selectedAgent) params.agent_id = selectedAgent;
       if (selectedDate) params.date = selectedDate.format('YYYY-MM-DD');
@@ -187,9 +197,9 @@ const BettingPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load bets:', error);
-      message.error('加载下注记录失败');
+      if (!silent) message.error('加载下注记录失败');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 

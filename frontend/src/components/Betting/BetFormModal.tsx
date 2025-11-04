@@ -56,6 +56,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [oddsPreview, setOddsPreview] = useState<{ odds: number | null; closed: boolean; message?: string } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [autoRefreshOdds, setAutoRefreshOdds] = useState(true); // 自动刷新赔率开关
 
   const accountDict = useMemo(() => {
     const map = new Map<number, CrownAccount>();
@@ -107,6 +108,21 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       });
     }
   }, [visible, match, form, defaultSelection]);
+
+  // 自动刷新赔率：每 2 秒刷新一次
+  useEffect(() => {
+    if (!visible || !match || !autoRefreshOdds) return;
+
+    // 首次加载时立即获取赔率
+    previewOddsRequest(true);
+
+    // 设置定时器
+    const timer = setInterval(() => {
+      previewOddsRequest(true);
+    }, 2000); // 每 2 秒刷新一次
+
+    return () => clearInterval(timer);
+  }, [visible, match, autoRefreshOdds]);
 
   const isTruthy = (value: any): boolean => {
     if (typeof value === 'boolean') return value;
@@ -550,17 +566,30 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
               )}
 
               <div style={{ marginBottom: 12 }}>
-                <Space size={8} align="center">
-                  <Tag color={oddsPreview?.closed ? 'red' : 'blue'}>
+                <Space size={8} align="center" wrap>
+                  <Tag color={oddsPreview?.closed ? 'red' : 'blue'} style={{ fontSize: 14, padding: '4px 8px' }}>
                     最新赔率：{oddsPreview ? (oddsPreview.odds ?? '-') : '--'}
                   </Tag>
                   {previewLoading && <Spin size="small" />}
-                  <Button size="small" icon={<ReloadOutlined />} onClick={() => previewOddsRequest(false)}>
+                  <Button
+                    size="small"
+                    icon={<ReloadOutlined />}
+                    onClick={() => previewOddsRequest(false)}
+                  >
                     刷新赔率
                   </Button>
+                  <Checkbox
+                    checked={autoRefreshOdds}
+                    onChange={(e) => setAutoRefreshOdds(e.target.checked)}
+                  >
+                    自动刷新
+                  </Checkbox>
                 </Space>
                 {previewError && (
                   <div style={{ marginTop: 4, color: '#ff4d4f', fontSize: 12 }}>{previewError}</div>
+                )}
+                {oddsPreview?.message && (
+                  <div style={{ marginTop: 4, color: '#8c8c8c', fontSize: 12 }}>{oddsPreview.message}</div>
                 )}
               </div>
 
