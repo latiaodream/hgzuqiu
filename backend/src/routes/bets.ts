@@ -123,9 +123,10 @@ router.get('/stats', async (req: any, res) => {
 
 // 获取下注记录(票单列表)
 router.get('/', async (req: any, res) => {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
     try {
-        const userId = req.user.id;
-        const userRole = req.user.role;
         const { status, date, account_id, limit = 50, offset = 0, user_id, agent_id } = req.query as any;
 
         let sql = `
