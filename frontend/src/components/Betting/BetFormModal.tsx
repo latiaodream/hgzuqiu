@@ -289,8 +289,9 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
   useEffect(() => {
     if (!visible || !match) return;
-    if (betMode !== '优选') return;
-    fetchAutoSelection(undefined, true);
+    // 始终调用优选 API 来获取符合条件的账号列表
+    // 在"优选"模式下会自动选中账号，其他模式只用于过滤显示
+    fetchAutoSelection(undefined, betMode !== '优选');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, match, betMode]);
 
@@ -438,12 +439,34 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   ), [autoSelection]);
 
   const sortedAccounts = useMemo(() => {
+    // 只显示符合下注条件的账号（在线、未达止盈、无线路冲突）
+    // 使用后端返回的 eligible_accounts 和 excluded_accounts 来判断
+    const eligibleAccountIds = new Set<number>();
+
+    if (autoSelection) {
+      // 如果有优选数据，使用优选结果
+      autoSelection.eligible_accounts.forEach(entry => {
+        eligibleAccountIds.add(entry.account.id);
+      });
+    } else {
+      // 如果没有优选数据，只显示在线的账号
+      accounts.forEach(account => {
+        if (isAccountOnline(account.id)) {
+          eligibleAccountIds.add(account.id);
+        }
+      });
+    }
+
+    const eligibleAccounts = accounts.filter(account =>
+      eligibleAccountIds.has(account.id)
+    );
+
     if (!recommendedOrder.length) {
-      return accounts;
+      return eligibleAccounts;
     }
     const orderMap = new Map<number, number>();
     recommendedOrder.forEach((id, index) => orderMap.set(id, index));
-    return [...accounts].sort((a, b) => {
+    return [...eligibleAccounts].sort((a, b) => {
       const rankA = orderMap.has(a.id) ? orderMap.get(a.id)! : Number.POSITIVE_INFINITY;
       const rankB = orderMap.has(b.id) ? orderMap.get(b.id)! : Number.POSITIVE_INFINITY;
       if (rankA !== rankB) {
@@ -451,7 +474,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       }
       return a.username.localeCompare(b.username);
     });
-  }, [accounts, recommendedOrder]);
+  }, [accounts, recommendedOrder, autoSelection, isAccountOnline]);
 
   const formatAmount = (value: number) => {
     if (!Number.isFinite(value)) {
