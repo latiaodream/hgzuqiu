@@ -69,12 +69,62 @@ const filterMatchesByShowtype = (matches: any[], showtype: string) => {
     if (!Array.isArray(matches)) {
         return [];
     }
+
+    const parseMatchDate = (match: any): Date | null => {
+        const raw = pickValue(
+            match.match_time,
+            match.time,
+            match.timer,
+            match.matchTime,
+            match.datetime
+        );
+
+        if (!raw) {
+            return null;
+        }
+
+        const date = new Date(raw);
+        if (!Number.isFinite(date.getTime())) {
+            return null;
+        }
+        return date;
+    };
+
+    const startOfDay = (offsetDays = 0) => {
+        const base = new Date();
+        base.setHours(0, 0, 0, 0);
+        base.setDate(base.getDate() + offsetDays);
+        return base;
+    };
+
+    const todayStart = startOfDay(0);
+    const tomorrowStart = startOfDay(1);
+    const dayAfterTomorrowStart = startOfDay(2);
+
     if (showtype === 'live') {
         return matches.filter((m) => isLiveState(m.state ?? m.status));
     }
-    if (showtype === 'early') {
-        return matches.filter((m) => normalizeStateValue(m.state ?? m.status) === 0);
+
+    if (showtype === 'today') {
+        return matches.filter((m) => {
+            const date = parseMatchDate(m);
+            if (date) {
+                return date >= todayStart && date < tomorrowStart;
+            }
+            return isLiveState(m.state ?? m.status) || normalizeStateValue(m.state ?? m.status) === 0;
+        });
     }
+
+    if (showtype === 'early') {
+        return matches.filter((m) => {
+            const date = parseMatchDate(m);
+            if (date) {
+                return date >= tomorrowStart && date < dayAfterTomorrowStart;
+            }
+            return normalizeStateValue(m.state ?? m.status) === 0;
+        });
+    }
+
     return matches;
 };
 

@@ -509,6 +509,16 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         ? latestOddsValue
         : oddsValue;
 
+      const minOddsValue = Number(values.min_odds);
+      if (Number.isFinite(minOddsValue) && minOddsValue > 0) {
+        const compareOdds = Number(finalOdds);
+        if (!Number.isFinite(compareOdds) || compareOdds < minOddsValue) {
+          message.error(`实时赔率 ${compareOdds || '--'} 低于最低赔率 ${minOddsValue}，已取消下注`);
+          setLoading(false);
+          return;
+        }
+      }
+
       const requestData: BetCreateRequest = {
         account_ids: selectedAccounts,
         match_id: matchData.id,
@@ -527,6 +537,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         match_status: matchData.status,
         current_score: matchData.current_score,
         match_period: matchData.match_period,
+        min_odds: Number.isFinite(minOddsValue) ? minOddsValue : undefined,
       };
 
       const response = await betApi.createBet(requestData);

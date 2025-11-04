@@ -6624,10 +6624,10 @@ export class CrownAutomationService {
     const parseOverUnder = () => {
       wtype = isHalfMarket ? 'HROU' : 'ROU';
       if (optionNormalized.includes('大') || optionNormalized.includes('over')) {
-        rtype = isHalfMarket ? 'HROUO' : 'ROUH';
+        rtype = isHalfMarket ? 'HROUC' : 'ROUC';
         chose_team = 'H';
       } else {
-        rtype = isHalfMarket ? 'HROUU' : 'ROUC';
+        rtype = isHalfMarket ? 'HROUH' : 'ROUH';
         chose_team = 'C';
       }
     };

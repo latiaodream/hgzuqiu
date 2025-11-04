@@ -489,8 +489,23 @@ router.post('/', async (req: any, res) => {
                 }
 
                 const discount = Number(accountRow.discount) || 1;
-                const platformAmount = betData.bet_amount;
-                const crownAmount = parseFloat((platformAmount / discount).toFixed(2));
+                const platformAmount = Number(betData.bet_amount) || 0;
+                const discountSafe = discount > 0 ? discount : 1;
+                const crownAmountRaw = platformAmount / discountSafe;
+                const crownAmount = parseFloat(crownAmountRaw.toFixed(2));
+                const virtualAmount = parseFloat(platformAmount.toFixed(2));
+
+                const minOddsThreshold = Number(betData.min_odds);
+                if (Number.isFinite(minOddsThreshold) && minOddsThreshold > 0) {
+                    const compareOdds = Number(betData.odds);
+                    if (!Number.isFinite(compareOdds) || compareOdds < minOddsThreshold) {
+                        failedBets.push({
+                            accountId,
+                            error: `实时赔率 ${Number.isFinite(compareOdds) ? compareOdds.toFixed(3) : '--'} 低于最低赔率 ${minOddsThreshold}`,
+                        });
+                        continue;
+                    }
+                }
 
                 // 调用真实的Crown下注API
                 const betResult = await automation.placeBet(accountId, {
@@ -519,7 +534,7 @@ router.post('/', async (req: any, res) => {
 
                 const insertResult = await query(`
                     INSERT INTO bets (
-                        user_id, account_id, match_id, bet_type, bet_option, bet_amount, odds,
+                        user_id, account_id, match_id, bet_type, bet_option, bet_amount, virtual_bet_amount, odds,
                         single_limit, interval_seconds, quantity, status, official_bet_id, official_odds
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                     RETURNING *
@@ -529,9 +544,10 @@ router.post('/', async (req: any, res) => {
                     betData.match_id,
                     betData.bet_type,
                     betData.bet_option,
-                    betData.bet_amount,
+                    crownAmount,
+                    virtualAmount,
                     finalOddsValue,
-                    betData.single_limit || betData.bet_amount,
+                    betData.single_limit || crownAmount,
                     betData.interval_seconds || 3,
                     betData.quantity || 1,
                     initialStatus,
@@ -586,9 +602,9 @@ router.post('/', async (req: any, res) => {
                         transactionId,
                         '消耗',
                         `下注消耗 - ${betData.bet_type} ${betData.bet_option}${userRole === 'staff' ? ` (员工: ${req.user.username})` : ''}`,
-                        -betData.bet_amount,
+                        -crownAmount,
                         currentBalance,
-                        currentBalance - betData.bet_amount
+                        currentBalance - crownAmount
                     ]);
                 }
             } catch (accountError: any) {
