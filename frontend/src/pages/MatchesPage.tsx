@@ -102,11 +102,38 @@ const MatchesPage: React.FC = () => {
     if (showtype !== 'live') return matches;
 
     // 滚球模式下，排除已结束的比赛
-    return matches.filter((match) => {
+    const filtered = matches.filter((match) => {
       const status = match.status ?? match.state;
+      const period = match.period || match.match_period || '';
+
+      // 调试日志：查看前3场比赛的状态
+      if (matches.indexOf(match) < 3) {
+        console.log(`🔍 比赛状态检查:`, {
+          league: match.league,
+          home: match.home,
+          away: match.away,
+          status,
+          period,
+          statusType: typeof status,
+        });
+      }
+
       // status: 0=未开赛, 1=进行中, -1=已结束, 3=已结束
-      return status !== -1 && status !== 3 && status !== '-1' && status !== '3';
+      // 同时检查 period 是否为 "已结束"
+      const isFinished =
+        status === -1 ||
+        status === 3 ||
+        status === '-1' ||
+        status === '3' ||
+        period === '已结束' ||
+        period === 'FT' ||
+        period === 'Finished';
+
+      return !isFinished;
     });
+
+    console.log(`📊 滚球过滤: 原始 ${matches.length} 场 → 过滤后 ${filtered.length} 场`);
+    return filtered;
   };
 
   const loadMatches = async (opts?: { silent?: boolean }) => {
