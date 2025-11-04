@@ -172,10 +172,19 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       return { success: false };
     }
 
-    if (!selectedAccounts.length) {
+    // 获取在线账号列表
+    const onlineAccounts = accounts.filter(acc => isAccountOnline(acc.id));
+
+    // 如果没有选择账号，使用第一个在线账号
+    let accountId = selectedAccounts.length > 0 ? selectedAccounts[0] : null;
+    if (!accountId && onlineAccounts.length > 0) {
+      accountId = onlineAccounts[0].id;
+    }
+
+    if (!accountId) {
       setOddsPreview(null);
-      setPreviewError('请选择账号');
-      return { success: false, message: '请选择账号' };
+      setPreviewError('没有可用的在线账号');
+      return { success: false, message: '没有可用的在线账号' };
     }
 
     const currentValues = form.getFieldsValue();
@@ -184,7 +193,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     const oddsValue = currentValues.odds ?? defaultSelection?.odds ?? 1;
 
     const payload = {
-      account_id: selectedAccounts[0],
+      account_id: accountId,
       match_id: match.id,
       crown_match_id: match.crown_gid || match.match_id,
       bet_type: betTypeValue,
@@ -235,7 +244,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         setPreviewLoading(false);
       }
     }
-  }, [match, selectedAccounts, form, defaultSelection]);
+  }, [match, selectedAccounts, form, defaultSelection, accounts, isAccountOnline]);
 
   const fetchAutoSelection = useCallback(async (limit?: number, silent = false) => {
     if (!match) return;
