@@ -386,16 +386,28 @@ const MatchesPage: React.FC = () => {
     return (
       <div className="odds-stack-grid">
         {lines.map((data, index) => {
-          // 根据 strong 字段判断哪一方让球
-          // strong = 'H' 表示主队让球（主队显示正数，客队显示负数）
-          // strong = 'C' 表示客队让球（主队显示负数，客队显示正数）
-          const isHomeStrong = match.strong === 'H';
-          const formattedLine = formatHandicapLine(data.line);
+          // iSports API 的 instantHandicap 字段：
+          // - 正数表示主队让球（如 0.5）
+          // - 负数表示客队让球（如 -0.5）
+          // strong 字段是根据 instantHandicap 计算的：
+          // - strong = 'H' 表示 instantHandicap > 0（主队让球）
+          // - strong = 'C' 表示 instantHandicap <= 0（客队让球）
 
-          // 主队盘口：如果主队让球显示正数，否则显示负数
-          const homeHandicap = isHomeStrong ? formattedLine : formattedLine.replace(/^\+/, '-');
-          // 客队盘口：如果客队让球显示正数，否则显示负数
-          const awayHandicap = isHomeStrong ? formattedLine.replace(/^\+/, '-') : formattedLine;
+          const line = data.line || '0';
+          const lineNum = parseFloat(line);
+          const absLine = Math.abs(lineNum);
+
+          // 格式化盘口数字（处理 0.5/1 这种格式）
+          let formattedAbsLine = String(absLine);
+          if (line.includes('/')) {
+            // 保留斜杠格式
+            formattedAbsLine = line.replace(/^-/, '');
+          }
+
+          // 主队盘口：如果是正数（主队让球）显示 +，否则显示 -
+          const homeHandicap = lineNum >= 0 ? `+${formattedAbsLine}` : `-${formattedAbsLine}`;
+          // 客队盘口：与主队相反
+          const awayHandicap = lineNum >= 0 ? `-${formattedAbsLine}` : `+${formattedAbsLine}`;
 
           return (
             <div key={index} className="odds-row">
