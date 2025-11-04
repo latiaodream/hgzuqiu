@@ -386,8 +386,17 @@ const MatchesPage: React.FC = () => {
     return (
       <div className="odds-stack-grid">
         {lines.map((data, index) => {
+          // 根据 strong 字段判断哪一方让球
+          // strong = 'H' 表示主队让球（主队显示正数，客队显示负数）
+          // strong = 'C' 表示客队让球（主队显示负数，客队显示正数）
+          const isHomeStrong = match.strong === 'H';
           const formattedLine = formatHandicapLine(data.line);
-          // 所有行都显示队名
+
+          // 主队盘口：如果主队让球显示正数，否则显示负数
+          const homeHandicap = isHomeStrong ? formattedLine : formattedLine.replace(/^\+/, '-');
+          // 客队盘口：如果客队让球显示正数，否则显示负数
+          const awayHandicap = isHomeStrong ? formattedLine.replace(/^\+/, '-') : formattedLine;
+
           return (
             <div key={index} className="odds-row">
               {data.home && (
@@ -395,13 +404,13 @@ const MatchesPage: React.FC = () => {
                   className="odds-item-left"
                   onClick={() => openBetModal(match, {
                     bet_type: '让球',
-                    bet_option: `${match.home || '主队'} ${formattedLine ? `(${formattedLine})` : ''}`,
+                    bet_option: `${match.home || '主队'} ${homeHandicap ? `(${homeHandicap})` : ''}`,
                     odds: data.home as string,
-                    label: `[让球] ${(match.home || '主队')} ${formattedLine ? `(${formattedLine})` : ''} @${data.home}`,
+                    label: `[让球] ${(match.home || '主队')} ${homeHandicap ? `(${homeHandicap})` : ''} @${data.home}`,
                   })}
                 >
                   <span className="odds-team">
-                    {match.home || '主'} {formattedLine}
+                    {match.home || '主'} {homeHandicap}
                   </span>
                   <span className="odds-value">{data.home}</span>
                 </div>
@@ -411,13 +420,13 @@ const MatchesPage: React.FC = () => {
                   className="odds-item-right"
                   onClick={() => openBetModal(match, {
                     bet_type: '让球',
-                    bet_option: `${match.away || '客队'} ${formattedLine ? `(${formattedLine})` : ''}`,
+                    bet_option: `${match.away || '客队'} ${awayHandicap ? `(${awayHandicap})` : ''}`,
                     odds: data.away as string,
-                    label: `[让球] ${(match.away || '客队')} ${formattedLine ? `(${formattedLine})` : ''} @${data.away}`,
+                    label: `[让球] ${(match.away || '客队')} ${awayHandicap ? `(${awayHandicap})` : ''} @${data.away}`,
                   })}
                 >
                   <span className="odds-team">
-                    {match.away || '客'} {formattedLine}
+                    {match.away || '客'} {awayHandicap}
                   </span>
                   <span className="odds-value">{data.away}</span>
                 </div>
