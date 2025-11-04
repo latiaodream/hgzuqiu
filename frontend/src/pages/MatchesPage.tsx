@@ -220,7 +220,7 @@ const MatchesPage: React.FC = () => {
         try {
           const payload = JSON.parse(e.data || '{}');
           if (payload && payload.matches) {
-            setMatches(payload.matches);
+            setMatches(filterFinishedMatches(payload.matches));
             setLastUpdatedAt(Date.now());
           }
         } catch {}
