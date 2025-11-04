@@ -17,6 +17,7 @@ export interface User {
 export interface LoginRequest {
   username: string;
   password: string;
+  verificationCode?: string;
 }
 
 export interface RegisterRequest {
@@ -31,6 +32,10 @@ export interface AuthResponse {
   user?: User;
   message?: string;
   error?: string;
+  requireEmailBinding?: boolean;
+  requireVerification?: boolean;
+  userId?: number;
+  email?: string;
 }
 
 // 分组类型

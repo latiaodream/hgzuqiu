@@ -4,8 +4,69 @@ import jwt from 'jsonwebtoken';
 import { query } from '../models/database';
 import { LoginRequest, UserCreateRequest, ApiResponse, LoginResponse, User } from '../types';
 import { authenticateToken } from '../middleware/auth';
+import { emailService } from '../services/email.service';
 
 const router = Router();
+
+/**
+ * 获取客户端 IP 地址
+ */
+function getClientIp(req: any): string {
+    return (
+        req.headers['x-forwarded-for']?.split(',')[0] ||
+        req.headers['x-real-ip'] ||
+        req.connection.remoteAddress ||
+        req.socket.remoteAddress ||
+        ''
+    );
+}
+
+/**
+ * 检查 IP 是否在信任列表中
+ */
+async function isIpTrusted(userId: number, ip: string): Promise<boolean> {
+    const result = await query(
+        'SELECT trusted_ips FROM users WHERE id = $1',
+        [userId]
+    );
+
+    if (result.rows.length === 0) {
+        return false;
+    }
+
+    const trustedIps = result.rows[0].trusted_ips || [];
+    return trustedIps.includes(ip);
+}
+
+/**
+ * 添加 IP 到信任列表
+ */
+async function addTrustedIp(userId: number, ip: string): Promise<void> {
+    await query(
+        `UPDATE users
+         SET trusted_ips = array_append(COALESCE(trusted_ips, ARRAY[]::TEXT[]), $1),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $2 AND NOT ($1 = ANY(COALESCE(trusted_ips, ARRAY[]::TEXT[])))`,
+        [ip, userId]
+    );
+}
+
+/**
+ * 记录登录历史
+ */
+async function recordLoginHistory(
+    userId: number,
+    ip: string,
+    userAgent: string,
+    success: boolean,
+    verificationRequired: boolean
+): Promise<void> {
+    await query(
+        `INSERT INTO login_history (user_id, ip_address, user_agent, success, verification_required)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [userId, ip, userAgent, success, verificationRequired]
+    );
+}
 
 // 用户注册
 router.post('/register', async (req, res) => {
@@ -144,7 +205,7 @@ router.post('/login', async (req, res) => {
     if (typeof safeBody?.password === 'string') safeBody.password = '***';
     console.log('🔐 登录请求开始，请求体:', safeBody);
     try {
-        const { username, password }: LoginRequest = req.body;
+        const { username, password, verificationCode }: LoginRequest & { verificationCode?: string } = req.body;
 
         if (!username || !password) {
             return res.status(400).json({
@@ -153,9 +214,13 @@ router.post('/login', async (req, res) => {
             });
         }
 
+        // 获取客户端 IP 和 User-Agent
+        const clientIp = getClientIp(req);
+        const userAgent = req.headers['user-agent'] || '';
+
         // 查找用户
         const result = await query(
-            'SELECT id, username, email, password_hash, role, parent_id, agent_id, created_at, updated_at FROM users WHERE username = $1',
+            'SELECT id, username, email, password_hash, role, parent_id, agent_id, email_verified, created_at, updated_at FROM users WHERE username = $1',
             [username]
         );
 
@@ -171,10 +236,61 @@ router.post('/login', async (req, res) => {
         // 验证密码
         const isValidPassword = await bcrypt.compare(password, user.password_hash);
         if (!isValidPassword) {
+            await recordLoginHistory(user.id, clientIp, userAgent, false, false);
             return res.status(401).json({
                 success: false,
                 error: '用户名或密码错误'
             });
+        }
+
+        // 检查是否需要邮箱绑定（首次登录且邮箱未验证）
+        if (!user.email_verified) {
+            return res.status(403).json({
+                success: false,
+                error: '请先绑定邮箱',
+                requireEmailBinding: true,
+                userId: user.id,
+                email: user.email
+            });
+        }
+
+        // 检查 IP 是否可信
+        const ipTrusted = await isIpTrusted(user.id, clientIp);
+
+        if (!ipTrusted) {
+            // 非常用 IP，需要验证码
+            if (!verificationCode) {
+                await recordLoginHistory(user.id, clientIp, userAgent, false, true);
+                return res.status(403).json({
+                    success: false,
+                    error: '检测到非常用网络登录，请输入邮箱验证码',
+                    requireVerification: true,
+                    userId: user.id,
+                    email: user.email
+                });
+            }
+
+            // 验证验证码
+            const verifyResult = await emailService.verifyCode(
+                user.id,
+                user.email,
+                verificationCode,
+                'login_verification'
+            );
+
+            if (!verifyResult.success) {
+                await recordLoginHistory(user.id, clientIp, userAgent, false, true);
+                return res.status(403).json({
+                    success: false,
+                    error: verifyResult.message,
+                    requireVerification: true,
+                    userId: user.id,
+                    email: user.email
+                });
+            }
+
+            // 验证成功，添加 IP 到信任列表
+            await addTrustedIp(user.id, clientIp);
         }
 
         // 生成JWT令牌，包含角色信息
@@ -193,6 +309,9 @@ router.post('/login', async (req, res) => {
             { expiresIn: '24h' }
         );
 
+        // 记录登录成功
+        await recordLoginHistory(user.id, clientIp, userAgent, true, !ipTrusted);
+
         // 创建返回的用户对象（不包含password_hash）
         const userResponse = {
             id: user.id,
@@ -201,6 +320,7 @@ router.post('/login', async (req, res) => {
             role: user.role,
             parent_id: user.parent_id,
             agent_id: user.agent_id,
+            email_verified: user.email_verified,
             created_at: user.created_at,
             updated_at: user.updated_at
         };
@@ -313,6 +433,134 @@ router.post('/change-password', authenticateToken, async (req: any, res) => {
         res.status(500).json({
             success: false,
             error: '修改密码失败'
+        });
+    }
+});
+
+// 发送邮箱验证码
+router.post('/send-verification-code', async (req, res) => {
+    try {
+        const { userId, email, type } = req.body;
+
+        if (!userId || !email || !type) {
+            return res.status(400).json({
+                success: false,
+                error: '参数不完整'
+            });
+        }
+
+        if (!['email_binding', 'login_verification'].includes(type)) {
+            return res.status(400).json({
+                success: false,
+                error: '无效的验证类型'
+            });
+        }
+
+        // 验证用户是否存在
+        const userResult = await query(
+            'SELECT id, email FROM users WHERE id = $1',
+            [userId]
+        );
+
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: '用户不存在'
+            });
+        }
+
+        // 发送验证码
+        const result = await emailService.sendVerificationCode(userId, email, type);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: result.message,
+                code: result.code // 开发环境会返回验证码
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: result.message
+            });
+        }
+    } catch (error) {
+        console.error('发送验证码错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '发送验证码失败'
+        });
+    }
+});
+
+// 绑定邮箱
+router.post('/bind-email', async (req, res) => {
+    try {
+        const { userId, email, verificationCode } = req.body;
+
+        if (!userId || !email || !verificationCode) {
+            return res.status(400).json({
+                success: false,
+                error: '参数不完整'
+            });
+        }
+
+        // 验证验证码
+        const verifyResult = await emailService.verifyCode(
+            userId,
+            email,
+            verificationCode,
+            'email_binding'
+        );
+
+        if (!verifyResult.success) {
+            return res.status(400).json({
+                success: false,
+                error: verifyResult.message
+            });
+        }
+
+        // 获取客户端 IP，添加到信任列表
+        const clientIp = getClientIp(req);
+        await addTrustedIp(userId, clientIp);
+
+        res.json({
+            success: true,
+            message: '邮箱绑定成功'
+        });
+    } catch (error) {
+        console.error('绑定邮箱错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '绑定邮箱失败'
+        });
+    }
+});
+
+// 获取登录历史
+router.get('/login-history', authenticateToken, async (req: any, res) => {
+    try {
+        const userId = req.user.id;
+        const { limit = 10 } = req.query;
+
+        const result = await query(
+            `SELECT ip_address, user_agent, login_time, success, verification_required
+             FROM login_history
+             WHERE user_id = $1
+             ORDER BY login_time DESC
+             LIMIT $2`,
+            [userId, parseInt(limit as string)]
+        );
+
+        res.json({
+            success: true,
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('获取登录历史错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取登录历史失败'
         });
     }
 });
