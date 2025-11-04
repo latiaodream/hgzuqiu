@@ -157,81 +157,92 @@ async function autoFetchAndSaveLimits(accountId: number, account: any): Promise<
 
         // 获取足球限额
         const ftSettings = await apiClient.getAccountSettings('FT');
-        let footballPrematchLimit = null;
-        let footballLiveLimit = null;
+        const footballLimits: any = {};
 
         if (typeof ftSettings === 'string' && ftSettings.includes('<FT>')) {
             const ftMatch = ftSettings.match(/<FT>(.*?)<\/FT>/s);
             if (ftMatch) {
                 const ftContent = ftMatch[1];
-                const extractMax = (tag: string): number | null => {
-                    const regex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
-                    const match = ftContent.match(regex);
-                    if (match) {
-                        return parseInt(match[1].replace(/,/g, ''), 10);
-                    }
-                    return null;
+                const extractLimits = (tag: string): { max: number | null; single: number | null } => {
+                    const maxRegex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
+                    const singleRegex = new RegExp(`<${tag}><single>([^<]+)<\\/single>`);
+                    const maxMatch = ftContent.match(maxRegex);
+                    const singleMatch = ftContent.match(singleRegex);
+                    return {
+                        max: maxMatch ? parseInt(maxMatch[1].replace(/,/g, ''), 10) : null,
+                        single: singleMatch ? parseInt(singleMatch[1].replace(/,/g, ''), 10) : null,
+                    };
                 };
-                footballPrematchLimit = extractMax('R');
-                footballLiveLimit = extractMax('RE');
+
+                // 提取所有限额类型
+                footballLimits.R = extractLimits('R');           // 让球、大小、单双
+                footballLimits.ROU = extractLimits('ROU');       // 滚球让球、滚球大小、滚球单双
+                footballLimits.M = extractLimits('M');           // 独赢、滚球独赢
+                footballLimits.PD = extractLimits('PD');         // 其他
+                footballLimits.ROUHPD = extractLimits('ROUHPD'); // 滚球其他
+
+                console.log('⚽ 足球限额:', footballLimits);
             }
         }
 
         // 获取篮球限额
         const bkSettings = await apiClient.getAccountSettings('BK');
-        let basketballPrematchLimit = null;
-        let basketballLiveLimit = null;
+        const basketballLimits: any = {};
 
         if (typeof bkSettings === 'string' && bkSettings.includes('<BK>')) {
             const bkMatch = bkSettings.match(/<BK>(.*?)<\/BK>/s);
             if (bkMatch) {
                 const bkContent = bkMatch[1];
-                const extractMax = (tag: string): number | null => {
-                    const regex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
-                    const match = bkContent.match(regex);
-                    if (match) {
-                        return parseInt(match[1].replace(/,/g, ''), 10);
-                    }
-                    return null;
+                const extractLimits = (tag: string): { max: number | null; single: number | null } => {
+                    const maxRegex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
+                    const singleRegex = new RegExp(`<${tag}><single>([^<]+)<\\/single>`);
+                    const maxMatch = bkContent.match(maxRegex);
+                    const singleMatch = bkContent.match(singleRegex);
+                    return {
+                        max: maxMatch ? parseInt(maxMatch[1].replace(/,/g, ''), 10) : null,
+                        single: singleMatch ? parseInt(singleMatch[1].replace(/,/g, ''), 10) : null,
+                    };
                 };
-                basketballPrematchLimit = extractMax('R');
-                basketballLiveLimit = extractMax('RE');
+
+                // 提取所有限额类型
+                basketballLimits.R = extractLimits('R');           // 让球、大小、单双
+                basketballLimits.ROU = extractLimits('ROU');       // 滚球让球、滚球大小、滚球单双
+                basketballLimits.M = extractLimits('M');           // 独赢、滚球独赢
+                basketballLimits.PD = extractLimits('PD');         // 其他
+                basketballLimits.ROUHPD = extractLimits('ROUHPD'); // 滚球其他
+
+                console.log('🏀 篮球限额:', basketballLimits);
             }
         }
 
+        // 构建完整的限额数据
+        const limitsData = {
+            football: footballLimits,
+            basketball: basketballLimits,
+            updated_at: new Date().toISOString(),
+        };
+
         // 更新数据库中的限额信息
-        const updateFields: string[] = [];
-        const updateValues: any[] = [];
-        let paramIndex = 1;
+        await query(
+            `UPDATE crown_accounts
+             SET football_prematch_limit = $1,
+                 football_live_limit = $2,
+                 basketball_prematch_limit = $3,
+                 basketball_live_limit = $4,
+                 limits_data = $5,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $6`,
+            [
+                footballLimits.R?.max || 0,
+                footballLimits.ROU?.max || 0,
+                basketballLimits.R?.max || 0,
+                basketballLimits.ROU?.max || 0,
+                JSON.stringify(limitsData),
+                accountId
+            ]
+        );
 
-        if (footballPrematchLimit !== null) {
-            updateFields.push(`football_prematch_limit = $${paramIndex++}`);
-            updateValues.push(footballPrematchLimit);
-        }
-        if (footballLiveLimit !== null) {
-            updateFields.push(`football_live_limit = $${paramIndex++}`);
-            updateValues.push(footballLiveLimit);
-        }
-        if (basketballPrematchLimit !== null) {
-            updateFields.push(`basketball_prematch_limit = $${paramIndex++}`);
-            updateValues.push(basketballPrematchLimit);
-        }
-        if (basketballLiveLimit !== null) {
-            updateFields.push(`basketball_live_limit = $${paramIndex++}`);
-            updateValues.push(basketballLiveLimit);
-        }
-
-        if (updateFields.length > 0) {
-            updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
-            updateValues.push(accountId);
-
-            await query(
-                `UPDATE crown_accounts SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
-                updateValues
-            );
-
-            console.log(`✅ 自动获取限额成功: 足球早盘=${footballPrematchLimit}, 足球滚球=${footballLiveLimit}, 篮球早盘=${basketballPrematchLimit}, 篮球滚球=${basketballLiveLimit}`);
-        }
+        console.log(`✅ 自动获取限额成功:`, limitsData);
     } catch (error) {
         console.error('❌ 自动获取限额失败:', error);
         // 不影响登录结果，只记录错误

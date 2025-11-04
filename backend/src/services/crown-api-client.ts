@@ -1226,7 +1226,7 @@ export class CrownApiClient {
         },
       });
 
-      console.log('✅ 账号设置响应:', JSON.stringify(response.data).substring(0, 500));
+      console.log('✅ 账号设置响应 (完整):', response.data);
       return response.data;
     } catch (error: any) {
       console.error('❌ 获取账号设置失败:', error.message);

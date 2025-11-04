@@ -17,11 +17,25 @@ import {
 } from 'antd';
 import { TrophyOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { Match, CrownAccount, BetCreateRequest, AccountSelectionResponse } from '../../types';
-import { betApi, accountApi, crownApi } from '../../services/api';
+import { betApi, accountApi } from '../../services/api';
 import dayjs from 'dayjs';
 import type { AxiosError } from 'axios';
 
 const { Option } = Select;
+
+type MarketCategory = 'moneyline' | 'handicap' | 'overunder';
+type MarketScope = 'full' | 'half';
+
+interface BetSelectionMeta {
+  bet_type: string;
+  bet_option: string;
+  odds: number;
+  label?: string;
+  market_category: MarketCategory;
+  market_scope: MarketScope;
+  market_side: 'home' | 'away' | 'draw' | 'over' | 'under';
+  market_line?: string;
+}
 
 interface BetFormModalProps {
   visible: boolean;
@@ -29,12 +43,8 @@ interface BetFormModalProps {
   accounts: CrownAccount[];
   onCancel: () => void;
   onSubmit: () => void;
-  defaultSelection?: {
-    bet_type: string;
-    bet_option: string;
-    odds: number;
-    label?: string;
-  } | null;
+  defaultSelection?: BetSelectionMeta | null;
+  getMatchSnapshot?: (matchId: string | number | undefined | null) => any;
 }
 
 const BetFormModal: React.FC<BetFormModalProps> = ({
@@ -44,6 +54,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   onCancel,
   onSubmit,
   defaultSelection,
+  getMatchSnapshot,
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -53,7 +64,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   const [betMode, setBetMode] = useState<'优选' | '平均'>('优选');
   const [autoSelection, setAutoSelection] = useState<AccountSelectionResponse | null>(null);
   const [autoLoading, setAutoLoading] = useState(false);
-  const [previewLoading, setPreviewLoading] = useState(false);
   const [oddsPreview, setOddsPreview] = useState<{ odds: number | null; closed: boolean; message?: string } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [autoRefreshOdds, setAutoRefreshOdds] = useState(true); // 自动刷新赔率开关
@@ -85,6 +95,10 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         bet_type: defaultSelection?.bet_type || '让球',
         bet_option: defaultSelection?.bet_option || '主队',
         odds: defaultSelection?.odds || 1.85,
+        market_category: defaultSelection?.market_category || 'handicap',
+        market_scope: defaultSelection?.market_scope || 'full',
+        market_side: defaultSelection?.market_side || 'home',
+        market_line: defaultSelection?.market_line,
       };
       setSelectionLabel(defaultSelection?.label || '');
       setAutoSelection(null);
@@ -105,6 +119,10 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         interval_range: '1-3',
         group: undefined,
         account_ids: [],
+        market_category: defaults.market_category,
+        market_scope: defaults.market_scope,
+        market_side: defaults.market_side,
+        market_line: defaults.market_line,
       });
     }
   }, [visible, match, form, defaultSelection]);
