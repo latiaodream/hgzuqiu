@@ -97,6 +97,18 @@ const MatchesPage: React.FC = () => {
     fetchAccounts(true);
   }, []);
 
+  // 过滤已结束的比赛
+  const filterFinishedMatches = (matches: any[]) => {
+    if (showtype !== 'live') return matches;
+
+    // 滚球模式下，排除已结束的比赛
+    return matches.filter((match) => {
+      const status = match.status ?? match.state;
+      // status: 0=未开赛, 1=进行中, -1=已结束, 3=已结束
+      return status !== -1 && status !== 3 && status !== '-1' && status !== '3';
+    });
+  };
+
   const loadMatches = async (opts?: { silent?: boolean }) => {
     try {
       if (!opts?.silent) setLoading(true);
@@ -108,7 +120,7 @@ const MatchesPage: React.FC = () => {
         };
         const res = await matchApi.getMatches({ status: statusMap[showtype], limit: 200 });
         if (res.success && res.data) {
-          setMatches(res.data || []);
+          setMatches(filterFinishedMatches(res.data || []));
           setLastUpdatedAt(Date.now());
         } else {
           message.error(res.error || '获取本地赛事失败');
@@ -122,7 +134,7 @@ const MatchesPage: React.FC = () => {
           sorttype: 'L',
         });
         if (res.success && res.data) {
-          setMatches(res.data.matches || []);
+          setMatches(filterFinishedMatches(res.data.matches || []));
           setLastUpdatedAt(Date.now());
         }
         else message.error((res as any).error || '抓取赛事失败');
