@@ -232,11 +232,19 @@ router.get('/', async (req: any, res) => {
             }
         } as ApiResponse);
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('获取下注记录错误:', error);
+        console.error('错误详情:', {
+            message: error?.message,
+            stack: error?.stack,
+            userId,
+            userRole,
+            query: req.query
+        });
         res.status(500).json({
             success: false,
-            error: '获取下注记录失败'
+            error: '获取下注记录失败',
+            details: error?.message
         });
     }
 });
