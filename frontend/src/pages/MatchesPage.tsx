@@ -339,6 +339,10 @@ const MatchesPage: React.FC = () => {
   ) => {
     const betType = scope === 'half' ? '半场独赢' : '独赢';
     const scopeLabel = scope === 'half' ? '[半场独赢]' : '[全场]';
+    const baseWtype = scope === 'half' ? 'HRM' : 'RM';
+    const homeRtype = scope === 'half' ? 'HRMH' : 'RMH';
+    const drawRtype = scope === 'half' ? 'HRMN' : 'RMN';
+    const awayRtype = scope === 'half' ? 'HRMC' : 'RMC';
     return (
       <div className="odds-stack">
         {ml.home && (
@@ -352,6 +356,9 @@ const MatchesPage: React.FC = () => {
               market_category: 'moneyline',
               market_scope: scope,
               market_side: 'home',
+              market_wtype: baseWtype,
+              market_rtype: homeRtype,
+              market_chose_team: 'H',
             })}
           >
             <span className="odds-line">主胜</span>
@@ -369,6 +376,9 @@ const MatchesPage: React.FC = () => {
               market_category: 'moneyline',
               market_scope: scope,
               market_side: 'draw',
+              market_wtype: baseWtype,
+              market_rtype: drawRtype,
+              market_chose_team: 'N',
             })}
           >
             <span className="odds-line">和局</span>
@@ -386,6 +396,9 @@ const MatchesPage: React.FC = () => {
               market_category: 'moneyline',
               market_scope: scope,
               market_side: 'away',
+              market_wtype: baseWtype,
+              market_rtype: awayRtype,
+              market_chose_team: 'C',
             })}
           >
             <span className="odds-line">客胜</span>

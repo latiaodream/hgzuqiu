@@ -7309,6 +7309,11 @@ export class CrownAutomationService {
             line: handicapLine,
             home: handicapHome,
             away: handicapAway,
+            wtype: 'RE',
+            home_rtype: 'REH',
+            away_rtype: 'REC',
+            home_chose_team: 'H',
+            away_chose_team: 'C',
           });
           console.log(`    ✅ 让球 [Game ${i + 1}, master=${master}]: ${handicapLine} (${handicapHome} / ${handicapAway})`);
         }
@@ -7331,6 +7336,11 @@ export class CrownAutomationService {
             line: ouLineMain,
             over: ouOverMain,
             under: ouUnderMain,
+            wtype: 'ROU',
+            over_rtype: 'ROUC',
+            under_rtype: 'ROUH',
+            over_chose_team: 'C',
+            under_chose_team: 'H',
           });
           console.log(`    ✅ 大小 [Game ${i + 1}, master=${master}]: ${ouLineMain} (大:${ouOverMain} / 小:${ouUnderMain})`);
         }
@@ -7346,6 +7356,11 @@ export class CrownAutomationService {
             line: halfHandicapLine,
             home: halfHandicapHome,
             away: halfHandicapAway,
+            wtype: 'HRE',
+            home_rtype: 'HREH',
+            away_rtype: 'HREC',
+            home_chose_team: 'H',
+            away_chose_team: 'C',
           });
           console.log(`    ✅ 半场让球 [Game ${i + 1}, master=${master}]: ${halfHandicapLine} (${halfHandicapHome} / ${halfHandicapAway})`);
         }
@@ -7361,6 +7376,11 @@ export class CrownAutomationService {
             line: halfOuLine,
             over: halfOuOver,
             under: halfOuUnder,
+            wtype: 'HROU',
+            over_rtype: 'HROUC',
+            under_rtype: 'HROUH',
+            over_chose_team: 'C',
+            under_chose_team: 'H',
           });
           console.log(`    ✅ 半场大小 [Game ${i + 1}, master=${master}]: ${halfOuLine} (大:${halfOuOver} / 小:${halfOuUnder})`);
         }
@@ -7598,7 +7618,19 @@ export class CrownAutomationService {
       }
 
       const halfHandicapLines: Array<{ line: string; home: string; away: string }> = [];
-      addHandicapLine(halfHandicapLines, ['RATIO_HRE'], ['IOR_HREH'], ['IOR_HREC']);
+      addHandicapLine(
+        halfHandicapLines,
+        ['RATIO_HRE'],
+        ['IOR_HREH'],
+        ['IOR_HREC'],
+        {
+          wtype: 'HRE',
+          homeRtype: 'HREH',
+          awayRtype: 'HREC',
+          homeChoseTeam: 'H',
+          awayChoseTeam: 'C',
+        },
+      );
       if (halfHandicapLines.length > 0) {
         markets.half.handicap = { ...halfHandicapLines[0] };
         markets.half.handicapLines = halfHandicapLines;
