@@ -6,7 +6,7 @@ import type { LoginRequest } from '../../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import EmailBindingModal from './EmailBindingModal';
 import LoginVerificationModal from './LoginVerificationModal';
-import { authApi } from '../../services/auth.api';
+import { authApi } from '../../services/api';
 
 const { Title, Text } = Typography;
 
