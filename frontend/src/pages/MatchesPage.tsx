@@ -444,7 +444,8 @@ const MatchesPage: React.FC = () => {
     return (
       <div className="odds-stack-grid">
         {lines.map((data, index) => {
-          const formattedLine = formatHandicapLine(data.line);
+          // 大小球不需要正负号，直接显示数字
+          const line = data.line || '';
           // 第一行显示"大/小"，其他行只显示盘口数字
           const showLabel = index === 0;
           return (
@@ -454,13 +455,13 @@ const MatchesPage: React.FC = () => {
                   className="odds-item-left"
                   onClick={() => openBetModal(match, {
                     bet_type: '大小球',
-                    bet_option: `大球${formattedLine ? `(${formattedLine})` : ''}`,
+                    bet_option: `大球${line ? `(${line})` : ''}`,
                     odds: data.over as string,
-                    label: `[大小] 大球${formattedLine ? `(${formattedLine})` : ''} @${data.over}`,
+                    label: `[大小] 大球${line ? `(${line})` : ''} @${data.over}`,
                   })}
                 >
                   <span className="odds-team">
-                    {showLabel ? '大' : ''} {formattedLine}
+                    {showLabel ? '大' : ''} {line}
                   </span>
                   <span className="odds-value">{data.over}</span>
                 </div>
@@ -470,13 +471,13 @@ const MatchesPage: React.FC = () => {
                   className="odds-item-right"
                   onClick={() => openBetModal(match, {
                     bet_type: '大小球',
-                    bet_option: `小球${formattedLine ? `(${formattedLine})` : ''}`,
+                    bet_option: `小球${line ? `(${line})` : ''}`,
                     odds: data.under as string,
-                    label: `[大小] 小球${formattedLine ? `(${formattedLine})` : ''} @${data.under}`,
+                    label: `[大小] 小球${line ? `(${line})` : ''} @${data.under}`,
                   })}
                 >
                   <span className="odds-team">
-                    {showLabel ? '小' : ''} {formattedLine}
+                    {showLabel ? '小' : ''} {line}
                   </span>
                   <span className="odds-value">{data.under}</span>
                 </div>
