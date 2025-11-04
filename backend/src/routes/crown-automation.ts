@@ -163,23 +163,23 @@ async function autoFetchAndSaveLimits(accountId: number, account: any): Promise<
             const ftMatch = ftSettings.match(/<FT>(.*?)<\/FT>/s);
             if (ftMatch) {
                 const ftContent = ftMatch[1];
-                const extractLimits = (tag: string): { max: number | null; single: number | null } => {
+                const extractLimits = (tag: string): { max: number | null; min: number | null } => {
                     const maxRegex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
-                    const singleRegex = new RegExp(`<${tag}><single>([^<]+)<\\/single>`);
+                    const minRegex = new RegExp(`<${tag}><min>([^<]+)<\\/min>`);
                     const maxMatch = ftContent.match(maxRegex);
-                    const singleMatch = ftContent.match(singleRegex);
+                    const minMatch = ftContent.match(minRegex);
                     return {
                         max: maxMatch ? parseInt(maxMatch[1].replace(/,/g, ''), 10) : null,
-                        single: singleMatch ? parseInt(singleMatch[1].replace(/,/g, ''), 10) : null,
+                        min: minMatch ? parseInt(minMatch[1].replace(/,/g, ''), 10) : null,
                     };
                 };
 
                 // 提取所有限额类型
-                footballLimits.R = extractLimits('R');           // 让球、大小、单双
-                footballLimits.ROU = extractLimits('ROU');       // 滚球让球、滚球大小、滚球单双
-                footballLimits.M = extractLimits('M');           // 独赢、滚球独赢
-                footballLimits.PD = extractLimits('PD');         // 其他
-                footballLimits.ROUHPD = extractLimits('ROUHPD'); // 滚球其他
+                footballLimits.R = extractLimits('R');     // 让球、大小、单双
+                footballLimits.RE = extractLimits('RE');   // 滚球让球、滚球大小、滚球单双
+                footballLimits.M = extractLimits('M');     // 独赢、滚球独赢
+                footballLimits.DT = extractLimits('DT');   // 其他
+                footballLimits.RDT = extractLimits('RDT'); // 滚球其他
 
                 console.log('⚽ 足球限额:', footballLimits);
             }
@@ -193,23 +193,22 @@ async function autoFetchAndSaveLimits(accountId: number, account: any): Promise<
             const bkMatch = bkSettings.match(/<BK>(.*?)<\/BK>/s);
             if (bkMatch) {
                 const bkContent = bkMatch[1];
-                const extractLimits = (tag: string): { max: number | null; single: number | null } => {
+                const extractLimits = (tag: string): { max: number | null; min: number | null } => {
                     const maxRegex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
-                    const singleRegex = new RegExp(`<${tag}><single>([^<]+)<\\/single>`);
+                    const minRegex = new RegExp(`<${tag}><min>([^<]+)<\\/min>`);
                     const maxMatch = bkContent.match(maxRegex);
-                    const singleMatch = bkContent.match(singleRegex);
+                    const minMatch = bkContent.match(minRegex);
                     return {
                         max: maxMatch ? parseInt(maxMatch[1].replace(/,/g, ''), 10) : null,
-                        single: singleMatch ? parseInt(singleMatch[1].replace(/,/g, ''), 10) : null,
+                        min: minMatch ? parseInt(minMatch[1].replace(/,/g, ''), 10) : null,
                     };
                 };
 
                 // 提取所有限额类型
-                basketballLimits.R = extractLimits('R');           // 让球、大小、单双
-                basketballLimits.ROU = extractLimits('ROU');       // 滚球让球、滚球大小、滚球单双
-                basketballLimits.M = extractLimits('M');           // 独赢、滚球独赢
-                basketballLimits.PD = extractLimits('PD');         // 其他
-                basketballLimits.ROUHPD = extractLimits('ROUHPD'); // 滚球其他
+                basketballLimits.DT = extractLimits('DT');  // 其他
+                basketballLimits.M = extractLimits('M');    // 独赢、滚球独赢
+                basketballLimits.R = extractLimits('R');    // 让球、大小、单双
+                basketballLimits.RE = extractLimits('RE');  // 滚球让球、滚球大小、滚球单双
 
                 console.log('🏀 篮球限额:', basketballLimits);
             }
@@ -234,9 +233,9 @@ async function autoFetchAndSaveLimits(accountId: number, account: any): Promise<
              WHERE id = $6`,
             [
                 footballLimits.R?.max || 0,
-                footballLimits.ROU?.max || 0,
+                footballLimits.RE?.max || 0,
                 basketballLimits.R?.max || 0,
-                basketballLimits.ROU?.max || 0,
+                basketballLimits.RE?.max || 0,
                 JSON.stringify(limitsData),
                 accountId
             ]

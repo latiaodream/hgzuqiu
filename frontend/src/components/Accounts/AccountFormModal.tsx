@@ -68,6 +68,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [initType, setInitType] = useState<InitType>('full');
   const [fetchingLimits, setFetchingLimits] = useState(false);
+  const [limitsData, setLimitsData] = useState<any>(null); // 存储完整的限额数据
 
   const regenerateCredential = useCallback((field: 'username' | 'password') => {
     const value = field === 'username' ? generateAccountUsername() : generateAccountPassword();
@@ -98,6 +99,8 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
           // 解析 XML 数据并自动填充到表单
           const xmlData = response.data;
 
+          const parsedLimits: any = { football: {}, basketball: {} };
+
           if (typeof xmlData === 'string' && xmlData.includes('<FT>')) {
             // 解析足球限额
             const ftMatch = xmlData.match(/<FT>(.*?)<\/FT>/s);
@@ -105,32 +108,28 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
               const ftContent = ftMatch[1];
 
               // 提取限额值的辅助函数
-              const extractMax = (tag: string): number => {
-                const regex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
-                const match = ftContent.match(regex);
-                if (match) {
-                  // 移除逗号并转换为数字
-                  return parseInt(match[1].replace(/,/g, ''), 10);
-                }
-                return 0;
+              const extractLimits = (tag: string): { max: number; min: number } => {
+                const maxRegex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
+                const minRegex = new RegExp(`<${tag}><min>([^<]+)<\\/min>`);
+                const maxMatch = ftContent.match(maxRegex);
+                const minMatch = ftContent.match(minRegex);
+                return {
+                  max: maxMatch ? parseInt(maxMatch[1].replace(/,/g, ''), 10) : 0,
+                  min: minMatch ? parseInt(minMatch[1].replace(/,/g, ''), 10) : 0,
+                };
               };
 
-              // 根据官方表格映射：
-              // - 让球 (R) → 单场最高 → football_prematch_limit
-              // - 滚球 (RE) → 单场最高 → football_live_limit
-              const footballPrematchLimit = extractMax('R');
-              const footballLiveLimit = extractMax('RE');
+              // 提取所有限额类型
+              parsedLimits.football.R = extractLimits('R');     // 让球、大小、单双
+              parsedLimits.football.RE = extractLimits('RE');   // 滚球让球、滚球大小、滚球单双
+              parsedLimits.football.M = extractLimits('M');     // 独赢、滚球独赢
+              parsedLimits.football.DT = extractLimits('DT');   // 其他
+              parsedLimits.football.RDT = extractLimits('RDT'); // 滚球其他
 
-              // 填充到表单
+              // 填充到表单（保持向后兼容）
               form.setFieldsValue({
-                football_prematch_limit: footballPrematchLimit,
-                football_live_limit: footballLiveLimit,
-              });
-
-              message.success({
-                content: `足球限额已自动填充：早盘 ${footballPrematchLimit.toLocaleString()}，滚球 ${footballLiveLimit.toLocaleString()}`,
-                key: 'fetchLimits',
-                duration: 3
+                football_prematch_limit: parsedLimits.football.R.max,
+                football_live_limit: parsedLimits.football.RE.max,
               });
             }
           }
@@ -145,31 +144,39 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
               if (bkMatch) {
                 const bkContent = bkMatch[1];
 
-                const extractMax = (tag: string): number => {
-                  const regex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
-                  const match = bkContent.match(regex);
-                  if (match) {
-                    return parseInt(match[1].replace(/,/g, ''), 10);
-                  }
-                  return 0;
+                const extractLimits = (tag: string): { max: number; min: number } => {
+                  const maxRegex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
+                  const minRegex = new RegExp(`<${tag}><min>([^<]+)<\\/min>`);
+                  const maxMatch = bkContent.match(maxRegex);
+                  const minMatch = bkContent.match(minRegex);
+                  return {
+                    max: maxMatch ? parseInt(maxMatch[1].replace(/,/g, ''), 10) : 0,
+                    min: minMatch ? parseInt(minMatch[1].replace(/,/g, ''), 10) : 0,
+                  };
                 };
 
-                const basketballPrematchLimit = extractMax('R');
-                const basketballLiveLimit = extractMax('RE');
+                // 提取所有限额类型
+                parsedLimits.basketball.DT = extractLimits('DT');  // 其他
+                parsedLimits.basketball.M = extractLimits('M');    // 独赢、滚球独赢
+                parsedLimits.basketball.R = extractLimits('R');    // 让球、大小、单双
+                parsedLimits.basketball.RE = extractLimits('RE');  // 滚球让球、滚球大小、滚球单双
 
                 form.setFieldsValue({
-                  basketball_prematch_limit: basketballPrematchLimit,
-                  basketball_live_limit: basketballLiveLimit,
-                });
-
-                message.success({
-                  content: `篮球限额已自动填充：早盘 ${basketballPrematchLimit.toLocaleString()}，滚球 ${basketballLiveLimit.toLocaleString()}`,
-                  key: 'fetchLimits',
-                  duration: 3
+                  basketball_prematch_limit: parsedLimits.basketball.R.max,
+                  basketball_live_limit: parsedLimits.basketball.RE.max,
                 });
               }
             }
           }
+
+          // 保存完整的限额数据
+          setLimitsData(parsedLimits);
+
+          message.success({
+            content: '限额信息已自动填充',
+            key: 'fetchLimits',
+            duration: 3
+          });
         } else {
           message.error({ content: response.error || '获取额度设置失败', key: 'fetchLimits' });
         }
@@ -765,7 +772,58 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     </Row>
                   </Card>
 
-                  <Card title="足球限额" size="small" style={{ marginBottom: 16 }}>
+                  {limitsData && limitsData.football && Object.keys(limitsData.football).length > 0 && (
+                    <Card title="足球限额详情" size="small" style={{ marginBottom: 16 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                            <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600 }}>投注类型</th>
+                            <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 600 }}>单场最高</th>
+                            <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 600 }}>单注最高</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {limitsData.football.R && (
+                            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <td style={{ padding: '12px 8px' }}>让球, 大小, 单双</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.R.max.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.R.min.toLocaleString()}</td>
+                            </tr>
+                          )}
+                          {limitsData.football.RE && (
+                            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <td style={{ padding: '12px 8px' }}>滚球让球, 滚球大小, 滚球单双</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.RE.max.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.RE.min.toLocaleString()}</td>
+                            </tr>
+                          )}
+                          {limitsData.football.M && (
+                            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <td style={{ padding: '12px 8px' }}>独赢, 滚球独赢</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.M.max.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.M.min.toLocaleString()}</td>
+                            </tr>
+                          )}
+                          {limitsData.football.DT && (
+                            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <td style={{ padding: '12px 8px' }}>其他</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.DT.max.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.DT.min.toLocaleString()}</td>
+                            </tr>
+                          )}
+                          {limitsData.football.RDT && (
+                            <tr>
+                              <td style={{ padding: '12px 8px' }}>滚球其他</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.RDT.max.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.RDT.min.toLocaleString()}</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </Card>
+                  )}
+
+                  <Card title="足球限额（简化）" size="small" style={{ marginBottom: 16 }}>
                     <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
@@ -794,7 +852,51 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     </Row>
                   </Card>
 
-                  <Card title="篮球限额" size="small">
+                  {limitsData && limitsData.basketball && Object.keys(limitsData.basketball).length > 0 && (
+                    <Card title="篮球限额详情" size="small" style={{ marginBottom: 16 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                            <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600 }}>投注类型</th>
+                            <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 600 }}>单场最高</th>
+                            <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 600 }}>单注最高</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {limitsData.basketball.R && (
+                            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <td style={{ padding: '12px 8px' }}>让球, 大小, 单双</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.R.max.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.R.min.toLocaleString()}</td>
+                            </tr>
+                          )}
+                          {limitsData.basketball.RE && (
+                            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <td style={{ padding: '12px 8px' }}>滚球让球, 滚球大小, 滚球单双</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.RE.max.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.RE.min.toLocaleString()}</td>
+                            </tr>
+                          )}
+                          {limitsData.basketball.M && (
+                            <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                              <td style={{ padding: '12px 8px' }}>独赢, 滚球独赢</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.M.max.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.M.min.toLocaleString()}</td>
+                            </tr>
+                          )}
+                          {limitsData.basketball.DT && (
+                            <tr>
+                              <td style={{ padding: '12px 8px' }}>其他</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.DT.max.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.DT.min.toLocaleString()}</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </Card>
+                  )}
+
+                  <Card title="篮球限额（简化）" size="small">
                     <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item
