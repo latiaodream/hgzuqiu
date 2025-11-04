@@ -66,6 +66,39 @@ const isLiveState = (value: any): boolean => {
     return (state as number) > 0 && state !== 3 && state !== -1;
 };
 
+// 更稳健的滚球判定：同时考虑 state/status 的字符串编码以及 period/clock
+const isLiveMatch = (match: any): boolean => {
+    if (!match) return false;
+    const rawState = (match.state ?? match.status);
+    const stateNum = normalizeStateValue(rawState);
+
+    // 数字状态优先：>0 且不等于 3、-1 视为进行中
+    if (stateNum !== undefined) {
+        return stateNum > 0 && stateNum !== 3 && stateNum !== -1;
+    }
+
+    // 字符串状态回退：如 'RB'、'RE'、'LIVE'、'滚球' 等
+    const stateStr = String(rawState || '').trim().toLowerCase();
+    if (stateStr) {
+        const tokens = ['rb', 're', 'live', 'inplay', 'in-play', '滚球', '滾球', '进行中', '進行中'];
+        if (tokens.some((t) => stateStr.includes(t))) return true;
+    }
+
+    // period/clock 信号：常见滚球节次/半场/加时
+    const period = String(match.period ?? match.match_period ?? '').trim().toLowerCase();
+    if (period) {
+        const livePeriods = ['滚球','滾球','1h','2h','ht','q1','q2','q3','q4','1q','2q','3q','4q','ot','et','上半','下半','上半场','下半场','第一节','第二节','第三节','第四节'];
+        if (livePeriods.some((p) => period.includes(p.toLowerCase()))) return true;
+    }
+
+    // clock 有值也高度可能是滚球
+    const clock = String(match.clock ?? match.match_clock ?? '').trim();
+    if (clock) return true;
+
+    return false;
+};
+
+
 const filterMatchesByShowtype = (matches: any[], showtype: string) => {
     if (!Array.isArray(matches)) {
         return [];
@@ -102,10 +135,17 @@ const filterMatchesByShowtype = (matches: any[], showtype: string) => {
     const tomorrowStart = startOfDay(1);
     const dayAfterTomorrowStart = startOfDay(2);
 
-    const isFinished = (match: any) => normalizeStateValue(match.state ?? match.status) === -1;
+    const isFinished = (match: any) => {
+        const state = normalizeStateValue(match.state ?? match.status);
+        if (state !== undefined) return state === -1 || state === 3;
+        const period = String(match.period ?? match.match_period ?? '').trim().toLowerCase();
+        if (!period) return false;
+        const finishedTokens = ['已结束','結束','finished','full time','ft'];
+        return finishedTokens.some((t) => period.includes(t));
+    };
 
     if (showtype === 'live') {
-        return matches.filter((m) => isLiveState(m.state ?? m.status));
+        return matches.filter((m) => isLiveMatch(m));
     }
 
     if (showtype === 'today') {
