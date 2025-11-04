@@ -210,6 +210,11 @@ export interface Bet {
   virtual_bet_amount?: number;
   odds: number;
   official_odds?: number;
+  market_category?: 'moneyline' | 'handicap' | 'overunder';
+  market_scope?: 'full' | 'half';
+  market_side?: 'home' | 'away' | 'draw' | 'over' | 'under';
+  market_line?: string;
+  market_index?: number;
   single_limit: number;
   interval_seconds: number;
   quantity: number;
@@ -246,6 +251,11 @@ export interface BetCreateRequest {
   match_status?: string;
   current_score?: string;
   match_period?: string;
+  market_category?: 'moneyline' | 'handicap' | 'overunder';
+  market_scope?: 'full' | 'half';
+  market_side?: 'home' | 'away' | 'draw' | 'over' | 'under';
+  market_line?: string;
+  market_index?: number;
 }
 
 // 金币交易类型

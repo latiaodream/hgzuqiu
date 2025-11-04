@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Select, Button, Input, message, Empty, Typography, Segmented, Spin, Space } from 'antd';
 import { crownApi, matchApi, accountApi } from '../services/api';
 import { ReloadOutlined } from '@ant-design/icons';
-import BetFormModal from '../components/Betting/BetFormModal';
+import BetFormModal, { type SelectionMeta, type MarketScope } from '../components/Betting/BetFormModal';
 import type { CrownAccount, Match as MatchType } from '../types';
 import dayjs from 'dayjs';
 
@@ -64,7 +64,7 @@ const MatchesPage: React.FC = () => {
   const [betModalVisible, setBetModalVisible] = useState(false);
   const [betModalKey, setBetModalKey] = useState(0);
   const [selectedMatch, setSelectedMatch] = useState<MatchType | null>(null);
-  const [selectionPreset, setSelectionPreset] = useState<{ bet_type: string; bet_option: string; odds: number; label?: string } | null>(null);
+  const [selectionPreset, setSelectionPreset] = useState<SelectionMeta | null>(null);
   const [accounts, setAccounts] = useState<CrownAccount[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -301,7 +301,7 @@ const MatchesPage: React.FC = () => {
     } as MatchType;
   };
 
-  const openBetModal = async (matchData: any, preset: { bet_type: string; bet_option: string; odds: string | number; label?: string }) => {
+  const openBetModal = async (matchData: any, preset: SelectionMeta) => {
     await fetchAccounts(true);
     const oddsValue = parseOdds(String(preset.odds));
     if (!oddsValue || oddsValue <= 0) {
@@ -309,7 +309,10 @@ const MatchesPage: React.FC = () => {
       return;
     }
     setSelectedMatch(convertMatch(matchData));
-    setSelectionPreset({ bet_type: preset.bet_type, bet_option: preset.bet_option, odds: oddsValue, label: preset.label });
+    setSelectionPreset({
+      ...preset,
+      odds: oddsValue,
+    });
     setBetModalVisible(true);
     setBetModalKey((prev) => prev + 1);
   };
@@ -329,19 +332,26 @@ const MatchesPage: React.FC = () => {
     return `${fromNow}（${diffSeconds}s 前）`;
   };
 
-  const renderMoneyline = (match: any, markets: any) => {
-    const ml = markets.moneyline || {};
-    if (!ml.home && !ml.draw && !ml.away) return <span>-</span>;
+  const renderMoneylineContent = (
+    match: any,
+    ml: { home?: string; draw?: string; away?: string },
+    scope: MarketScope,
+  ) => {
+    const betType = scope === 'half' ? '半场独赢' : '独赢';
+    const scopeLabel = scope === 'half' ? '[半场独赢]' : '[全场]';
     return (
       <div className="odds-stack">
         {ml.home && (
           <div
             className="odds-item"
             onClick={() => openBetModal(match, {
-              bet_type: '独赢',
+              bet_type: betType,
               bet_option: '主队',
               odds: ml.home as string,
-              label: `[全场] ${(match.home || '主队')} 胜 @${ml.home}`,
+              label: `${scopeLabel} ${(match.home || '主队')} 胜 @${ml.home}`,
+              market_category: 'moneyline',
+              market_scope: scope,
+              market_side: 'home',
             })}
           >
             <span className="odds-line">主胜</span>
@@ -352,10 +362,13 @@ const MatchesPage: React.FC = () => {
           <div
             className="odds-item"
             onClick={() => openBetModal(match, {
-              bet_type: '独赢',
+              bet_type: betType,
               bet_option: '和局',
               odds: ml.draw as string,
-              label: `[全场] 和局 @${ml.draw}`,
+              label: `${scopeLabel} 和局 @${ml.draw}`,
+              market_category: 'moneyline',
+              market_scope: scope,
+              market_side: 'draw',
             })}
           >
             <span className="odds-line">和局</span>
@@ -366,10 +379,13 @@ const MatchesPage: React.FC = () => {
           <div
             className="odds-item"
             onClick={() => openBetModal(match, {
-              bet_type: '独赢',
+              bet_type: betType,
               bet_option: '客队',
               odds: ml.away as string,
-              label: `[全场] ${(match.away || '客队')} 胜 @${ml.away}`,
+              label: `${scopeLabel} ${(match.away || '客队')} 胜 @${ml.away}`,
+              market_category: 'moneyline',
+              market_scope: scope,
+              market_side: 'away',
             })}
           >
             <span className="odds-line">客胜</span>
@@ -380,7 +396,17 @@ const MatchesPage: React.FC = () => {
     );
   };
 
-  const renderHandicap = (match: any, lines?: Array<{ line?: string; home?: string; away?: string }>) => {
+  const renderMoneyline = (match: any, markets: any) => {
+    const ml = markets.moneyline || {};
+    if (!ml.home && !ml.draw && !ml.away) return <span>-</span>;
+    return renderMoneylineContent(match, ml, 'full');
+  };
+
+  const renderHandicap = (
+    match: any,
+    lines?: Array<{ line?: string; home?: string; away?: string }>,
+    scope: MarketScope = 'full',
+  ) => {
     if (!lines || lines.length === 0) return '-';
 
     return (
@@ -408,6 +434,9 @@ const MatchesPage: React.FC = () => {
           const homeHandicap = lineNum >= 0 ? `+${formattedAbsLine}` : `-${formattedAbsLine}`;
           // 客队盘口：与主队相反
           const awayHandicap = lineNum >= 0 ? `-${formattedAbsLine}` : `+${formattedAbsLine}`;
+          const betType = scope === 'half' ? '半场让球' : '让球';
+          const labelPrefix = scope === 'half' ? '[半场让球]' : '[让球]';
+          const marketLine = typeof data.line === 'string' ? data.line : line;
 
           return (
             <div key={index} className="odds-row">
@@ -415,10 +444,15 @@ const MatchesPage: React.FC = () => {
                 <div
                   className="odds-item-left"
                   onClick={() => openBetModal(match, {
-                    bet_type: '让球',
+                    bet_type: betType,
                     bet_option: `${match.home || '主队'} ${homeHandicap ? `(${homeHandicap})` : ''}`,
                     odds: data.home as string,
-                    label: `[让球] ${(match.home || '主队')} ${homeHandicap ? `(${homeHandicap})` : ''} @${data.home}`,
+                    label: `${labelPrefix} ${(match.home || '主队')} ${homeHandicap ? `(${homeHandicap})` : ''} @${data.home}`,
+                    market_category: 'handicap',
+                    market_scope: scope,
+                    market_side: 'home',
+                    market_line: marketLine,
+                    market_index: index,
                   })}
                 >
                   <span className="odds-team">
@@ -431,10 +465,15 @@ const MatchesPage: React.FC = () => {
                 <div
                   className="odds-item-right"
                   onClick={() => openBetModal(match, {
-                    bet_type: '让球',
+                    bet_type: betType,
                     bet_option: `${match.away || '客队'} ${awayHandicap ? `(${awayHandicap})` : ''}`,
                     odds: data.away as string,
-                    label: `[让球] ${(match.away || '客队')} ${awayHandicap ? `(${awayHandicap})` : ''} @${data.away}`,
+                    label: `${labelPrefix} ${(match.away || '客队')} ${awayHandicap ? `(${awayHandicap})` : ''} @${data.away}`,
+                    market_category: 'handicap',
+                    market_scope: scope,
+                    market_side: 'away',
+                    market_line: marketLine,
+                    market_index: index,
                   })}
                 >
                   <span className="odds-team">
@@ -450,7 +489,11 @@ const MatchesPage: React.FC = () => {
     );
   };
 
-  const renderOverUnder = (match: any, lines?: Array<{ line?: string; over?: string; under?: string }>) => {
+  const renderOverUnder = (
+    match: any,
+    lines?: Array<{ line?: string; over?: string; under?: string }>,
+    scope: MarketScope = 'full',
+  ) => {
     if (!lines || lines.length === 0) return '-';
 
     return (
@@ -460,16 +503,24 @@ const MatchesPage: React.FC = () => {
           const line = data.line || '';
           // 第一行显示"大/小"，其他行只显示盘口数字
           const showLabel = index === 0;
+          const betType = scope === 'half' ? '半场大小球' : '大小球';
+          const labelPrefix = scope === 'half' ? '[半场大小]' : '[大小]';
+          const marketLine = typeof data.line === 'string' ? data.line : line;
           return (
             <div key={index} className="odds-row">
               {data.over && (
                 <div
                   className="odds-item-left"
                   onClick={() => openBetModal(match, {
-                    bet_type: '大小球',
+                    bet_type: betType,
                     bet_option: `大球${line ? `(${line})` : ''}`,
                     odds: data.over as string,
-                    label: `[大小] 大球${line ? `(${line})` : ''} @${data.over}`,
+                    label: `${labelPrefix} 大球${line ? `(${line})` : ''} @${data.over}`,
+                    market_category: 'overunder',
+                    market_scope: scope,
+                    market_side: 'over',
+                    market_line: marketLine,
+                    market_index: index,
                   })}
                 >
                   <span className="odds-team">
@@ -482,10 +533,15 @@ const MatchesPage: React.FC = () => {
                 <div
                   className="odds-item-right"
                   onClick={() => openBetModal(match, {
-                    bet_type: '大小球',
+                    bet_type: betType,
                     bet_option: `小球${line ? `(${line})` : ''}`,
                     odds: data.under as string,
-                    label: `[大小] 小球${line ? `(${line})` : ''} @${data.under}`,
+                    label: `${labelPrefix} 小球${line ? `(${line})` : ''} @${data.under}`,
+                    market_category: 'overunder',
+                    market_scope: scope,
+                    market_side: 'under',
+                    market_line: marketLine,
+                    market_index: index,
                   })}
                 >
                   <span className="odds-team">
@@ -503,52 +559,7 @@ const MatchesPage: React.FC = () => {
 
   const renderHalfMoneyline = (match: any, ml?: { home?: string; draw?: string; away?: string }) => {
     if (!ml || (!ml.home && !ml.draw && !ml.away)) return '-';
-    return (
-      <div className="odds-stack">
-        {ml.home && (
-          <div
-            className="odds-item"
-            onClick={() => openBetModal(match, {
-              bet_type: '半场独赢',
-              bet_option: '主队',
-              odds: ml.home as string,
-              label: `[半场独赢] ${(match.home || '主队')} 胜 @${ml.home}`,
-            })}
-          >
-            <span className="odds-line">主半</span>
-            <span className="odds-value">{ml.home}</span>
-          </div>
-        )}
-        {ml.draw && (
-          <div
-            className="odds-item"
-            onClick={() => openBetModal(match, {
-              bet_type: '半场独赢',
-              bet_option: '和局',
-              odds: ml.draw as string,
-              label: `[半场独赢] 和局 @${ml.draw}`,
-            })}
-          >
-            <span className="odds-line">平半</span>
-            <span className="odds-value">{ml.draw}</span>
-          </div>
-        )}
-        {ml.away && (
-          <div
-            className="odds-item"
-            onClick={() => openBetModal(match, {
-              bet_type: '半场独赢',
-              bet_option: '客队',
-              odds: ml.away as string,
-              label: `[半场独赢] ${(match.away || '客队')} 胜 @${ml.away}`,
-            })}
-          >
-            <span className="odds-line">客半</span>
-            <span className="odds-value">{ml.away}</span>
-          </div>
-        )}
-      </div>
-    );
+    return renderMoneylineContent(match, ml, 'half');
   };
 
   return (
@@ -691,8 +702,8 @@ const MatchesPage: React.FC = () => {
                       </div>
                       <div className="odds-grid">
                         <div className="odds-col">{renderMoneyline(m, markets)}</div>
-                        <div className="odds-col">{renderHandicap(m, markets.full?.handicapLines || (markets.handicap ? [markets.handicap] : []))}</div>
-                        <div className="odds-col">{renderOverUnder(m, markets.full?.overUnderLines || (markets.ou ? [markets.ou] : []))}</div>
+                        <div className="odds-col">{renderHandicap(m, markets.full?.handicapLines || (markets.handicap ? [markets.handicap] : []), 'full')}</div>
+                        <div className="odds-col">{renderOverUnder(m, markets.full?.overUnderLines || (markets.ou ? [markets.ou] : []), 'full')}</div>
                       </div>
                     </div>
 
@@ -706,8 +717,8 @@ const MatchesPage: React.FC = () => {
                       </div>
                       <div className="odds-grid">
                         <div className="odds-col">{renderHalfMoneyline(m, markets.half?.moneyline)}</div>
-                        <div className="odds-col">{renderHandicap(m, markets.half?.handicapLines || (markets.half?.handicap ? [markets.half.handicap] : []))}</div>
-                        <div className="odds-col">{renderOverUnder(m, markets.half?.overUnderLines || (markets.half?.ou ? [markets.half.ou] : []))}</div>
+                        <div className="odds-col">{renderHandicap(m, markets.half?.handicapLines || (markets.half?.handicap ? [markets.half.handicap] : []), 'half')}</div>
+                        <div className="odds-col">{renderOverUnder(m, markets.half?.overUnderLines || (markets.half?.ou ? [markets.half.ou] : []), 'half')}</div>
                       </div>
                     </div>
                   </div>

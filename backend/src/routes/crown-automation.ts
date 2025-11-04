@@ -1374,6 +1374,15 @@ router.post('/odds/preview', async (req: any, res) => {
 
         const betType = body.bet_type || body.betType || '让球';
         const betOption = body.bet_option || body.betOption || '';
+        const marketLine = body.market_line ?? body.marketLine;
+        const marketIndexRaw = body.market_index ?? body.marketIndex;
+        const marketIndex =
+            marketIndexRaw === undefined || marketIndexRaw === null
+                ? undefined
+                : Number.isFinite(Number(marketIndexRaw))
+                    ? Number(marketIndexRaw)
+                    : undefined;
+
         const payload = {
             betType,
             betOption,
@@ -1389,6 +1398,16 @@ router.post('/odds/preview', async (req: any, res) => {
             homeTeam: body.home_team || body.homeTeam,
             away_team: body.away_team || body.awayTeam,
             awayTeam: body.away_team || body.awayTeam,
+            market_category: body.market_category || body.marketCategory,
+            marketCategory: body.market_category || body.marketCategory,
+            market_scope: body.market_scope || body.marketScope,
+            marketScope: body.market_scope || body.marketScope,
+            market_side: body.market_side || body.marketSide,
+            marketSide: body.market_side || body.marketSide,
+            market_line: typeof marketLine === 'string' ? marketLine : undefined,
+            marketLine: typeof marketLine === 'string' ? marketLine : undefined,
+            market_index: marketIndex,
+            marketIndex: marketIndex,
         };
 
         const preview = await getCrownAutomation().fetchLatestOdds(accountId, payload as any);

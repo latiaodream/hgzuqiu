@@ -144,6 +144,11 @@ CREATE TABLE bets (
     odds DECIMAL(5,2) NOT NULL, -- 投注时的赔率
     min_odds DECIMAL(6,3), -- 下注时用户设置的最低赔率
     official_odds DECIMAL(6,3), -- 皇冠返回的真实赔率
+    market_category VARCHAR(32), -- 盘口类别：moneyline / handicap / overunder
+    market_scope VARCHAR(16), -- 盘口范围：full / half
+    market_side VARCHAR(16), -- 下注方向：home/away/draw/over/under
+    market_line VARCHAR(50), -- 对应盘口行数值，如 -0.5 或 2.5/3
+    market_index INTEGER, -- 前端选择的盘口行索引
 
     -- 下注设置 (基于参考截图的下注弹窗)
     single_limit DECIMAL(15,2), -- 单笔限额

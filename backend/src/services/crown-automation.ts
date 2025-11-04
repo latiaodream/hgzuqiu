@@ -38,6 +38,16 @@ interface BetRequest {
   currentScore?: string;
   match_period?: string;
   matchPeriod?: string;
+  market_category?: string;
+  marketCategory?: string;
+  market_scope?: string;
+  marketScope?: string;
+  market_side?: string;
+  marketSide?: string;
+  market_line?: string;
+  marketLine?: string;
+  market_index?: number;
+  marketIndex?: number;
 }
 
 interface CrownLoginResult {
@@ -2955,8 +2965,8 @@ export class CrownAutomationService {
       {
         match: () => typeMatches('大/小', '大小', 'over', 'under', 'rou'),
         resolve: () => {
-          if (optionMatches('大', 'over', 'o')) return 'ROUH';  // 大 = Over = H (High)
-          if (optionMatches('小', 'under', 'u')) return 'ROUC'; // 小 = Under = C (Close/Low)
+          if (optionMatches('大', 'over', 'o')) return 'ROUC';  // 大 = Over
+          if (optionMatches('小', 'under', 'u')) return 'ROUH'; // 小 = Under
           return null;
         },
       },
@@ -6356,6 +6366,11 @@ export class CrownAutomationService {
       {
         homeName: betRequest.home_team || betRequest.homeTeam,
         awayName: betRequest.away_team || betRequest.awayTeam,
+      },
+      {
+        marketCategory: betRequest.market_category ?? betRequest.marketCategory,
+        marketScope: betRequest.market_scope ?? betRequest.marketScope,
+        marketSide: betRequest.market_side ?? betRequest.marketSide,
       }
     );
 
@@ -6556,7 +6571,8 @@ export class CrownAutomationService {
   private convertBetTypeToApiParams(
     betType: string,
     betOption: string,
-    context?: { homeName?: string; awayName?: string }
+    context?: { homeName?: string; awayName?: string },
+    meta?: { marketCategory?: string | null | undefined; marketScope?: string | null | undefined; marketSide?: string | null | undefined },
   ): {
     wtype: string;
     rtype: string;
@@ -6564,11 +6580,14 @@ export class CrownAutomationService {
   } {
     console.log(`🔄 转换下注参数: betType="${betType}", betOption="${betOption}"`);
 
-    const normalize = (value?: string) => (value || '').replace(/\s+/g, '').toLowerCase();
+    const normalize = (value?: string | null) => (value || '').replace(/\s+/g, '').toLowerCase();
     const typeNormalized = normalize(betType);
     const optionNormalized = normalize(betOption);
     const homeNameNormalized = normalize(context?.homeName);
     const awayNameNormalized = normalize(context?.awayName);
+    const metaCategoryNormalized = normalize(meta?.marketCategory);
+    const metaScopeNormalized = normalize(meta?.marketScope);
+    const metaSideNormalized = normalize(meta?.marketSide);
 
     const containsHomeKeyword =
       optionNormalized.includes('主') ||
@@ -6585,11 +6604,28 @@ export class CrownAutomationService {
     const optionContainsHome = homeNameNormalized ? optionNormalized.includes(homeNameNormalized) : false;
     const optionContainsAway = awayNameNormalized ? optionNormalized.includes(awayNameNormalized) : false;
 
-    const isHomeSelection = containsHomeKeyword || optionContainsHome;
-    const isAwaySelection = containsAwayKeyword || optionContainsAway;
+    const fallbackHalfDetection = () =>
+      optionNormalized.includes('半') ||
+      typeNormalized.includes('半') ||
+      optionNormalized.includes('1h') ||
+      optionNormalized.includes('half');
 
-    const detectHalf = () => optionNormalized.includes('半') || typeNormalized.includes('半') || optionNormalized.includes('1h') || optionNormalized.includes('half');
-    const isHalfMarket = detectHalf();
+    const scopeFromMeta =
+      metaScopeNormalized === 'half' || metaScopeNormalized === '1h' ? 'half'
+        : metaScopeNormalized === 'full' || metaScopeNormalized === 'ft' ? 'full'
+          : null;
+
+    const isHalfMarket = scopeFromMeta === 'half'
+      ? true
+      : scopeFromMeta === 'full'
+        ? false
+        : fallbackHalfDetection();
+
+    const isHomeSelection = metaSideNormalized === 'home' || (!metaSideNormalized && (containsHomeKeyword || optionContainsHome));
+    const isAwaySelection = metaSideNormalized === 'away' || (!metaSideNormalized && (containsAwayKeyword || optionContainsAway));
+    const isDrawSelection = metaSideNormalized === 'draw';
+    const isOverSelection = metaSideNormalized === 'over';
+    const isUnderSelection = metaSideNormalized === 'under';
 
     // 默认滚球独赢（RMH）
     let wtype = isHalfMarket ? 'HRM' : 'RM';
@@ -6598,7 +6634,7 @@ export class CrownAutomationService {
 
     const parseHandicap = () => {
       wtype = isHalfMarket ? 'HRE' : 'RE';
-      if (isAwaySelection) {
+      if (metaSideNormalized === 'away' || (isAwaySelection && !isHomeSelection)) {
         rtype = isHalfMarket ? 'HREC' : 'REC';
         chose_team = 'C';
       } else {
@@ -6609,10 +6645,16 @@ export class CrownAutomationService {
 
     const parseMoneyline = () => {
       wtype = isHalfMarket ? 'HRM' : 'RM';
-      if (isAwaySelection) {
+      if (metaSideNormalized === 'away' || (isAwaySelection && !isHomeSelection && !isDrawSelection)) {
         rtype = isHalfMarket ? 'HRMC' : 'RMC';
         chose_team = 'C';
-      } else if (optionNormalized.includes('和') || optionNormalized.includes('draw') || optionNormalized.includes('x')) {
+      } else if (
+        metaSideNormalized === 'draw' ||
+        optionNormalized.includes('和') ||
+        optionNormalized.includes('和局') ||
+        optionNormalized.includes('draw') ||
+        optionNormalized.includes('x')
+      ) {
         rtype = isHalfMarket ? 'HRMN' : 'RMN';
         chose_team = 'N';
       } else {
@@ -6623,27 +6665,45 @@ export class CrownAutomationService {
 
     const parseOverUnder = () => {
       wtype = isHalfMarket ? 'HROU' : 'ROU';
-      if (optionNormalized.includes('大') || optionNormalized.includes('over')) {
+      if (isOverSelection || optionNormalized.includes('大') || optionNormalized.includes('over')) {
         rtype = isHalfMarket ? 'HROUC' : 'ROUC';
-        chose_team = 'H';
+        chose_team = 'C';
       } else {
         rtype = isHalfMarket ? 'HROUH' : 'ROUH';
-        chose_team = 'C';
+        chose_team = 'H';
       }
     };
 
-    if (typeNormalized.includes('让球') || typeNormalized.includes('handicap') || typeNormalized.includes('讓球')) {
+    const resolvedByMeta = (() => {
+      switch (metaCategoryNormalized) {
+        case 'handicap':
+        case 'asianhandicap':
+          parseHandicap();
+          return true;
+        case 'moneyline':
+          parseMoneyline();
+          return true;
+        case 'overunder':
+        case 'ou':
+          parseOverUnder();
+          return true;
+        default:
+          return false;
+      }
+    })();
+
+    if (!resolvedByMeta && (typeNormalized.includes('让球') || typeNormalized.includes('handicap') || typeNormalized.includes('讓球'))) {
       parseHandicap();
-    } else if (typeNormalized.includes('独赢') || typeNormalized.includes('moneyline') || typeNormalized.includes('獨贏')) {
+    } else if (!resolvedByMeta && (typeNormalized.includes('独赢') || typeNormalized.includes('moneyline') || typeNormalized.includes('獨贏'))) {
       parseMoneyline();
-    } else if (typeNormalized.includes('大小') || typeNormalized.includes('大/小') || typeNormalized.includes('over') || typeNormalized.includes('under')) {
+    } else if (!resolvedByMeta && (typeNormalized.includes('大小') || typeNormalized.includes('大/小') || typeNormalized.includes('over') || typeNormalized.includes('under'))) {
       parseOverUnder();
     } else {
       // 无法明确识别时默认独赢主队
       parseMoneyline();
     }
 
-    console.log(`✅ 转换结果: wtype="${wtype}", rtype="${rtype}", chose_team="${chose_team}" (half=${isHalfMarket})`);
+    console.log(`✅ 转换结果: wtype="${wtype}", rtype="${rtype}", chose_team="${chose_team}" (half=${isHalfMarket}, metaCategory=${metaCategoryNormalized || 'n/a'}, metaSide=${metaSideNormalized || 'n/a'})`);
     return { wtype, rtype, chose_team };
   }
 

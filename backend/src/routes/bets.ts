@@ -525,6 +525,16 @@ router.post('/', async (req: any, res) => {
                     homeTeam: betData.home_team || matchRecord.home_team,
                     away_team: betData.away_team || matchRecord.away_team,
                     awayTeam: betData.away_team || matchRecord.away_team,
+                    market_category: betData.market_category,
+                    marketCategory: betData.market_category,
+                    market_scope: betData.market_scope,
+                    marketScope: betData.market_scope,
+                    market_side: betData.market_side,
+                    marketSide: betData.market_side,
+                    market_line: betData.market_line,
+                    marketLine: betData.market_line,
+                    market_index: betData.market_index,
+                    marketIndex: betData.market_index,
                 });
 
                 // 创建数据库记录
@@ -535,8 +545,9 @@ router.post('/', async (req: any, res) => {
                 const insertResult = await query(`
                     INSERT INTO bets (
                         user_id, account_id, match_id, bet_type, bet_option, bet_amount, virtual_bet_amount, odds,
+                        market_category, market_scope, market_side, market_line, market_index,
                         single_limit, interval_seconds, quantity, status, official_bet_id, official_odds, score
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
                     RETURNING *
                 `, [
                     userId,
@@ -547,6 +558,11 @@ router.post('/', async (req: any, res) => {
                     crownAmount,
                     virtualAmount,
                     finalOddsValue,
+                    betData.market_category || null,
+                    betData.market_scope || null,
+                    betData.market_side || null,
+                    betData.market_line || null,
+                    Number.isFinite(betData.market_index) ? Number(betData.market_index) : null,
                     betData.single_limit || crownAmount,
                     betData.interval_seconds || 3,
                     betData.quantity || 1,
