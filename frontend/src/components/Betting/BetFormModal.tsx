@@ -109,21 +109,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     }
   }, [visible, match, form, defaultSelection]);
 
-  // 自动刷新赔率：每 2 秒刷新一次
-  useEffect(() => {
-    if (!visible || !match || !autoRefreshOdds) return;
-
-    // 首次加载时立即获取赔率
-    previewOddsRequest(true);
-
-    // 设置定时器
-    const timer = setInterval(() => {
-      previewOddsRequest(true);
-    }, 2000); // 每 2 秒刷新一次
-
-    return () => clearInterval(timer);
-  }, [visible, match, autoRefreshOdds]);
-
   const isTruthy = (value: any): boolean => {
     if (typeof value === 'boolean') return value;
     if (typeof value === 'number') return value !== 0;
@@ -165,26 +150,23 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     return false;
   }, [accountMetaMap, accountDict]);
 
-  const previewOddsRequest = useCallback(async (silent = false) => {
+const previewOddsRequest = useCallback(async (silent = false) => {
     if (!match) {
       setOddsPreview(null);
       setPreviewError(null);
       return { success: false };
     }
 
-    // 获取在线账号列表
+    const selectedAccountId = selectedAccounts.length > 0 ? selectedAccounts[0] : null;
     const onlineAccounts = accounts.filter(acc => isAccountOnline(acc.id));
+    const fallbackAccountId = onlineAccounts[0]?.id ?? accounts[0]?.id ?? null;
 
-    // 如果没有选择账号，使用第一个在线账号
-    let accountId = selectedAccounts.length > 0 ? selectedAccounts[0] : null;
-    if (!accountId && onlineAccounts.length > 0) {
-      accountId = onlineAccounts[0].id;
-    }
+    const accountId = selectedAccountId ?? fallbackAccountId;
 
     if (!accountId) {
       setOddsPreview(null);
-      setPreviewError('没有可用的在线账号');
-      return { success: false, message: '没有可用的在线账号' };
+      setPreviewError('没有可用的账号');
+      return { success: false, message: '没有可用的账号' };
     }
 
     const currentValues = form.getFieldsValue();
@@ -244,7 +226,19 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         setPreviewLoading(false);
       }
     }
-  }, [match, selectedAccounts, form, defaultSelection, accounts, isAccountOnline]);
+}, [match, selectedAccounts, form, defaultSelection, accounts, isAccountOnline]);
+
+  // 自动刷新赔率：每 2 秒刷新一次
+  useEffect(() => {
+    if (!visible || !match || !autoRefreshOdds) return;
+
+    previewOddsRequest(true);
+    const timer = setInterval(() => {
+      previewOddsRequest(true);
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [visible, match, autoRefreshOdds, previewOddsRequest]);
 
   const fetchAutoSelection = useCallback(async (limit?: number, silent = false) => {
     if (!match) return;
