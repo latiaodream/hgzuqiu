@@ -29,7 +29,7 @@ export type MarketScope = 'full' | 'half';
 export interface BetSelectionMeta {
   bet_type: string;
   bet_option: string;
-  odds: number;
+  odds: number | string;
   label?: string;
   market_category: MarketCategory;
   market_scope: MarketScope;
@@ -304,7 +304,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       });
       setPreviewError(null);
       form.setFieldValue('odds', derived.odds);
-      return { success: true, data: { odds: derived.odds, closed: false } };
+      return { success: true, data: { odds: derived.odds, closed: false, message: derived.message } };
     }
 
     const msg = derived.message || '未找到可用赔率';
@@ -314,7 +314,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       closed: true,
       message: msg,
     });
-    return { success: false, message: msg, data: { closed: true } };
+    return { success: false, message: msg, data: { closed: true, message: msg } };
   }, [matchData, form, defaultSelection, getMatchSnapshot, deriveOddsFromMarkets]);
 
   // 自动刷新赔率：每 2 秒刷新一次
@@ -610,15 +610,15 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       cancelButtonProps={{ style: { display: 'none' } }}
     >
       <div className="bet-modal-body compact">
-        {match ? (
+        {matchData ? (
           <>
             <div className="bet-quick-head">
               <div className="bet-quick-title">
-                <strong>{match.home_team} - {match.away_team}</strong>
-                {match.current_score && <span className="score">({match.current_score})</span>}
+                <strong>{matchData.home_team} - {matchData.away_team}</strong>
+                {matchData.current_score && <span className="score">({matchData.current_score})</span>}
               </div>
               <div className="bet-quick-sub">
-                <span className="league">[{match.league_name}]</span>
+                <span className="league">[{matchData.league_name}]</span>
                 <span className="time">{matchTimeLabel}</span>
               </div>
             </div>

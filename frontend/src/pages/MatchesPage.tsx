@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Select, Button, Input, message, Empty, Typography, Segmented, Spin, Space } from 'antd';
 import { crownApi, matchApi, accountApi } from '../services/api';
 import { ReloadOutlined } from '@ant-design/icons';
-import BetFormModal, { BetSelectionMeta, MarketScope } from '../components/Betting/BetFormModal';
+import BetFormModal, { type BetSelectionMeta, type MarketScope } from '../components/Betting/BetFormModal';
 import type { CrownAccount, Match as MatchType } from '../types';
 import dayjs from 'dayjs';
 
@@ -350,6 +350,8 @@ const MatchesPage: React.FC = () => {
       ? markets?.half?.moneyline || {}
       : markets.moneyline || {};
     if (!ml.home && !ml.draw && !ml.away) return <span>-</span>;
+    const labelPrefix = scope === 'half' ? '半场独赢' : '全场';
+
     return (
       <div className="odds-stack">
         {ml.home && (
@@ -359,7 +361,7 @@ const MatchesPage: React.FC = () => {
               bet_type: '独赢',
               bet_option: '主队',
               odds: ml.home as string,
-              label: `[全场] ${(match.home || '主队')} 胜 @${ml.home}`,
+              label: `[${labelPrefix}] ${(match.home || '主队')} 胜 @${ml.home}`,
               market_category: 'moneyline',
               market_scope: scope,
               market_side: 'home',
@@ -376,7 +378,7 @@ const MatchesPage: React.FC = () => {
               bet_type: '独赢',
               bet_option: '和局',
               odds: ml.draw as string,
-              label: `[全场] 和局 @${ml.draw}`,
+              label: `[${labelPrefix}] 和局 @${ml.draw}`,
               market_category: 'moneyline',
               market_scope: scope,
               market_side: 'draw',
@@ -393,7 +395,7 @@ const MatchesPage: React.FC = () => {
               bet_type: '独赢',
               bet_option: '客队',
               odds: ml.away as string,
-              label: `[全场] ${(match.away || '客队')} 胜 @${ml.away}`,
+              label: `[${labelPrefix}] ${(match.away || '客队')} 胜 @${ml.away}`,
               market_category: 'moneyline',
               market_scope: scope,
               market_side: 'away',
@@ -453,7 +455,7 @@ const MatchesPage: React.FC = () => {
                     market_category: 'handicap',
                     market_scope: scope,
                     market_side: 'home',
-                    market_line: String(data.line ?? ''),
+                    market_line: data.line !== undefined ? String(data.line) : undefined,
                   })}
                 >
                   <span className="odds-team">
@@ -473,7 +475,7 @@ const MatchesPage: React.FC = () => {
                     market_category: 'handicap',
                     market_scope: scope,
                     market_side: 'away',
-                    market_line: String(data.line ?? ''),
+                    market_line: data.line !== undefined ? String(data.line) : undefined,
                   })}
                 >
                   <span className="odds-team">
@@ -516,7 +518,7 @@ const MatchesPage: React.FC = () => {
                     market_category: 'overunder',
                     market_scope: scope,
                     market_side: 'over',
-                    market_line: String(data.line ?? ''),
+                    market_line: data.line !== undefined ? String(data.line) : undefined,
                   })}
                 >
                   <span className="odds-team">
@@ -536,7 +538,7 @@ const MatchesPage: React.FC = () => {
                     market_category: 'overunder',
                     market_scope: scope,
                     market_side: 'under',
-                    market_line: String(data.line ?? ''),
+                    market_line: data.line !== undefined ? String(data.line) : undefined,
                   })}
                 >
                   <span className="odds-team">
@@ -783,6 +785,10 @@ const MatchesPage: React.FC = () => {
         match={selectedMatch}
         accounts={accounts}
         defaultSelection={selectionPreset}
+        getMatchSnapshot={(id) => {
+          if (id === undefined || id === null) return null;
+          return matchLookupRef.current.get(String(id));
+        }}
         onCancel={closeBetModal}
         onSubmit={async () => {
           closeBetModal();
