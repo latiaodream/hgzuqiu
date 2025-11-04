@@ -61,8 +61,9 @@ const isLiveState = (value: any): boolean => {
     if (state === undefined) {
         return false;
     }
-    // 除 0（未开赛）和 -1（已结束）外，iSports 其它状态基本为进行中或暂停状态
-    return state !== 0 && state !== -1;
+    // 仅将 >0 的状态视为进行中，同时排除 3（某些厂商用 3 表示已结束）和 -1
+    // 这样可兼容 iSports 的多种进行中/暂停编码（1、2、4、5...）
+    return (state as number) > 0 && state !== 3 && state !== -1;
 };
 
 const filterMatchesByShowtype = (matches: any[], showtype: string) => {
@@ -1282,7 +1283,14 @@ router.get('/matches-system', async (req: any, res) => {
                     if (age < 10000) {
                         console.log(`✅ 使用独立抓取服务数据 (${matchCount} 场比赛, ${Math.max(0, Math.floor(age / 1000))}秒前)`);
                         const normalizedMatches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
-                        const filteredMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
+                        let filteredMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
+
+                        // 如果是滚球且过滤后为空，则回退到直接抓取皇冠数据，确保有实时滚球
+                        if (String(showtype) === 'live' && filteredMatches.length === 0) {
+                            const fallback = await getCrownAutomation().fetchMatchesSystem({ gtype, showtype, rtype, ltype, sorttype });
+                            const fbNormalized = (fallback.matches || []).map((m: any) => normalizeMatchForFrontend(m));
+                            filteredMatches = filterMatchesByShowtype(fbNormalized, String(showtype));
+                        }
 
                         res.json({
                             success: true,
@@ -1335,7 +1343,14 @@ router.get('/matches-system', async (req: any, res) => {
         });
 
         const normalizedMatches = (matches || []).map((m: any) => normalizeMatchForFrontend(m));
-        const filteredMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
+        let filteredMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
+
+        // 再保险：如果是滚球且还是空，尝试再抓一次皇冠实时数据
+        if (String(showtype) === 'live' && filteredMatches.length === 0) {
+            const fb = await getCrownAutomation().fetchMatchesSystem({ gtype: String(gtype), showtype: String(showtype), rtype: String(rtype || (String(showtype) === 'live' ? 'rb' : 'r')), ltype: String(ltype), sorttype: String(sorttype) });
+            const fbNormalized = (fb.matches || []).map((m: any) => normalizeMatchForFrontend(m));
+            filteredMatches = filterMatchesByShowtype(fbNormalized, String(showtype));
+        }
 
         res.json({
             success: true,
@@ -1839,9 +1854,20 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
           xml = result.xml;
         }
 
-        matches = filterMatchesByShowtype(matches, showtype);
+        let filtered = filterMatchesByShowtype(matches, showtype);
 
-        const payload = JSON.stringify({ matches, meta: { gtype, showtype, rtype, ltype, sorttype }, ts: Date.now() });
+        // 如果是滚球且过滤后为空，回退到直接抓皇冠
+        if (showtype === 'live' && filtered.length === 0) {
+          try {
+            const result = await getCrownAutomation().fetchMatchesSystem({ gtype, showtype, rtype, ltype, sorttype });
+            const normalized = (result.matches || []).map((m: any) => normalizeMatchForFrontend(m));
+            filtered = filterMatchesByShowtype(normalized, showtype);
+          } catch (fbErr) {
+            console.error('滚球回退抓取失败:', fbErr);
+          }
+        }
+
+        const payload = JSON.stringify({ matches: filtered, meta: { gtype, showtype, rtype, ltype, sorttype }, ts: Date.now() });
         res.write(`event: matches\n`);
         res.write(`data: ${payload}\n\n`);
       } catch (e) {
