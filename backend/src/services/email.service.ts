@@ -1,7 +1,5 @@
 import { query } from '../models/database';
-
-// 使用 require 导入 nodemailer 以避免 TypeScript 编译问题
-const nodemailer = require('nodemailer');
+import nodemailer = require('nodemailer');
 
 interface EmailConfig {
   host: string;
@@ -14,7 +12,7 @@ interface EmailConfig {
 }
 
 class EmailService {
-  private transporter: any = null;
+  private transporter: nodemailer.Transporter | null = null;
 
   constructor() {
     this.initTransporter();
