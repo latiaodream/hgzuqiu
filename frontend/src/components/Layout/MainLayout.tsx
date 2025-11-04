@@ -86,11 +86,11 @@ const MainLayout: React.FC = () => {
           icon: <TeamOutlined />,
           label: '员工管理',
         },
-        {
-          key: '/fetch-accounts',
-          icon: <TeamOutlined />,
-          label: '抓取账号',
-        },
+        // {
+        //   key: '/fetch-accounts',
+        //   icon: <TeamOutlined />,
+        //   label: '抓取账号',
+        // },
         {
           key: '/accounts',
           icon: <UserOutlined />,

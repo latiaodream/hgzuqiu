@@ -11,7 +11,7 @@ import GroupsPage from './pages/GroupsPage';
 import BettingPage from './pages/BettingPage';
 import CoinsPage from './pages/CoinsPage';
 import MatchesPage from './pages/MatchesPage';
-import FetchAccountsPage from './pages/FetchAccountsPage';
+// import FetchAccountsPage from './pages/FetchAccountsPage';
 import StaffPage from './pages/StaffPage';
 import AgentsPage from './pages/AgentsPage';
 import SettingsPage from './pages/SettingsPage';
@@ -58,7 +58,7 @@ const App: React.FC = () => {
         <Route path="agents" element={<AgentsPage />} />
         <Route path="staff" element={<StaffPage />} />
         <Route path="accounts" element={<AccountsPage />} />
-        <Route path="fetch-accounts" element={<FetchAccountsPage />} />
+        {/* <Route path="fetch-accounts" element={<FetchAccountsPage />} /> */}
         <Route path="groups" element={<GroupsPage />} />
         <Route path="betting" element={<BettingPage />} />
         <Route path="matches" element={<MatchesPage />} />
