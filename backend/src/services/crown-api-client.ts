@@ -1294,9 +1294,11 @@ export class CrownApiClient {
       // 尝试解析 XML 响应
       if (typeof payload === 'string' && payload.trim().startsWith('<?xml')) {
         console.log('📥 收到 XML 格式的历史记录响应');
+        console.log('📄 原始 XML（前 1000 字符）:', payload.substring(0, 1000));
+
         try {
           const parsed = await this.parseXmlResponse(payload);
-          console.log('✅ XML 解析成功:', JSON.stringify(parsed).substring(0, 500));
+          console.log('✅ XML 解析成功，完整结构:', JSON.stringify(parsed, null, 2));
           return parsed;
         } catch (xmlError: any) {
           console.error('❌ XML 解析失败:', xmlError?.message || xmlError);
