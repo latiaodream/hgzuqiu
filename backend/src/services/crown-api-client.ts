@@ -1281,7 +1281,6 @@ export class CrownApiClient {
       startdate: params.startdate || '',
       enddate: params.enddate || '',
       filter: params.filter || 'Y',
-      format: 'json',
       ts: Date.now().toString(),
     });
 
@@ -1292,6 +1291,20 @@ export class CrownApiClient {
 
       let payload = response.data;
 
+      // 尝试解析 XML 响应
+      if (typeof payload === 'string' && payload.trim().startsWith('<?xml')) {
+        console.log('📥 收到 XML 格式的历史记录响应');
+        try {
+          const parsed = await this.parseXmlResponse(payload);
+          console.log('✅ XML 解析成功:', JSON.stringify(parsed).substring(0, 500));
+          return parsed;
+        } catch (xmlError: any) {
+          console.error('❌ XML 解析失败:', xmlError?.message || xmlError);
+          throw new Error('历史记录响应格式错误');
+        }
+      }
+
+      // 尝试解析 JSON 响应（向后兼容）
       if (typeof payload === 'string') {
         const cleaned = payload.replace(/^\uFEFF/, '').trim();
         try {

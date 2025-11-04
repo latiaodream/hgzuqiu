@@ -353,21 +353,20 @@ const AccountsPage: React.FC = () => {
       });
 
       if (response.success) {
-        const { payload, wagers } = normalizeHistoryPayload(response.data);
+        const data = response.data;
 
-        let totalAmount = 0;
+        // 解析 XML 格式的历史记录
+        const totalGold = data.total_gold || 0;
+        const totalVgold = data.total_vgold || 0;
+        const totalWinloss = data.total_winloss || 0;
 
-        wagers.forEach((wager: any) => {
-          if (wager && typeof wager === 'object') {
-            const amount = wager.gold ?? wager.amount ?? wager.bet_amount ?? wager.stake;
-            const numeric = amount !== undefined
-              ? Number(String(amount).replace(/,/g, ''))
-              : NaN;
-            if (!Number.isNaN(numeric)) {
-              totalAmount += numeric;
-            }
-          }
-        });
+        // 提取历史记录数组
+        let historyList: any[] = [];
+        if (data.history) {
+          historyList = Array.isArray(data.history) ? data.history : [data.history];
+          // 过滤掉没有数据的记录（gold 为 '-'）
+          historyList = historyList.filter((h: any) => h.gold && h.gold !== '-');
+        }
 
         message.success({ content: `成功获取账号 ${account.username} 的下注记录`, key, duration: 2 });
 
@@ -377,36 +376,79 @@ const AccountsPage: React.FC = () => {
           width: 800,
           content: (
             <div>
-              <div style={{ marginBottom: '16px' }}>
-                <Text strong>查询时间：</Text>
-                <Text>{formatDate(startDate)} 至 {formatDate(endDate)}</Text>
-                <br />
-                <Text strong>下注笔数：</Text>
-                <Text>{wagers.length} 笔</Text>
-                <Divider type="vertical" />
-                <Text strong>下注总额：</Text>
-                <Text>{totalAmount.toLocaleString()}</Text>
+              <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f0f2f5', borderRadius: '4px' }}>
+                <div style={{ marginBottom: '8px' }}>
+                  <Text strong>查询时间：</Text>
+                  <Text>{formatDate(startDate)} 至 {formatDate(endDate)}</Text>
+                </div>
+                <div style={{ display: 'flex', gap: '24px' }}>
+                  <div>
+                    <Text strong>总投注：</Text>
+                    <Text style={{ color: '#1890ff', fontSize: '16px', marginLeft: '8px' }}>{totalGold}</Text>
+                  </div>
+                  <div>
+                    <Text strong>有效投注：</Text>
+                    <Text style={{ color: '#52c41a', fontSize: '16px', marginLeft: '8px' }}>{totalVgold}</Text>
+                  </div>
+                  <div>
+                    <Text strong>输赢：</Text>
+                    <Text style={{
+                      color: parseFloat(totalWinloss) >= 0 ? '#52c41a' : '#ff4d4f',
+                      fontSize: '16px',
+                      marginLeft: '8px',
+                      fontWeight: 'bold'
+                    }}>
+                      {parseFloat(totalWinloss) >= 0 ? '+' : ''}{totalWinloss}
+                    </Text>
+                  </div>
+                </div>
               </div>
-              {wagers.length > 0 ? (
+              {historyList.length > 0 ? (
                 <div style={{ maxHeight: '400px', overflow: 'auto' }}>
-                  {wagers.map((wager: any, index: number) => (
+                  {historyList.map((history: any, index: number) => (
                     <div key={index} style={{
                       padding: '12px',
                       border: '1px solid #d9d9d9',
                       borderRadius: '4px',
                       marginBottom: '8px',
-                      backgroundColor: '#fafafa'
+                      backgroundColor: '#fff',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}>
-                      <pre style={{ fontSize: '12px', margin: 0 }}>
-                        {JSON.stringify(wager, null, 2)}
-                      </pre>
+                      <div>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                          {history.date_name || history.date}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                          {history.date}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ marginBottom: '4px' }}>
+                          <Text type="secondary">投注：</Text>
+                          <Text strong>{history.gold}</Text>
+                          <Divider type="vertical" />
+                          <Text type="secondary">有效：</Text>
+                          <Text strong>{history.vgold}</Text>
+                        </div>
+                        <div>
+                          <Text type="secondary">输赢：</Text>
+                          <Text strong style={{
+                            color: parseFloat(history.winloss) >= 0 ? '#52c41a' : '#ff4d4f',
+                            fontSize: '14px'
+                          }}>
+                            {parseFloat(history.winloss) >= 0 ? '+' : ''}{history.winloss}
+                          </Text>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div>
                   <Empty description="最近7天暂无下注记录" />
-                  {payload && (
+                  {data && data.code && (
                     <div style={{
                       marginTop: '16px',
                       padding: '12px',
@@ -418,9 +460,9 @@ const AccountsPage: React.FC = () => {
                     }}>
                       <Text type="secondary">原始响应：</Text>
                       <pre style={{ fontSize: '12px', margin: 0 }}>
-                        {typeof payload === 'string'
-                          ? payload
-                          : JSON.stringify(payload, null, 2)}
+                        {typeof data === 'string'
+                          ? data
+                          : JSON.stringify(data, null, 2)}
                       </pre>
                     </div>
                   )}
