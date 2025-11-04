@@ -820,20 +820,22 @@ function updateOddsCache(odds: any) {
 }
 
 function generateOutput() {
-  // 第一步：处理 iSports 匹配的比赛
-  const isportsMatches = matchesCache
-    .map((match) => {
-      const matchIdKey = String(match.matchId ?? match.match_id ?? match.gid ?? '');
-      return { match, matchIdKey };
-    })
-    .filter(({ matchIdKey }) => matchIdKey)
-    .map(({ match, matchIdKey }) => {
-      const mapping = crownMatchDetails.get(matchIdKey);
-      if (!mapping) {
-        return null;
-      }
-      const crownInfo = mapping?.crown;
-      const isportsInfo = mapping?.isports;
+  const isportsMatches: any[] = [];
+  const usedCrownGids = new Set<string>();
+  const blockedCrownGids = new Set<string>();
+
+  for (const match of matchesCache) {
+    const matchIdKey = String(match.matchId ?? match.match_id ?? match.gid ?? '');
+    if (!matchIdKey) {
+      continue;
+    }
+
+    const mapping = crownMatchDetails.get(matchIdKey);
+    const crownGidFromMap = crownMatchMap.get(matchIdKey);
+    const crownInfo = mapping?.crown;
+    const isportsInfo = mapping?.isports;
+
+    if (mapping) {
       const leagueName = preferCrownName(
         crownInfo?.league,
         isportsInfo?.league_cn,
@@ -874,61 +876,56 @@ function generateOutput() {
         match.away = awayName;
         match.team_c = awayName;
       }
-
-      const odds = oddsCache.get(matchIdKey);
-      const status = normalizeStatus(match.status ?? match.state);
-      if (!odds && status !== 1) {
-        return null;
-      }
-      const converted = convertToCrownFormat(
-        match,
-        odds ?? {
-          handicap: [],
-          europeOdds: [],
-          overUnder: [],
-          handicapHalf: [],
-          overUnderHalf: []
-        },
-        crownMatchMap.get(matchIdKey)
-      );
-      if (converted) {
-        // 标记为 iSports 数据源（有中文翻译）
-        converted.source = 'isports';
-      }
-      return converted;
-    })
-    .filter((match): match is any => match !== null);
-
-  // 第二步：处理皇冠独有的比赛（未匹配到 iSports）
-  const usedCrownGids = new Set<string>();
-  isportsMatches.forEach(match => {
-    if (match.crown_gid) {
-      usedCrownGids.add(String(match.crown_gid));
     }
-  });
+
+    const odds = oddsCache.get(matchIdKey);
+    const converted = convertToCrownFormat(
+      match,
+      odds ?? {
+        handicap: [],
+        europeOdds: [],
+        overUnder: [],
+        handicapHalf: [],
+        overUnderHalf: []
+      },
+      crownGidFromMap
+    );
+
+    if (converted) {
+      converted.source = 'isports';
+      isportsMatches.push(converted);
+      if (converted.crown_gid) {
+        usedCrownGids.add(String(converted.crown_gid));
+      } else if (crownInfo?.crown_gid) {
+        usedCrownGids.add(String(crownInfo.crown_gid));
+      }
+    } else {
+      const fallbackGid = crownGidFromMap || crownInfo?.crown_gid;
+      if (fallbackGid) {
+        blockedCrownGids.add(String(fallbackGid));
+      }
+    }
+  }
 
   const crownOnlyMatches: any[] = [];
   crownMatches.forEach((crownMatch) => {
     const gid = String(crownMatch.crown_gid || '');
-    if (!gid || usedCrownGids.has(gid)) {
-      return; // 已经被 iSports 匹配了
+    if (!gid || usedCrownGids.has(gid) || blockedCrownGids.has(gid)) {
+      return;
     }
 
-    // 构造基本的比赛数据（使用皇冠原始信息）
     const converted = convertCrownOnlyMatch(crownMatch);
     if (converted) {
       crownOnlyMatches.push(converted);
     }
   });
 
-  // 合并两部分数据
   const allMatches = [...isportsMatches, ...crownOnlyMatches];
 
   console.log(`📊 数据统计: iSports ${isportsMatches.length} 场, 皇冠独有 ${crownOnlyMatches.length} 场, 总计 ${allMatches.length} 场`);
 
   saveData(allMatches);
 }
-
 // 新增：转换皇冠独有比赛数据
 function convertCrownOnlyMatch(crownMatch: any): any | null {
   try {
