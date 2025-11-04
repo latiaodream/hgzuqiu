@@ -383,7 +383,13 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
       if (!silent) {
         const baseMsg = `已优选 ${recommended.length} 个在线账号`;
-        message.success(skippedCount > 0 ? `${baseMsg}（自动跳过 ${skippedCount} 个同线路账号）` : baseMsg);
+        message.success({
+          content: skippedCount > 0
+            ? `${baseMsg}（自动跳过 ${skippedCount} 个同线路账号）`
+            : baseMsg,
+          key: 'auto-select-result',
+          duration: 2,
+        });
       }
     } catch (error) {
       console.error('Auto select accounts failed:', error);
