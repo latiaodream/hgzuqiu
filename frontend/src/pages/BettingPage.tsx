@@ -510,26 +510,41 @@ const BettingPage: React.FC = () => {
 
   // 展开的行渲染
   const expandedRowRender = (record: BetGroup) => {
-  const detailData: BetDetail[] = record.bets.map(bet => ({
-    key: bet.id.toString(),
-    status: bet.status,
-    order_id: bet.official_bet_id || `OU${bet.id}`,
-    user_username: (bet as any).user_display_name || bet.user_username,  // 添加下注员名称
-    account_username: bet.account_username || '',
-    amount_display: `${bet.bet_amount}/${bet.single_limit}`,
-    virtual_amount_display: bet.virtual_bet_amount !== undefined ? `${bet.virtual_bet_amount}/${bet.single_limit}` : undefined,
-    bet_amount: bet.bet_amount,
-    single_limit: bet.single_limit,
-    official_odds: resolveOfficialOdds(bet),
-    input_display: bet.virtual_profit_loss !== undefined
-      ? `${bet.profit_loss || 0}/${bet.virtual_profit_loss}`
-      : `${bet.profit_loss || 0}/${bet.single_limit}`,
-    input_amount: bet.profit_loss || 0,
-    result_score: bet.result_score,
-    result_text: bet.result_text,
-      input_limit: bet.single_limit,
+  const detailData: BetDetail[] = record.bets.map(bet => {
+    const realAmount = Number(bet.bet_amount ?? 0);
+    const virtualAmount = bet.virtual_bet_amount;
+    const realLimit = Number(bet.single_limit ?? 0);
+    const realProfit = Number(bet.profit_loss ?? 0);
+    const virtualProfit = bet.virtual_profit_loss;
+
+    const formatNumber = (value: number) => value.toFixed(2);
+    const formatVirtual = (value: number | null | undefined, fallback = '虚') => {
+      if (value === null || value === undefined) return fallback;
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? formatNumber(numeric) : fallback;
+    };
+
+    return {
+      key: bet.id.toString(),
+      status: bet.status,
+      order_id: bet.official_bet_id || `OU${bet.id}`,
+      user_username: (bet as any).user_display_name || bet.user_username,
+      account_username: bet.account_username || '',
+      amount_display: `${formatNumber(realAmount)}/${formatVirtual(virtualAmount)}`,
+      virtual_amount_display: virtualAmount !== undefined && virtualAmount !== null
+        ? `${formatNumber(realAmount)}/${formatNumber(Number(virtualAmount))}`
+        : undefined,
+      bet_amount: realAmount,
+      single_limit: realLimit,
+      official_odds: resolveOfficialOdds(bet),
+      input_display: `${formatNumber(realProfit)}/${formatVirtual(virtualProfit)}`,
+      input_amount: realProfit,
+      result_score: bet.result_score,
+      result_text: bet.result_text,
+      input_limit: realLimit,
       time: dayjs(bet.created_at).format('HH:mm:ss'),
-    }));
+    };
+  });
 
     return (
       <Table
