@@ -68,6 +68,7 @@ const MatchesPage: React.FC = () => {
   const [accounts, setAccounts] = useState<CrownAccount[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const matchLookupRef = React.useRef<Map<string, any>>(new Map());
 
   React.useEffect(() => {
     const handleResize = () => {
@@ -801,4 +802,3 @@ const MatchesPage: React.FC = () => {
 };
 
 export default MatchesPage;
-  const matchLookupRef = React.useRef<Map<string, any>>(new Map());
