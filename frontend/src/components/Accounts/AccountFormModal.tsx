@@ -206,11 +206,27 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
         });
         setProxyEnabled(account.proxy_enabled);
         setInitType(account.init_type || 'full');
+
+        // 如果账号有 limits_data，加载它
+        if (account.limits_data) {
+          try {
+            const parsed = typeof account.limits_data === 'string'
+              ? JSON.parse(account.limits_data)
+              : account.limits_data;
+            setLimitsData(parsed);
+          } catch (error) {
+            console.error('解析 limits_data 失败:', error);
+            setLimitsData(null);
+          }
+        } else {
+          setLimitsData(null);
+        }
       } else {
         // 新增模式
         form.resetFields();
         setProxyEnabled(false);
         setInitType('full');
+        setLimitsData(null); // 重置限额数据
         // 设置默认值（不包括账号和密码，由用户填写原始账号密码）
         form.setFieldsValue({
           init_type: 'full',
@@ -228,6 +244,9 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
           basketball_live_limit: 100000,
         });
       }
+    } else {
+      // 关闭弹窗时重置限额数据
+      setLimitsData(null);
     }
   }, [visible, account, form]);
 
