@@ -485,14 +485,14 @@ const AgentsPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item
-            label="邮箱"
+            label="邮箱（可选）"
             name="email"
             rules={[
-              { required: true, message: '请输入邮箱' },
               { type: 'email', message: '请输入有效的邮箱地址' },
             ]}
+            tooltip="可选填写，用户首次登录时会要求绑定邮箱"
           >
-            <Input placeholder="请输入邮箱" />
+            <Input placeholder="可选，首次登录时绑定" />
           </Form.Item>
 
           <Form.Item

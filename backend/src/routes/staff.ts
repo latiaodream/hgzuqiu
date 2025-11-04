@@ -116,10 +116,10 @@ router.post('/', requireAgent, async (req: AuthRequest, res: Response) => {
     try {
         const { username, email, password }: UserCreateRequest = req.body;
 
-        if (!username || !email || !password) {
+        if (!username || !password) {
             return res.status(400).json({
                 success: false,
-                error: '用户名、邮箱和密码不能为空'
+                error: '用户名和密码不能为空'
             });
         }
 
@@ -130,16 +130,16 @@ router.post('/', requireAgent, async (req: AuthRequest, res: Response) => {
             });
         }
 
-        // 检查用户名或邮箱是否已存在
+        // 检查用户名是否已存在（邮箱可以重复）
         const existingUser = await query(
-            'SELECT id FROM users WHERE username = $1 OR email = $2',
-            [username, email]
+            'SELECT id FROM users WHERE username = $1',
+            [username]
         );
 
         if (existingUser.rows.length > 0) {
             return res.status(400).json({
                 success: false,
-                error: '用户名或邮箱已存在'
+                error: '用户名已存在'
             });
         }
 
@@ -147,10 +147,10 @@ router.post('/', requireAgent, async (req: AuthRequest, res: Response) => {
         const saltRounds = parseInt(process.env.BCRYPT_ROUNDS || '10');
         const passwordHash = await bcrypt.hash(password, saltRounds);
 
-        // 创建员工账号
+        // 创建员工账号（邮箱可选）
         const result = await query(
             'INSERT INTO users (username, email, password_hash, role, parent_id, agent_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, username, email, role, parent_id, agent_id, created_at, updated_at',
-            [username, email, passwordHash, 'staff', req.user!.id, req.user!.id]
+            [username, email || null, passwordHash, 'staff', req.user!.id, req.user!.id]
         );
 
         const staff = result.rows[0];
