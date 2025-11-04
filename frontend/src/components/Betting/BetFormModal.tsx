@@ -67,6 +67,9 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   const [oddsPreview, setOddsPreview] = useState<{ odds: number | null; closed: boolean; message?: string } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [autoRefreshOdds, setAutoRefreshOdds] = useState(true); // 自动刷新赔率开关
+  const lastRecommendedRef = React.useRef<string>('');
+  const hasAnnouncedRef = React.useRef(false);
+  const manualSelectionRef = React.useRef(false);
 
   const accountDict = useMemo(() => {
     const map = new Map<number, CrownAccount>();
@@ -212,6 +215,9 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       setAutoLoading(false);
       setOddsPreview(null);
       setPreviewError(null);
+      lastRecommendedRef.current = '';
+      hasAnnouncedRef.current = false;
+      manualSelectionRef.current = false;
       // 设置默认值
       form.setFieldsValue({
         bet_type: defaults.bet_type,
@@ -366,22 +372,31 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       });
       const skippedCount = response.data.eligible_accounts.length - recommended.length;
       if (recommended.length === 0) {
-        setSelectedAccounts([]);
-        form.setFieldValue('account_ids', []);
-        if (!silent) {
+        if (!manualSelectionRef.current) {
+          setSelectedAccounts([]);
+          form.setFieldValue('account_ids', []);
+        }
+        if (!(silent || manualSelectionRef.current)) {
           message.warning('当前无符合条件的在线账号');
         }
         return;
       }
 
-      setSelectedAccounts(recommended);
-      form.setFieldValue('account_ids', recommended);
-      calculatePayout(recommended.length);
-      setTimeout(() => {
-        previewOddsRequest(true);
-      }, 0);
+      const hash = recommended.join(',');
+      const selectionChanged = hash !== lastRecommendedRef.current;
+      lastRecommendedRef.current = hash;
 
-      if (!silent) {
+      if (!manualSelectionRef.current && selectionChanged) {
+        setSelectedAccounts(recommended);
+        form.setFieldValue('account_ids', recommended);
+        calculatePayout(recommended.length);
+        setTimeout(() => {
+          previewOddsRequest(true);
+        }, 0);
+      }
+
+      const effectiveSilent = silent || manualSelectionRef.current || !selectionChanged;
+      if (!effectiveSilent) {
         const baseMsg = `已优选 ${recommended.length} 个在线账号`;
         message.success({
           content: skippedCount > 0
@@ -403,13 +418,15 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
   useEffect(() => {
     if (!visible || !matchData) return;
-    // 始终调用优选 API 来获取符合条件的账号列表
-    // 在"优选"模式下会自动选中账号，其他模式只用于过滤显示
-    fetchAutoSelection(undefined, betMode !== '优选');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, matchData, betMode]);
+    const needAnnouncement = betMode === '优选' && !hasAnnouncedRef.current;
+    fetchAutoSelection(undefined, !needAnnouncement);
+    if (needAnnouncement) {
+      hasAnnouncedRef.current = true;
+    }
+  }, [visible, matchData, betMode, fetchAutoSelection]);
 
   const handleAccountsChange = (accountIds: Array<number | string>) => {
+    manualSelectionRef.current = true;
     const normalized = accountIds.map(id => Number(id));
     setSelectedAccounts(normalized);
     form.setFieldValue('account_ids', normalized);
@@ -437,6 +454,8 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   const handleModeSwitch = (mode: '优选' | '平均') => {
     setBetMode(mode);
     if (mode === '优选') {
+      manualSelectionRef.current = false;
+      hasAnnouncedRef.current = false;
       fetchAutoSelection(undefined, true);
     }
   };

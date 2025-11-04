@@ -109,6 +109,11 @@ const MatchesPage: React.FC = () => {
     matchLookupRef.current = map;
   }, [matches]);
 
+  const getMatchSnapshot = React.useCallback((id: string | number | undefined | null) => {
+    if (id === undefined || id === null) return null;
+    return matchLookupRef.current.get(String(id));
+  }, []);
+
 
   const loadMatches = async (opts?: { silent?: boolean }) => {
     try {
@@ -786,10 +791,7 @@ const MatchesPage: React.FC = () => {
         match={selectedMatch}
         accounts={accounts}
         defaultSelection={selectionPreset}
-        getMatchSnapshot={(id) => {
-          if (id === undefined || id === null) return null;
-          return matchLookupRef.current.get(String(id));
-        }}
+        getMatchSnapshot={getMatchSnapshot}
         onCancel={closeBetModal}
         onSubmit={async () => {
           closeBetModal();
