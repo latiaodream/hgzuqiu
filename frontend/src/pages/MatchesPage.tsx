@@ -216,11 +216,35 @@ const MatchesPage: React.FC = () => {
       });
       const es = new EventSource(`/api/crown-automation/matches/system/stream?${params.toString()}`);
       sseRef.current = es;
-      es.addEventListener('matches', (e: MessageEvent) => {
+      es.addEventListener('matches', async (e: MessageEvent) => {
         try {
           const payload = JSON.parse(e.data || '{}');
           if (payload && payload.matches) {
-            setMatches(filterFinishedMatches(payload.matches));
+            const incoming = payload.matches || [];
+            const filtered = filterFinishedMatches(incoming);
+
+            if (showtype === 'live' && filtered.length === 0) {
+              // 若 SSE 推送数据为空（被过滤光），主动回退请求一次 REST 接口
+              try {
+                const res = await crownApi.getMatchesSystem({
+                  gtype,
+                  showtype,
+                  rtype: 'rb',
+                  ltype: '3',
+                  sorttype: 'L',
+                });
+                if (res.success && res.data) {
+                  const fbFiltered = filterFinishedMatches(res.data.matches || []);
+                  setMatches(fbFiltered);
+                } else {
+                  setMatches(filtered);
+                }
+              } catch {
+                setMatches(filtered);
+              }
+            } else {
+              setMatches(filtered);
+            }
             setLastUpdatedAt(Date.now());
           }
         } catch {}
