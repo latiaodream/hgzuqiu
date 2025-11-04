@@ -1,5 +1,5 @@
 import { query } from '../models/database';
-import nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
 interface EmailConfig {
   host: string;
@@ -39,7 +39,7 @@ class EmailService {
       },
     };
 
-    this.transporter = nodemailer.createTransporter(config);
+    this.transporter = nodemailer.createTransport(config);
     console.log('✅ 邮件服务初始化成功');
   }
 
@@ -205,4 +205,3 @@ class EmailService {
 }
 
 export const emailService = new EmailService();
-
