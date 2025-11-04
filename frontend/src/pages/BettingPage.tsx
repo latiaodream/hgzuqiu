@@ -720,7 +720,7 @@ const BettingPage: React.FC = () => {
         extra={
           <Button
             icon={<ReloadOutlined />}
-            onClick={loadBets}
+            onClick={() => loadBets(false)}
             loading={loading}
             type="text"
             size={isMobile ? 'small' : 'middle'}
