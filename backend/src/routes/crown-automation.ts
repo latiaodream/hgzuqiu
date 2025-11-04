@@ -101,31 +101,39 @@ const filterMatchesByShowtype = (matches: any[], showtype: string) => {
     const tomorrowStart = startOfDay(1);
     const dayAfterTomorrowStart = startOfDay(2);
 
+    const isFinished = (match: any) => normalizeStateValue(match.state ?? match.status) === -1;
+
     if (showtype === 'live') {
         return matches.filter((m) => isLiveState(m.state ?? m.status));
     }
 
     if (showtype === 'today') {
-        return matches.filter((m) => {
-            const date = parseMatchDate(m);
-            if (date) {
-                return date >= todayStart && date < tomorrowStart;
-            }
-            return isLiveState(m.state ?? m.status) || normalizeStateValue(m.state ?? m.status) === 0;
-        });
+        return matches
+            .filter((m) => !isFinished(m))
+            .filter((m) => {
+                const date = parseMatchDate(m);
+                if (date) {
+                    return date >= todayStart && date < tomorrowStart;
+                }
+                const state = normalizeStateValue(m.state ?? m.status);
+                return state === 0 || isLiveState(state);
+            });
     }
 
     if (showtype === 'early') {
-        return matches.filter((m) => {
-            const date = parseMatchDate(m);
-            if (date) {
-                return date >= tomorrowStart && date < dayAfterTomorrowStart;
-            }
-            return normalizeStateValue(m.state ?? m.status) === 0;
-        });
+        return matches
+            .filter((m) => !isFinished(m))
+            .filter((m) => {
+                const date = parseMatchDate(m);
+                if (date) {
+                    return date >= tomorrowStart && date < dayAfterTomorrowStart;
+                }
+                const state = normalizeStateValue(m.state ?? m.status);
+                return state === 0;
+            });
     }
 
-    return matches;
+    return matches.filter((m) => !isFinished(m));
 };
 
 const normalizeMatchForFrontend = (match: any) => {
