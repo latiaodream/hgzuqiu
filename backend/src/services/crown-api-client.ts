@@ -1275,13 +1275,13 @@ export class CrownApiClient {
     const requestParams = new URLSearchParams({
       p: 'get_history_data',
       uid: this.uid,
+      ver: this.version,
       langx: 'zh-cn',
       gtype: params.gtype || 'ALL',
       isAll: params.isAll || 'N',
       startdate: params.startdate || '',
       enddate: params.enddate || '',
       filter: params.filter || 'Y',
-      ts: Date.now().toString(),
     });
 
     try {
