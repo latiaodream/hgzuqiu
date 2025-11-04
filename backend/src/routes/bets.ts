@@ -536,7 +536,7 @@ router.post('/', async (req: any, res) => {
                     INSERT INTO bets (
                         user_id, account_id, match_id, bet_type, bet_option, bet_amount, virtual_bet_amount, odds,
                         single_limit, interval_seconds, quantity, status, official_bet_id, official_odds
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                     RETURNING *
                 `, [
                     userId,
