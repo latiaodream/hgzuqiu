@@ -20,7 +20,8 @@
     "analyze:unmatched": "ts-node scripts/analyze-unmatched-details.ts",
     "cron:install": "bash scripts/install-cron.sh",
     "cron:uninstall": "bash scripts/uninstall-cron.sh",
-    "cron:update": "bash scripts/cron-update-mapping.sh"
+    "cron:update": "bash scripts/cron-update-mapping.sh",
+    "aliases:import-today": "ts-node scripts/import-crown-today-aliases.ts"
   },
   "keywords": [],
   "author": "",

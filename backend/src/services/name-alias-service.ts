@@ -385,6 +385,22 @@ class NameAliasService {
     this.invalidateCache();
   }
 
+  async getLeagueByCanonical(canonicalKey: string): Promise<LeagueAlias | null> {
+    const result = await query('SELECT * FROM league_aliases WHERE canonical_key = $1 LIMIT 1', [canonicalKey]);
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return this.mapLeagueRow(result.rows[0]);
+  }
+
+  async getTeamByCanonical(canonicalKey: string): Promise<TeamAlias | null> {
+    const result = await query('SELECT * FROM team_aliases WHERE canonical_key = $1 LIMIT 1', [canonicalKey]);
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return this.mapTeamRow(result.rows[0]);
+  }
+
   async resolveLeague(name: string): Promise<ResolvedName> {
     await this.ensureLoaded();
     return this.resolveFromCache(name, this.leagueCache, 'league');
