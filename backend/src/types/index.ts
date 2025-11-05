@@ -271,6 +271,28 @@ export interface CoinTransaction {
     created_at: string;
 }
 
+export interface LeagueAlias {
+    id: number;
+    canonical_key: string;
+    name_en?: string;
+    name_zh_cn?: string;
+    name_zh_tw?: string;
+    aliases: string[];
+    created_at: string;
+    updated_at: string;
+}
+
+export interface TeamAlias {
+    id: number;
+    canonical_key: string;
+    name_en?: string;
+    name_zh_cn?: string;
+    name_zh_tw?: string;
+    aliases: string[];
+    created_at: string;
+    updated_at: string;
+}
+
 // 请求认证类型
 export interface AuthRequest extends Request {
     user?: User;

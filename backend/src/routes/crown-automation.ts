@@ -4,6 +4,7 @@ import { query } from '../models/database';
 import { ApiResponse } from '../types';
 import { getCrownAutomation } from '../services/crown-automation';
 import { getMatchFetcher } from '../services/match-fetcher';
+import { mergeTodayMatchesWithISports } from '../services/match-merger';
 import type { Response } from 'express';
 
 const buildAccountAccess = (user: any, options?: { includeDisabled?: boolean }) => {
@@ -1332,6 +1333,17 @@ router.get('/matches-system', async (req: any, res) => {
                             filteredMatches = filterMatchesByShowtype(fbNormalized, String(showtype));
                         }
 
+                        if (String(showtype).toLowerCase() === 'today' && filteredMatches.length > 0) {
+                            try {
+                                filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
+                                    gtype: String(gtype),
+                                    date: new Date().toISOString().slice(0, 10),
+                                });
+                            } catch (mergeError) {
+                                console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+                            }
+                        }
+
                         res.json({
                             success: true,
                             data: {
@@ -1358,13 +1370,23 @@ router.get('/matches-system', async (req: any, res) => {
         // 尝试使用内置的独立抓取服务
         const fetcher = getMatchFetcher();
         if (fetcher) {
-            const data = fetcher.getLatestMatches();
-            const filteredMatches = filterMatchesByShowtype(data.matches ?? [], String(showtype));
-            res.json({
-                success: true,
-                data: {
-                    matches: filteredMatches,
-                    meta: { gtype, showtype, rtype, ltype, sorttype },
+        const data = fetcher.getLatestMatches();
+        let filteredMatches = filterMatchesByShowtype(data.matches ?? [], String(showtype));
+        if (String(showtype).toLowerCase() === 'today' && filteredMatches.length > 0) {
+            try {
+                filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
+                    gtype: String(gtype),
+                    date: new Date().toISOString().slice(0, 10),
+                });
+            } catch (mergeError) {
+                console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+            }
+        }
+        res.json({
+            success: true,
+            data: {
+                matches: filteredMatches,
+                meta: { gtype, showtype, rtype, ltype, sorttype },
                     raw: data.xml,
                     source: 'dedicated-fetcher',
                     lastUpdate: data.lastUpdate,
@@ -1390,6 +1412,17 @@ router.get('/matches-system', async (req: any, res) => {
             const fb = await getCrownAutomation().fetchMatchesSystem({ gtype: String(gtype), showtype: String(showtype), rtype: String(rtype || (String(showtype) === 'live' ? 'rb' : 'r')), ltype: String(ltype), sorttype: String(sorttype) });
             const fbNormalized = (fb.matches || []).map((m: any) => normalizeMatchForFrontend(m));
             filteredMatches = filterMatchesByShowtype(fbNormalized, String(showtype));
+        }
+
+        if (String(showtype).toLowerCase() === 'today' && filteredMatches.length > 0) {
+            try {
+                filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
+                    gtype: String(gtype),
+                    date: new Date().toISOString().slice(0, 10),
+                });
+            } catch (mergeError) {
+                console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+            }
         }
 
         res.json({

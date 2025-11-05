@@ -223,6 +223,33 @@ CREATE INDEX idx_bets_created_at ON bets(created_at);
 CREATE INDEX idx_coin_transactions_user_id ON coin_transactions(user_id);
 CREATE INDEX idx_coin_transactions_created_at ON coin_transactions(created_at);
 
+-- 比赛名称映射表（联赛）
+CREATE TABLE league_aliases (
+    id SERIAL PRIMARY KEY,
+    canonical_key VARCHAR(120) NOT NULL UNIQUE,
+    name_en VARCHAR(200),
+    name_zh_cn VARCHAR(200),
+    name_zh_tw VARCHAR(200),
+    aliases JSONB DEFAULT '[]',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 比赛名称映射表（球队）
+CREATE TABLE team_aliases (
+    id SERIAL PRIMARY KEY,
+    canonical_key VARCHAR(120) NOT NULL UNIQUE,
+    name_en VARCHAR(200),
+    name_zh_cn VARCHAR(200),
+    name_zh_tw VARCHAR(200),
+    aliases JSONB DEFAULT '[]',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_league_aliases_canonical_key ON league_aliases(canonical_key);
+CREATE INDEX idx_team_aliases_canonical_key ON team_aliases(canonical_key);
+
 -- 插入默认数据
 INSERT INTO users (username, email, password_hash, role) VALUES
 ('admin', 'admin@example.com', '$2b$10$placeholder_hash', 'admin');
