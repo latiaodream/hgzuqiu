@@ -42,6 +42,10 @@ interface CrownMatch {
  */
 async function parseCrownGameList(xml: string): Promise<CrownMatch[]> {
   try {
+    // 打印 XML 前 1000 字符用于调试
+    console.log('\n📄 XML 响应（前 1000 字符）:');
+    console.log(xml.substring(0, 1000));
+
     const result = await parseStringPromise(xml, {
       explicitArray: false,
       ignoreAttrs: false,
@@ -50,26 +54,38 @@ async function parseCrownGameList(xml: string): Promise<CrownMatch[]> {
     const matches: CrownMatch[] = [];
     const data = result.serverresponse || result;
 
+    console.log('\n🔍 解析结果:');
+    console.log('  - 是否有 ec:', !!data.ec);
+    console.log('  - ec 类型:', Array.isArray(data.ec) ? 'array' : typeof data.ec);
+
     if (!data.ec) {
+      console.log('⚠️  没有找到 ec 节点');
       return matches;
     }
 
     // ec 可能是单个对象或数组
     const ecList = Array.isArray(data.ec) ? data.ec : [data.ec];
+    console.log('  - ec 数量:', ecList.length);
 
     for (const ec of ecList) {
-      if (!ec.game) continue;
+      if (!ec.game) {
+        console.log('  - 跳过没有 game 的 ec');
+        continue;
+      }
 
-      const league = ec.$.ecname || '';
+      const league = ec.$.ecname || ec.$.ECNAME || '';
       const games = Array.isArray(ec.game) ? ec.game : [ec.game];
 
+      console.log(`  - 联赛: ${league}, 比赛数: ${games.length}`);
+
       for (const game of games) {
+        const attrs = game.$ || {};
         matches.push({
-          gid: game.$.gid || '',
+          gid: attrs.gid || attrs.GID || '',
           league: league,
-          home: game.$.team_h || '',
-          away: game.$.team_c || '',
-          datetime: game.$.datetime || '',
+          home: attrs.team_h || attrs.TEAM_H || '',
+          away: attrs.team_c || attrs.TEAM_C || '',
+          datetime: attrs.datetime || attrs.DATETIME || '',
         });
       }
     }
@@ -77,6 +93,7 @@ async function parseCrownGameList(xml: string): Promise<CrownMatch[]> {
     return matches;
   } catch (error: any) {
     console.error('❌ 解析 XML 失败:', error.message);
+    console.error('   错误堆栈:', error.stack);
     return [];
   }
 }
@@ -175,6 +192,14 @@ async function main() {
 
   const matches = await parseCrownGameList(xml);
   console.log(`✅ 获取到 ${matches.length} 场早盘比赛`);
+
+  // 调试：打印前 3 场比赛
+  if (matches.length > 0) {
+    console.log('\n📋 示例比赛（前 3 场）:');
+    matches.slice(0, 3).forEach((m, i) => {
+      console.log(`  [${i + 1}] ${m.league} | ${m.home} vs ${m.away}`);
+    });
+  }
 
   if (matches.length === 0) {
     console.log('⚠️  没有早盘赛事，结束');
