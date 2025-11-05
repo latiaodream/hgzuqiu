@@ -146,10 +146,8 @@ async function main() {
   console.log(`   总批次: ${batches.length}，每批 100 场比赛`);
 
   let totalCrownMatches = 0;
-  let totalLeaguesImported = 0;
-  let totalTeamsImported = 0;
-  const processedLeagueIds = new Set<string>();
-  const processedTeamIds = new Set<string>();
+  let totalLeaguesProcessed = 0;
+  let totalTeamsProcessed = 0;
 
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
@@ -195,33 +193,28 @@ async function main() {
         continue;
       }
 
-      // 收集本批次的联赛和球队
-      const batchLeagueIds = new Set<string>();
-      const batchTeamIds = new Set<string>();
+      // 收集本批次的联赛和球队（不去重，让数据库处理）
       const leagueIdToName = new Map<string, string>();
       const teamIdToName = new Map<string, string>();
 
       crownMatches.forEach((m: any) => {
-        if (m.leagueId && !processedLeagueIds.has(m.leagueId)) {
-          batchLeagueIds.add(m.leagueId);
+        if (m.leagueId && m.leagueName) {
           leagueIdToName.set(m.leagueId, m.leagueName);
         }
-        if (m.homeId && !processedTeamIds.has(m.homeId)) {
-          batchTeamIds.add(m.homeId);
+        if (m.homeId && m.homeName) {
           teamIdToName.set(m.homeId, m.homeName);
         }
-        if (m.awayId && !processedTeamIds.has(m.awayId)) {
-          batchTeamIds.add(m.awayId);
+        if (m.awayId && m.awayName) {
           teamIdToName.set(m.awayId, m.awayName);
         }
       });
 
-      // 导入联赛
-      if (batchLeagueIds.size > 0) {
-        console.log(`   📝 导入 ${batchLeagueIds.size} 个联赛...`);
-        for (const leagueId of batchLeagueIds) {
+      // 导入联赛（每个都尝试插入/更新）
+      if (leagueIdToName.size > 0) {
+        console.log(`   📝 处理 ${leagueIdToName.size} 个联赛...`);
+        for (const [leagueId, leagueName] of leagueIdToName) {
           try {
-            const nameEn = leagueIdToName.get(leagueId) || '';
+            const nameEn = leagueName || '';
             const nameZhTw = languageService.getLeagueName(leagueId) || '';
 
             if (!nameEn && !nameZhTw) continue;
@@ -231,20 +224,19 @@ async function main() {
               nameZhTw: nameZhTw || undefined,
               aliases: [],
             });
-            processedLeagueIds.add(leagueId);
-            totalLeaguesImported++;
+            totalLeaguesProcessed++;
           } catch (e: any) {
             // 忽略错误，继续处理
           }
         }
       }
 
-      // 导入球队
-      if (batchTeamIds.size > 0) {
-        console.log(`   📝 导入 ${batchTeamIds.size} 个球队...`);
-        for (const teamId of batchTeamIds) {
+      // 导入球队（每个都尝试插入/更新）
+      if (teamIdToName.size > 0) {
+        console.log(`   📝 处理 ${teamIdToName.size} 个球队...`);
+        for (const [teamId, teamName] of teamIdToName) {
           try {
-            const nameEn = teamIdToName.get(teamId) || '';
+            const nameEn = teamName || '';
             const nameZhTw = languageService.getTeamName(teamId) || '';
 
             if (!nameEn && !nameZhTw) continue;
@@ -254,15 +246,14 @@ async function main() {
               nameZhTw: nameZhTw || undefined,
               aliases: [],
             });
-            processedTeamIds.add(teamId);
-            totalTeamsImported++;
+            totalTeamsProcessed++;
           } catch (e: any) {
             // 忽略错误，继续处理
           }
         }
       }
 
-      console.log(`   📊 当前进度: 已处理 ${totalCrownMatches} 场有皇冠赔率的比赛，导入 ${totalLeaguesImported} 个联赛，${totalTeamsImported} 个球队`);
+      console.log(`   📊 当前进度: 已处理 ${totalCrownMatches} 场有皇冠赔率的比赛，处理 ${totalLeaguesProcessed} 次联赛，${totalTeamsProcessed} 次球队`);
 
     } catch (error: any) {
       console.error(`⚠️  批次 [${i + 1}/${batches.length}] 处理失败:`, error.message);
@@ -282,11 +273,11 @@ async function main() {
   console.log(`   - 总比赛数: ${allSchedule.length} 场`);
   console.log(`   - 候选比赛: ${candidates.length} 场`);
   console.log(`   - 有皇冠赔率: ${totalCrownMatches} 场`);
-  console.log(`   - 导入联赛: ${totalLeaguesImported} 个`);
-  console.log(`   - 导入球队: ${totalTeamsImported} 个`);
+  console.log(`   - 处理联赛: ${totalLeaguesProcessed} 次（包含新增和更新）`);
+  console.log(`   - 处理球队: ${totalTeamsProcessed} 次（包含新增和更新）`);
   console.log('💡 提示：繁体中文来自 iSports 语言包，英文来自赛程 API');
   console.log('💡 提示：请在页面上手动填写"皇冠简体"字段');
-  console.log('💡 提示：如果中途中断，已导入的数据已保存，可以重新运行继续导入');
+  console.log('💡 提示：重复运行会自动合并更新，不会覆盖已有数据');
 }
 
 main().catch((err) => {
