@@ -104,26 +104,110 @@ async function parseCrownGameList(xml: string): Promise<CrownMatch[]> {
 }
 
 /**
- * 匹配联赛名称
+ * 计算字符串相似度（简单版本）
  */
-async function matchLeague(crownName: string): Promise<{ matched: boolean; id?: number }> {
+function similarity(s1: string, s2: string): number {
+  const longer = s1.length > s2.length ? s1 : s2;
+  const shorter = s1.length > s2.length ? s2 : s1;
+
+  if (longer.length === 0) {
+    return 1.0;
+  }
+
+  // 包含关系得分更高
+  if (longer.includes(shorter)) {
+    return 0.8 + (shorter.length / longer.length) * 0.2;
+  }
+
+  // 计算编辑距离
+  const editDistance = levenshteinDistance(s1, s2);
+  return (longer.length - editDistance) / longer.length;
+}
+
+/**
+ * 计算编辑距离
+ */
+function levenshteinDistance(s1: string, s2: string): number {
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= s2.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= s1.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= s2.length; i++) {
+    for (let j = 1; j <= s1.length; j++) {
+      if (s2.charAt(i - 1) === s1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+
+  return matrix[s2.length][s1.length];
+}
+
+/**
+ * 匹配联赛名称（支持模糊匹配）
+ */
+async function matchLeague(crownName: string): Promise<{ matched: boolean; id?: number; similarity?: number }> {
   try {
-    // 尝试通过别名匹配
+    // 1. 尝试通过别名精确匹配
     const result = await nameAliasService.resolveLeague(crownName);
     if (result && result.canonicalKey) {
-      // 通过 canonical_key 查找 id
       const league = await nameAliasService.getLeagueByKey(result.canonicalKey);
       if (league) {
-        return { matched: true, id: league.id };
+        return { matched: true, id: league.id, similarity: 1.0 };
       }
     }
 
-    // 尝试模糊匹配（通过 name_crown_zh_cn 字段）
+    // 2. 尝试精确匹配 name_crown_zh_cn
     const allLeagues = await nameAliasService.getAllLeagues();
     for (const league of allLeagues) {
       if (league.name_crown_zh_cn === crownName) {
-        return { matched: true, id: league.id };
+        return { matched: true, id: league.id, similarity: 1.0 };
       }
+    }
+
+    // 3. 模糊匹配（相似度 >= 0.7）
+    let bestMatch: { league: any; score: number } | null = null;
+
+    for (const league of allLeagues) {
+      // 与 name_crown_zh_cn 比较
+      if (league.name_crown_zh_cn) {
+        const score = similarity(crownName, league.name_crown_zh_cn);
+        if (score >= 0.7 && (!bestMatch || score > bestMatch.score)) {
+          bestMatch = { league, score };
+        }
+      }
+
+      // 与 name_zh_cn 比较
+      if (league.name_zh_cn) {
+        const score = similarity(crownName, league.name_zh_cn);
+        if (score >= 0.7 && (!bestMatch || score > bestMatch.score)) {
+          bestMatch = { league, score };
+        }
+      }
+
+      // 与 name_zh_tw 比较
+      if (league.name_zh_tw) {
+        const score = similarity(crownName, league.name_zh_tw);
+        if (score >= 0.7 && (!bestMatch || score > bestMatch.score)) {
+          bestMatch = { league, score };
+        }
+      }
+    }
+
+    if (bestMatch) {
+      return { matched: true, id: bestMatch.league.id, similarity: bestMatch.score };
     }
 
     return { matched: false };
@@ -133,26 +217,58 @@ async function matchLeague(crownName: string): Promise<{ matched: boolean; id?: 
 }
 
 /**
- * 匹配球队名称
+ * 匹配球队名称（支持模糊匹配）
  */
-async function matchTeam(crownName: string): Promise<{ matched: boolean; id?: number }> {
+async function matchTeam(crownName: string): Promise<{ matched: boolean; id?: number; similarity?: number }> {
   try {
-    // 尝试通过别名匹配
+    // 1. 尝试通过别名精确匹配
     const result = await nameAliasService.resolveTeam(crownName);
     if (result && result.canonicalKey) {
-      // 通过 canonical_key 查找 id
       const team = await nameAliasService.getTeamByKey(result.canonicalKey);
       if (team) {
-        return { matched: true, id: team.id };
+        return { matched: true, id: team.id, similarity: 1.0 };
       }
     }
 
-    // 尝试模糊匹配（通过 name_crown_zh_cn 字段）
+    // 2. 尝试精确匹配 name_crown_zh_cn
     const allTeams = await nameAliasService.getAllTeams();
     for (const team of allTeams) {
       if (team.name_crown_zh_cn === crownName) {
-        return { matched: true, id: team.id };
+        return { matched: true, id: team.id, similarity: 1.0 };
       }
+    }
+
+    // 3. 模糊匹配（相似度 >= 0.75）
+    let bestMatch: { team: any; score: number } | null = null;
+
+    for (const team of allTeams) {
+      // 与 name_crown_zh_cn 比较
+      if (team.name_crown_zh_cn) {
+        const score = similarity(crownName, team.name_crown_zh_cn);
+        if (score >= 0.75 && (!bestMatch || score > bestMatch.score)) {
+          bestMatch = { team, score };
+        }
+      }
+
+      // 与 name_zh_cn 比较
+      if (team.name_zh_cn) {
+        const score = similarity(crownName, team.name_zh_cn);
+        if (score >= 0.75 && (!bestMatch || score > bestMatch.score)) {
+          bestMatch = { team, score };
+        }
+      }
+
+      // 与 name_zh_tw 比较
+      if (team.name_zh_tw) {
+        const score = similarity(crownName, team.name_zh_tw);
+        if (score >= 0.75 && (!bestMatch || score > bestMatch.score)) {
+          bestMatch = { team, score };
+        }
+      }
+    }
+
+    if (bestMatch) {
+      return { matched: true, id: bestMatch.team.id, similarity: bestMatch.score };
     }
 
     return { matched: false };
