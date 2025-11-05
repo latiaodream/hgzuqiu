@@ -324,10 +324,10 @@ class NameAliasService {
     const result = await query(
       `UPDATE league_aliases SET
          canonical_key = COALESCE($2, canonical_key),
-         name_en = $3,
-         name_zh_cn = $4,
-         name_zh_tw = $5,
-         name_crown_zh_cn = $6,
+         name_en = COALESCE($3, name_en),
+         name_zh_cn = COALESCE($4, name_zh_cn),
+         name_zh_tw = COALESCE($5, name_zh_tw),
+         name_crown_zh_cn = COALESCE($6, name_crown_zh_cn),
          aliases = $7::jsonb,
          updated_at = CURRENT_TIMESTAMP
        WHERE id = $1
@@ -401,10 +401,10 @@ class NameAliasService {
     const result = await query(
       `UPDATE team_aliases SET
          canonical_key = COALESCE($2, canonical_key),
-         name_en = $3,
-         name_zh_cn = $4,
-         name_zh_tw = $5,
-         name_crown_zh_cn = $6,
+         name_en = COALESCE($3, name_en),
+         name_zh_cn = COALESCE($4, name_zh_cn),
+         name_zh_tw = COALESCE($5, name_zh_tw),
+         name_crown_zh_cn = COALESCE($6, name_crown_zh_cn),
          aliases = $7::jsonb,
          updated_at = CURRENT_TIMESTAMP
        WHERE id = $1
