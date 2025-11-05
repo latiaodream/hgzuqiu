@@ -9,11 +9,13 @@ import fs from 'fs';
 import { nameAliasService } from '../src/services/name-alias-service';
 
 interface ExcelRow {
-  ID: number;
-  'Canonical Key': string;
-  'English Name': string;
-  'Traditional Chinese (iSports)': string;
-  'Simplified Chinese (Crown)': string;
+  ID?: number;
+  'Canonical Key'?: string;
+  'English Name'?: string;
+  'Traditional Chinese (iSports)'?: string;
+  'Simplified Chinese (Crown)'?: string;
+  // 支持简化格式：只有英文和简体中文两列
+  [key: string]: any;
 }
 
 async function importLeaguesFromExcel(filePath: string): Promise<number> {
@@ -23,7 +25,7 @@ async function importLeaguesFromExcel(filePath: string): Promise<number> {
   }
 
   console.log(`📋 读取联赛文件: ${filePath}`);
-  
+
   const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
@@ -31,32 +33,90 @@ async function importLeaguesFromExcel(filePath: string): Promise<number> {
 
   console.log(`📋 读取到 ${rows.length} 条联赛记录`);
 
+  // 检测列名格式
+  const firstRow = rows[0];
+  const columnNames = Object.keys(firstRow);
+  console.log(`📋 检测到的列名: ${columnNames.join(', ')}`);
+
+  // 判断是简化格式（两列）还是完整格式（五列）
+  const isSimpleFormat = columnNames.length === 2;
+
   let updated = 0;
   let skipped = 0;
+  let notFound = 0;
 
-  for (const row of rows) {
-    const id = typeof row.ID === 'number' ? row.ID : parseInt(String(row.ID));
-    const crownName = row['Simplified Chinese (Crown)'];
+  if (isSimpleFormat) {
+    console.log('📋 使用简化格式（英文 -> 简体中文）匹配\n');
 
-    // 只更新有简体中文的记录
-    if (crownName && String(crownName).trim() !== '') {
-      try {
-        await nameAliasService.updateLeagueAlias(id, {
-          nameCrownZhCn: String(crownName).trim(),
-        });
-        updated++;
-        if (updated % 10 === 0) {
-          console.log(`   已更新 ${updated} 个联赛...`);
-        }
-      } catch (error) {
-        console.error(`❌ 更新联赛 ${id} 失败:`, error);
+    // 简化格式：第一列是英文，第二列是简体中文
+    const enColumn = columnNames[0];
+    const zhColumn = columnNames[1];
+
+    // 先获取所有联赛
+    const allLeagues = await nameAliasService.getAllLeagues();
+
+    for (const row of rows) {
+      const englishName = row[enColumn];
+      const chineseName = row[zhColumn];
+
+      if (!englishName || !chineseName || String(chineseName).trim() === '') {
+        skipped++;
+        continue;
       }
-    } else {
-      skipped++;
+
+      // 根据英文名称查找联赛
+      const league = allLeagues.find(l => l.name_en === String(englishName).trim());
+
+      if (league) {
+        try {
+          await nameAliasService.updateLeagueAlias(league.id, {
+            nameCrownZhCn: String(chineseName).trim(),
+          });
+          updated++;
+          if (updated % 10 === 0) {
+            console.log(`   已更新 ${updated} 个联赛...`);
+          }
+        } catch (error) {
+          console.error(`❌ 更新联赛 ${league.id} (${englishName}) 失败:`, error);
+        }
+      } else {
+        notFound++;
+        if (notFound <= 5) {
+          console.log(`⚠️  未找到英文名称: ${englishName}`);
+        }
+      }
+    }
+
+    if (notFound > 5) {
+      console.log(`⚠️  还有 ${notFound - 5} 个未找到的联赛未显示`);
+    }
+  } else {
+    console.log('📋 使用完整格式（ID -> 简体中文）匹配\n');
+
+    // 完整格式：使用 ID 直接更新
+    for (const row of rows) {
+      const id = typeof row.ID === 'number' ? row.ID : parseInt(String(row.ID));
+      const crownName = row['Simplified Chinese (Crown)'];
+
+      if (crownName && String(crownName).trim() !== '') {
+        try {
+          await nameAliasService.updateLeagueAlias(id, {
+            nameCrownZhCn: String(crownName).trim(),
+          });
+          updated++;
+          if (updated % 10 === 0) {
+            console.log(`   已更新 ${updated} 个联赛...`);
+          }
+        } catch (error) {
+          console.error(`❌ 更新联赛 ${id} 失败:`, error);
+        }
+      } else {
+        skipped++;
+      }
     }
   }
 
-  console.log(`✅ 联赛更新完成: ${updated} 个，跳过: ${skipped} 个\n`);
+  console.log(`✅ 联赛更新完成: ${updated} 个，跳过: ${skipped} 个${notFound > 0 ? `，未找到: ${notFound} 个` : ''}\n`);
   return updated;
 }
 
@@ -67,7 +127,7 @@ async function importTeamsFromExcel(filePath: string): Promise<number> {
   }
 
   console.log(`📋 读取球队文件: ${filePath}`);
-  
+
   const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
@@ -75,32 +135,90 @@ async function importTeamsFromExcel(filePath: string): Promise<number> {
 
   console.log(`📋 读取到 ${rows.length} 条球队记录`);
 
+  // 检测列名格式
+  const firstRow = rows[0];
+  const columnNames = Object.keys(firstRow);
+  console.log(`📋 检测到的列名: ${columnNames.join(', ')}`);
+
+  // 判断是简化格式（两列）还是完整格式（五列）
+  const isSimpleFormat = columnNames.length === 2;
+
   let updated = 0;
   let skipped = 0;
+  let notFound = 0;
 
-  for (const row of rows) {
-    const id = typeof row.ID === 'number' ? row.ID : parseInt(String(row.ID));
-    const crownName = row['Simplified Chinese (Crown)'];
+  if (isSimpleFormat) {
+    console.log('📋 使用简化格式（英文 -> 简体中文）匹配\n');
 
-    // 只更新有简体中文的记录
-    if (crownName && String(crownName).trim() !== '') {
-      try {
-        await nameAliasService.updateTeamAlias(id, {
-          nameCrownZhCn: String(crownName).trim(),
-        });
-        updated++;
-        if (updated % 50 === 0) {
-          console.log(`   已更新 ${updated} 个球队...`);
-        }
-      } catch (error) {
-        console.error(`❌ 更新球队 ${id} 失败:`, error);
+    // 简化格式：第一列是英文，第二列是简体中文
+    const enColumn = columnNames[0];
+    const zhColumn = columnNames[1];
+
+    // 先获取所有球队
+    const allTeams = await nameAliasService.getAllTeams();
+
+    for (const row of rows) {
+      const englishName = row[enColumn];
+      const chineseName = row[zhColumn];
+
+      if (!englishName || !chineseName || String(chineseName).trim() === '') {
+        skipped++;
+        continue;
       }
-    } else {
-      skipped++;
+
+      // 根据英文名称查找球队
+      const team = allTeams.find(t => t.name_en === String(englishName).trim());
+
+      if (team) {
+        try {
+          await nameAliasService.updateTeamAlias(team.id, {
+            nameCrownZhCn: String(chineseName).trim(),
+          });
+          updated++;
+          if (updated % 50 === 0) {
+            console.log(`   已更新 ${updated} 个球队...`);
+          }
+        } catch (error) {
+          console.error(`❌ 更新球队 ${team.id} (${englishName}) 失败:`, error);
+        }
+      } else {
+        notFound++;
+        if (notFound <= 10) {
+          console.log(`⚠️  未找到英文名称: ${englishName}`);
+        }
+      }
+    }
+
+    if (notFound > 10) {
+      console.log(`⚠️  还有 ${notFound - 10} 个未找到的球队未显示`);
+    }
+  } else {
+    console.log('📋 使用完整格式（ID -> 简体中文）匹配\n');
+
+    // 完整格式：使用 ID 直接更新
+    for (const row of rows) {
+      const id = typeof row.ID === 'number' ? row.ID : parseInt(String(row.ID));
+      const crownName = row['Simplified Chinese (Crown)'];
+
+      if (crownName && String(crownName).trim() !== '') {
+        try {
+          await nameAliasService.updateTeamAlias(id, {
+            nameCrownZhCn: String(crownName).trim(),
+          });
+          updated++;
+          if (updated % 50 === 0) {
+            console.log(`   已更新 ${updated} 个球队...`);
+          }
+        } catch (error) {
+          console.error(`❌ 更新球队 ${id} 失败:`, error);
+        }
+      } else {
+        skipped++;
+      }
     }
   }
 
-  console.log(`✅ 球队更新完成: ${updated} 个，跳过: ${skipped} 个\n`);
+  console.log(`✅ 球队更新完成: ${updated} 个，跳过: ${skipped} 个${notFound > 0 ? `，未找到: ${notFound} 个` : ''}\n`);
   return updated;
 }
 
