@@ -147,14 +147,21 @@ async function main() {
   // 1. 登录皇冠
   console.log('\n🔐 登录皇冠...');
   const client = new CrownApiClient();
-  const loginResult = await client.login(CROWN_USERNAME, CROWN_PASSWORD);
 
-  if (!loginResult.success) {
-    console.error('❌ 登录失败:', loginResult.message);
+  try {
+    const loginResult = await client.login(CROWN_USERNAME, CROWN_PASSWORD);
+
+    // 检查登录是否成功（msg=100 或 status=success）
+    if (loginResult.msg !== '100' && loginResult.status !== 'success') {
+      console.error('❌ 登录失败:', loginResult);
+      process.exit(1);
+    }
+
+    console.log('✅ 登录成功');
+  } catch (error: any) {
+    console.error('❌ 登录失败:', error.message);
     process.exit(1);
   }
-
-  console.log('✅ 登录成功');
 
   // 2. 获取早盘赛事
   console.log('\n📥 获取早盘赛事...');
