@@ -84,19 +84,23 @@ async function parseCrownGameList(xml: string): Promise<CrownMatch[]> {
 /**
  * 匹配联赛名称
  */
-async function matchLeague(crownName: string): Promise<{ matched: boolean; canonicalKey?: string }> {
+async function matchLeague(crownName: string): Promise<{ matched: boolean; id?: number }> {
   try {
     // 尝试通过别名匹配
-    const result = await nameAliasService.resolveLeagueName(crownName);
-    if (result) {
-      return { matched: true, canonicalKey: result.canonicalKey };
+    const result = await nameAliasService.resolveLeague(crownName);
+    if (result && result.canonicalKey) {
+      // 通过 canonical_key 查找 id
+      const league = await nameAliasService.getLeagueByKey(result.canonicalKey);
+      if (league) {
+        return { matched: true, id: league.id };
+      }
     }
 
     // 尝试模糊匹配（通过 name_crown_zh_cn 字段）
     const allLeagues = await nameAliasService.getAllLeagues();
     for (const league of allLeagues) {
       if (league.name_crown_zh_cn === crownName) {
-        return { matched: true, canonicalKey: league.canonical_key };
+        return { matched: true, id: league.id };
       }
     }
 
@@ -109,19 +113,23 @@ async function matchLeague(crownName: string): Promise<{ matched: boolean; canon
 /**
  * 匹配球队名称
  */
-async function matchTeam(crownName: string): Promise<{ matched: boolean; canonicalKey?: string }> {
+async function matchTeam(crownName: string): Promise<{ matched: boolean; id?: number }> {
   try {
     // 尝试通过别名匹配
-    const result = await nameAliasService.resolveTeamName(crownName);
-    if (result) {
-      return { matched: true, canonicalKey: result.canonicalKey };
+    const result = await nameAliasService.resolveTeam(crownName);
+    if (result && result.canonicalKey) {
+      // 通过 canonical_key 查找 id
+      const team = await nameAliasService.getTeamByKey(result.canonicalKey);
+      if (team) {
+        return { matched: true, id: team.id };
+      }
     }
 
     // 尝试模糊匹配（通过 name_crown_zh_cn 字段）
     const allTeams = await nameAliasService.getAllTeams();
     for (const team of allTeams) {
       if (team.name_crown_zh_cn === crownName) {
-        return { matched: true, canonicalKey: team.canonical_key };
+        return { matched: true, id: team.id };
       }
     }
 
@@ -187,11 +195,11 @@ async function main() {
 
   for (const leagueName of leagueSet) {
     const match = await matchLeague(leagueName);
-    if (match.matched) {
+    if (match.matched && match.id) {
       leagueMatched++;
       // 更新 name_crown_zh_cn 字段
       try {
-        await nameAliasService.updateLeagueAlias(match.canonicalKey!, {
+        await nameAliasService.updateLeagueAlias(match.id, {
           nameCrownZhCn: leagueName,
         });
         leagueUpdated++;
@@ -211,11 +219,11 @@ async function main() {
 
   for (const teamName of teamSet) {
     const match = await matchTeam(teamName);
-    if (match.matched) {
+    if (match.matched && match.id) {
       teamMatched++;
       // 更新 name_crown_zh_cn 字段
       try {
-        await nameAliasService.updateTeamAlias(match.canonicalKey!, {
+        await nameAliasService.updateTeamAlias(match.id, {
           nameCrownZhCn: teamName,
         });
         teamUpdated++;
