@@ -258,10 +258,10 @@ class NameAliasService {
       `INSERT INTO league_aliases (canonical_key, name_en, name_zh_cn, name_zh_tw, aliases, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        ON CONFLICT (canonical_key) DO UPDATE SET
-         name_en = EXCLUDED.name_en,
-         name_zh_cn = EXCLUDED.name_zh_cn,
-         name_zh_tw = EXCLUDED.name_zh_tw,
-         aliases = EXCLUDED.aliases,
+         name_en = COALESCE(EXCLUDED.name_en, league_aliases.name_en),
+         name_zh_cn = COALESCE(EXCLUDED.name_zh_cn, league_aliases.name_zh_cn),
+         name_zh_tw = COALESCE(EXCLUDED.name_zh_tw, league_aliases.name_zh_tw),
+         aliases = CASE WHEN EXCLUDED.aliases::text = '[]' THEN league_aliases.aliases ELSE EXCLUDED.aliases END,
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
       [canonicalKey, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, JSON.stringify(aliases)]
@@ -331,10 +331,10 @@ class NameAliasService {
       `INSERT INTO team_aliases (canonical_key, name_en, name_zh_cn, name_zh_tw, aliases, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        ON CONFLICT (canonical_key) DO UPDATE SET
-         name_en = EXCLUDED.name_en,
-         name_zh_cn = EXCLUDED.name_zh_cn,
-         name_zh_tw = EXCLUDED.name_zh_tw,
-         aliases = EXCLUDED.aliases,
+         name_en = COALESCE(EXCLUDED.name_en, team_aliases.name_en),
+         name_zh_cn = COALESCE(EXCLUDED.name_zh_cn, team_aliases.name_zh_cn),
+         name_zh_tw = COALESCE(EXCLUDED.name_zh_tw, team_aliases.name_zh_tw),
+         aliases = CASE WHEN EXCLUDED.aliases::text = '[]' THEN team_aliases.aliases ELSE EXCLUDED.aliases END,
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
       [canonicalKey, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, JSON.stringify(aliases)]

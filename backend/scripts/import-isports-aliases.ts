@@ -146,11 +146,17 @@ async function main() {
   console.log(`🏷️  联赛（去重）: ${leagueSet.size}`);
   console.log(`🏷️  球队（去重）: ${teamSet.size}`);
 
+  // 根据语言参数决定存到哪个字段
+  const langField = lang === 'zh-tw' ? 'nameZhTw' : lang === 'en' ? 'nameEn' : 'nameZhCn';
+  console.log(`📝 将名称存入字段: ${langField}`);
+
   // 逐条 upsert 到别名库
   let leagueOk = 0, teamOk = 0;
   for (const name of leagueSet) {
     try {
-      await nameAliasService.createLeagueAlias({ nameZhCn: name, aliases: [] });
+      const payload: any = { aliases: [] };
+      payload[langField] = name;
+      await nameAliasService.createLeagueAlias(payload);
       leagueOk++;
     } catch (e: any) {
       console.error('⚠️  联赛导入失败:', name, e?.message || e);
@@ -158,7 +164,9 @@ async function main() {
   }
   for (const name of teamSet) {
     try {
-      await nameAliasService.createTeamAlias({ nameZhCn: name, aliases: [] });
+      const payload: any = { aliases: [] };
+      payload[langField] = name;
+      await nameAliasService.createTeamAlias(payload);
       teamOk++;
     } catch (e: any) {
       console.error('⚠️  球队导入失败:', name, e?.message || e);
