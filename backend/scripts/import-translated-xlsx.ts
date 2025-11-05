@@ -52,8 +52,17 @@ async function importLeaguesFromExcel(filePath: string): Promise<number> {
     const enColumn = columnNames[0];
     const zhColumn = columnNames[1];
 
+    console.log(`📋 英文列名: "${enColumn}"`);
+    console.log(`📋 中文列名: "${zhColumn}"`);
+    console.log(`📋 示例数据（前 3 条）:`);
+    for (let i = 0; i < Math.min(3, rows.length); i++) {
+      console.log(`   [${i + 1}] ${rows[i][enColumn]} -> ${rows[i][zhColumn]}`);
+    }
+    console.log('');
+
     // 先获取所有联赛
     const allLeagues = await nameAliasService.getAllLeagues();
+    console.log(`📋 数据库中共有 ${allLeagues.length} 个联赛\n`);
 
     for (const row of rows) {
       const englishName = row[enColumn];
@@ -64,8 +73,11 @@ async function importLeaguesFromExcel(filePath: string): Promise<number> {
         continue;
       }
 
-      // 根据英文名称查找联赛
-      const league = allLeagues.find(l => l.name_en === String(englishName).trim());
+      // 根据英文名称查找联赛（忽略大小写和前后空格）
+      const englishNameTrimmed = String(englishName).trim();
+      const league = allLeagues.find(l =>
+        l.name_en && l.name_en.trim().toLowerCase() === englishNameTrimmed.toLowerCase()
+      );
 
       if (league) {
         try {
@@ -82,7 +94,7 @@ async function importLeaguesFromExcel(filePath: string): Promise<number> {
       } else {
         notFound++;
         if (notFound <= 5) {
-          console.log(`⚠️  未找到英文名称: ${englishName}`);
+          console.log(`⚠️  未找到英文名称: "${englishNameTrimmed}"`);
         }
       }
     }
@@ -154,8 +166,17 @@ async function importTeamsFromExcel(filePath: string): Promise<number> {
     const enColumn = columnNames[0];
     const zhColumn = columnNames[1];
 
+    console.log(`📋 英文列名: "${enColumn}"`);
+    console.log(`📋 中文列名: "${zhColumn}"`);
+    console.log(`📋 示例数据（前 3 条）:`);
+    for (let i = 0; i < Math.min(3, rows.length); i++) {
+      console.log(`   [${i + 1}] ${rows[i][enColumn]} -> ${rows[i][zhColumn]}`);
+    }
+    console.log('');
+
     // 先获取所有球队
     const allTeams = await nameAliasService.getAllTeams();
+    console.log(`📋 数据库中共有 ${allTeams.length} 个球队\n`);
 
     for (const row of rows) {
       const englishName = row[enColumn];
@@ -166,8 +187,11 @@ async function importTeamsFromExcel(filePath: string): Promise<number> {
         continue;
       }
 
-      // 根据英文名称查找球队
-      const team = allTeams.find(t => t.name_en === String(englishName).trim());
+      // 根据英文名称查找球队（忽略大小写和前后空格）
+      const englishNameTrimmed = String(englishName).trim();
+      const team = allTeams.find(t =>
+        t.name_en && t.name_en.trim().toLowerCase() === englishNameTrimmed.toLowerCase()
+      );
 
       if (team) {
         try {
@@ -184,7 +208,7 @@ async function importTeamsFromExcel(filePath: string): Promise<number> {
       } else {
         notFound++;
         if (notFound <= 10) {
-          console.log(`⚠️  未找到英文名称: ${englishName}`);
+          console.log(`⚠️  未找到英文名称: "${englishNameTrimmed}"`);
         }
       }
     }
