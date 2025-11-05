@@ -226,7 +226,7 @@ class NameAliasService {
       whereClauses.push(`(canonical_key ILIKE $${params.length} OR COALESCE(name_en,'') ILIKE $${params.length} OR COALESCE(name_zh_cn,'') ILIKE $${params.length} OR COALESCE(name_zh_tw,'') ILIKE $${params.length} OR aliases::text ILIKE $${params.length})`);
     }
 
-    const sql = `SELECT * FROM league_aliases ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''} ORDER BY updated_at DESC LIMIT 500`;
+    const sql = `SELECT * FROM league_aliases ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''} ORDER BY updated_at DESC`;
     const result = await query(sql, params);
     return result.rows.map((row) => this.mapLeagueRow(row));
   }
@@ -240,7 +240,7 @@ class NameAliasService {
       whereClauses.push(`(canonical_key ILIKE $${params.length} OR COALESCE(name_en,'') ILIKE $${params.length} OR COALESCE(name_zh_cn,'') ILIKE $${params.length} OR COALESCE(name_zh_tw,'') ILIKE $${params.length} OR aliases::text ILIKE $${params.length})`);
     }
 
-    const sql = `SELECT * FROM team_aliases ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''} ORDER BY updated_at DESC LIMIT 500`;
+    const sql = `SELECT * FROM team_aliases ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''} ORDER BY updated_at DESC`;
     const result = await query(sql, params);
     return result.rows.map((row) => this.mapTeamRow(row));
   }
