@@ -19,6 +19,7 @@ import type {
   AccountSelectionResponse,
   StaffCreateRequest,
   StaffUpdateRequest,
+  AliasRecord,
 } from '../types';
 
 // 创建axios实例
@@ -446,6 +447,56 @@ export const crownApi = {
   // 获取账号今日下注
   getTodayWagers: (accountId: number, params?: { gtype?: string; chk_cw?: string }): Promise<ApiResponse> =>
     apiClient.get(`/crown-automation/today-wagers/${accountId}`, { params, timeout: 30000 }).then(res => res.data),
+};
+
+export const aliasApi = {
+  listLeagues: (params?: { search?: string }): Promise<ApiResponse<AliasRecord[]>> =>
+    apiClient.get('/aliases/leagues', { params }).then(res => res.data),
+
+  createLeague: (data: {
+    canonical_key?: string;
+    name_en?: string;
+    name_zh_cn?: string;
+    name_zh_tw?: string;
+    aliases?: string[];
+  }): Promise<ApiResponse<AliasRecord>> =>
+    apiClient.post('/aliases/leagues', data).then(res => res.data),
+
+  updateLeague: (id: number, data: {
+    canonical_key?: string;
+    name_en?: string;
+    name_zh_cn?: string;
+    name_zh_tw?: string;
+    aliases?: string[];
+  }): Promise<ApiResponse<AliasRecord>> =>
+    apiClient.put(`/aliases/leagues/${id}`, data).then(res => res.data),
+
+  deleteLeague: (id: number): Promise<ApiResponse> =>
+    apiClient.delete(`/aliases/leagues/${id}`).then(res => res.data),
+
+  listTeams: (params?: { search?: string }): Promise<ApiResponse<AliasRecord[]>> =>
+    apiClient.get('/aliases/teams', { params }).then(res => res.data),
+
+  createTeam: (data: {
+    canonical_key?: string;
+    name_en?: string;
+    name_zh_cn?: string;
+    name_zh_tw?: string;
+    aliases?: string[];
+  }): Promise<ApiResponse<AliasRecord>> =>
+    apiClient.post('/aliases/teams', data).then(res => res.data),
+
+  updateTeam: (id: number, data: {
+    canonical_key?: string;
+    name_en?: string;
+    name_zh_cn?: string;
+    name_zh_tw?: string;
+    aliases?: string[];
+  }): Promise<ApiResponse<AliasRecord>> =>
+    apiClient.put(`/aliases/teams/${id}`, data).then(res => res.data),
+
+  deleteTeam: (id: number): Promise<ApiResponse> =>
+    apiClient.delete(`/aliases/teams/${id}`).then(res => res.data),
 };
 
 export default apiClient;

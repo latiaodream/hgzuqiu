@@ -281,6 +281,17 @@ export interface CoinTransaction {
   created_at: string;
 }
 
+export interface AliasRecord {
+  id: number;
+  canonical_key: string;
+  name_en?: string;
+  name_zh_cn?: string;
+  name_zh_tw?: string;
+  aliases: string[];
+  created_at: string;
+  updated_at: string;
+}
+
 // API响应类型
 export interface ApiResponse<T = any> {
   success: boolean;

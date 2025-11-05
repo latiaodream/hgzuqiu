@@ -12,6 +12,7 @@ import {
   CalendarOutlined,
   FileTextOutlined,
   GlobalOutlined,
+  TagsOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -105,6 +106,11 @@ const MainLayout: React.FC = () => {
           key: '/matches',
           icon: <CalendarOutlined />,
           label: '赛事管理',
+        },
+        {
+          key: '/aliases',
+          icon: <TagsOutlined />,
+          label: '名称映射',
         },
         {
           key: '/coins',

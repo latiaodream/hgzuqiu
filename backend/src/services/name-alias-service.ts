@@ -43,8 +43,27 @@ const canonicalFromRaw = (value: string, type: 'league' | 'team'): string => {
 class NameAliasService {
   private leagueCache: AliasRecord[] = [];
   private teamCache: AliasRecord[] = [];
+  private leagueRaw: LeagueAlias[] = [];
+  private teamRaw: TeamAlias[] = [];
   private loadedAt = 0;
   private readonly ttl = 60 * 1000; // 1 minute
+
+  private parseAliasesColumn(value: any): string[] {
+    if (!value && value !== 0) return [];
+    if (Array.isArray(value)) return value as string[];
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    if (value && typeof value === 'object' && Array.isArray((value as any).values)) {
+      return (value as any).values as string[];
+    }
+    return [];
+  }
 
   private async ensureLoaded(): Promise<void> {
     const now = Date.now();
@@ -57,31 +76,17 @@ class NameAliasService {
       query('SELECT * FROM team_aliases'),
     ]);
 
-    const parseAliases = (value: any): string[] => {
-      if (!value && value !== 0) return [];
-      if (Array.isArray(value)) return value as string[];
-      if (typeof value === 'string') {
-        try {
-          const parsed = JSON.parse(value);
-          return Array.isArray(parsed) ? parsed : [];
-        } catch {
-          return [];
-        }
-      }
-      if (value && typeof value === 'object' && Array.isArray((value as any).values)) {
-        return (value as any).values as string[];
-      }
-      return [];
-    };
-
     const leagueRows: LeagueAlias[] = leagueResult.rows.map((row: any) => ({
       ...row,
-      aliases: parseAliases(row.aliases),
+      aliases: this.parseAliasesColumn(row.aliases),
     }));
     const teamRows: TeamAlias[] = teamResult.rows.map((row: any) => ({
       ...row,
-      aliases: parseAliases(row.aliases),
+      aliases: this.parseAliasesColumn(row.aliases),
     }));
+
+    this.leagueRaw = leagueRows;
+    this.teamRaw = teamRows;
 
     this.leagueCache = leagueRows.map((row) => ({
       canonicalKey: row.canonical_key,
@@ -157,6 +162,227 @@ class NameAliasService {
       source: 'fallback',
       raw,
     };
+  }
+
+  private sanitizeAliasArray(input?: string[] | null): string[] {
+    if (!Array.isArray(input)) return [];
+    const set = new Set<string>();
+    input.forEach((value) => {
+      if (typeof value !== 'string') return;
+      const trimmed = value.trim();
+      if (trimmed) {
+        set.add(trimmed);
+      }
+    });
+    return Array.from(set);
+  }
+
+  private invalidateCache() {
+    this.loadedAt = 0;
+    this.leagueCache = [];
+    this.teamCache = [];
+    this.leagueRaw = [];
+    this.teamRaw = [];
+  }
+
+  private mapLeagueRow(row: any): LeagueAlias {
+    return {
+      id: row.id,
+      canonical_key: row.canonical_key,
+      name_en: row.name_en,
+      name_zh_cn: row.name_zh_cn,
+      name_zh_tw: row.name_zh_tw,
+      aliases: this.parseAliasesColumn(row.aliases),
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    };
+  }
+
+  private mapTeamRow(row: any): TeamAlias {
+    return {
+      id: row.id,
+      canonical_key: row.canonical_key,
+      name_en: row.name_en,
+      name_zh_cn: row.name_zh_cn,
+      name_zh_tw: row.name_zh_tw,
+      aliases: this.parseAliasesColumn(row.aliases),
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    };
+  }
+
+  async listLeagues(search?: string): Promise<LeagueAlias[]> {
+    const whereClauses: string[] = [];
+    const params: any[] = [];
+    if (search && search.trim()) {
+      const pattern = `%${search.trim()}%`;
+      params.push(pattern);
+      whereClauses.push(`(canonical_key ILIKE $${params.length} OR COALESCE(name_en,'') ILIKE $${params.length} OR COALESCE(name_zh_cn,'') ILIKE $${params.length} OR COALESCE(name_zh_tw,'') ILIKE $${params.length} OR aliases::text ILIKE $${params.length})`);
+    }
+
+    const sql = `SELECT * FROM league_aliases ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''} ORDER BY updated_at DESC LIMIT 500`;
+    const result = await query(sql, params);
+    return result.rows.map((row) => this.mapLeagueRow(row));
+  }
+
+  async listTeams(search?: string): Promise<TeamAlias[]> {
+    const whereClauses: string[] = [];
+    const params: any[] = [];
+    if (search && search.trim()) {
+      const pattern = `%${search.trim()}%`;
+      params.push(pattern);
+      whereClauses.push(`(canonical_key ILIKE $${params.length} OR COALESCE(name_en,'') ILIKE $${params.length} OR COALESCE(name_zh_cn,'') ILIKE $${params.length} OR COALESCE(name_zh_tw,'') ILIKE $${params.length} OR aliases::text ILIKE $${params.length})`);
+    }
+
+    const sql = `SELECT * FROM team_aliases ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''} ORDER BY updated_at DESC LIMIT 500`;
+    const result = await query(sql, params);
+    return result.rows.map((row) => this.mapTeamRow(row));
+  }
+
+  async createLeagueAlias(payload: {
+    canonicalKey?: string;
+    nameEn?: string | null;
+    nameZhCn?: string | null;
+    nameZhTw?: string | null;
+    aliases?: string[];
+  }): Promise<LeagueAlias> {
+    const primaryName = payload.nameZhCn || payload.nameZhTw || payload.nameEn;
+    const canonicalKey = (payload.canonicalKey && payload.canonicalKey.trim()) || this.normalizeKey('league', primaryName || '');
+    if (!canonicalKey || canonicalKey.endsWith(':unknown')) {
+      throw new Error('缺少 canonical_key 或有效名称');
+    }
+
+    const aliases = this.sanitizeAliasArray(payload.aliases);
+
+    const result = await query(
+      `INSERT INTO league_aliases (canonical_key, name_en, name_zh_cn, name_zh_tw, aliases, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ON CONFLICT (canonical_key) DO UPDATE SET
+         name_en = EXCLUDED.name_en,
+         name_zh_cn = EXCLUDED.name_zh_cn,
+         name_zh_tw = EXCLUDED.name_zh_tw,
+         aliases = EXCLUDED.aliases,
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [canonicalKey, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, JSON.stringify(aliases)]
+    );
+
+    this.invalidateCache();
+    return this.mapLeagueRow(result.rows[0]);
+  }
+
+  async updateLeagueAlias(id: number, payload: {
+    canonicalKey?: string;
+    nameEn?: string | null;
+    nameZhCn?: string | null;
+    nameZhTw?: string | null;
+    aliases?: string[];
+  }): Promise<LeagueAlias> {
+    const aliases = this.sanitizeAliasArray(payload.aliases);
+    const canonical = payload.canonicalKey && payload.canonicalKey.trim()
+      ? payload.canonicalKey.trim()
+      : undefined;
+    if (canonical && canonical.endsWith(':unknown')) {
+      throw new Error('canonical_key 不可为 unknown');
+    }
+
+    const result = await query(
+      `UPDATE league_aliases SET
+         canonical_key = COALESCE($2, canonical_key),
+         name_en = $3,
+         name_zh_cn = $4,
+         name_zh_tw = $5,
+         aliases = $6::jsonb,
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING *`,
+      [id, canonical || null, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, JSON.stringify(aliases)]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('记录不存在');
+    }
+
+    this.invalidateCache();
+    return this.mapLeagueRow(result.rows[0]);
+  }
+
+  async deleteLeagueAlias(id: number): Promise<void> {
+    await query('DELETE FROM league_aliases WHERE id = $1', [id]);
+    this.invalidateCache();
+  }
+
+  async createTeamAlias(payload: {
+    canonicalKey?: string;
+    nameEn?: string | null;
+    nameZhCn?: string | null;
+    nameZhTw?: string | null;
+    aliases?: string[];
+  }): Promise<TeamAlias> {
+    const primaryName = payload.nameZhCn || payload.nameZhTw || payload.nameEn;
+    const canonicalKey = (payload.canonicalKey && payload.canonicalKey.trim()) || this.normalizeKey('team', primaryName || '');
+    if (!canonicalKey || canonicalKey.endsWith(':unknown')) {
+      throw new Error('缺少 canonical_key 或有效名称');
+    }
+
+    const aliases = this.sanitizeAliasArray(payload.aliases);
+
+    const result = await query(
+      `INSERT INTO team_aliases (canonical_key, name_en, name_zh_cn, name_zh_tw, aliases, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ON CONFLICT (canonical_key) DO UPDATE SET
+         name_en = EXCLUDED.name_en,
+         name_zh_cn = EXCLUDED.name_zh_cn,
+         name_zh_tw = EXCLUDED.name_zh_tw,
+         aliases = EXCLUDED.aliases,
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [canonicalKey, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, JSON.stringify(aliases)]
+    );
+
+    this.invalidateCache();
+    return this.mapTeamRow(result.rows[0]);
+  }
+
+  async updateTeamAlias(id: number, payload: {
+    canonicalKey?: string;
+    nameEn?: string | null;
+    nameZhCn?: string | null;
+    nameZhTw?: string | null;
+    aliases?: string[];
+  }): Promise<TeamAlias> {
+    const aliases = this.sanitizeAliasArray(payload.aliases);
+    const canonical = payload.canonicalKey && payload.canonicalKey.trim()
+      ? payload.canonicalKey.trim()
+      : undefined;
+    if (canonical && canonical.endsWith(':unknown')) {
+      throw new Error('canonical_key 不可为 unknown');
+    }
+
+    const result = await query(
+      `UPDATE team_aliases SET
+         canonical_key = COALESCE($2, canonical_key),
+         name_en = $3,
+         name_zh_cn = $4,
+         name_zh_tw = $5,
+         aliases = $6::jsonb,
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING *`,
+      [id, canonical || null, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, JSON.stringify(aliases)]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('记录不存在');
+    }
+
+    this.invalidateCache();
+    return this.mapTeamRow(result.rows[0]);
+  }
+
+  async deleteTeamAlias(id: number): Promise<void> {
+    await query('DELETE FROM team_aliases WHERE id = $1', [id]);
+    this.invalidateCache();
   }
 
   async resolveLeague(name: string): Promise<ResolvedName> {
