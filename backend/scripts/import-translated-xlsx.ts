@@ -8,6 +8,53 @@ import path from 'path';
 import fs from 'fs';
 import { nameAliasService } from '../src/services/name-alias-service';
 
+// 计算两个字符串的相似度（0-1之间）
+function similarity(s1: string, s2: string): number {
+  const longer = s1.length > s2.length ? s1 : s2;
+  const shorter = s1.length > s2.length ? s2 : s1;
+
+  if (longer.length === 0) return 1.0;
+
+  // 如果一个字符串包含另一个，给予较高分数
+  if (longer.includes(shorter)) {
+    return 0.8 + (shorter.length / longer.length) * 0.2;
+  }
+
+  const editDistance = levenshteinDistance(s1, s2);
+  return (longer.length - editDistance) / longer.length;
+}
+
+// 计算编辑距离
+function levenshteinDistance(s1: string, s2: string): number {
+  const len1 = s1.length;
+  const len2 = s2.length;
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= len1; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= len2; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= len1; i++) {
+    for (let j = 1; j <= len2; j++) {
+      if (s1[i - 1] === s2[j - 1]) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+
+  return matrix[len1][len2];
+}
+
 interface ExcelRow {
   ID?: number;
   'Canonical Key'?: string;
@@ -82,11 +129,49 @@ async function importLeaguesFromExcel(filePath: string): Promise<number> {
         continue;
       }
 
-      // 根据英文名称查找联赛（忽略大小写和前后空格）
+      // 多策略匹配联赛
       const englishNameTrimmed = String(englishName).trim();
-      const league = allLeagues.find(l =>
+
+      // 策略1: 精确匹配 name_en
+      let league = allLeagues.find(l =>
         l.name_en && l.name_en.trim().toLowerCase() === englishNameTrimmed.toLowerCase()
       );
+
+      // 策略2: 通过 canonical_key 匹配
+      if (!league) {
+        const canonicalKey = nameAliasService.normalizeKey('league', englishNameTrimmed);
+        league = allLeagues.find(l => l.canonical_key === canonicalKey);
+      }
+
+      // 策略3: 模糊匹配（去除特殊字符后比较）
+      if (!league) {
+        const normalized = englishNameTrimmed.toLowerCase().replace(/[^a-z0-9]/g, '');
+        league = allLeagues.find(l => {
+          if (!l.name_en) return false;
+          const dbNormalized = l.name_en.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return dbNormalized === normalized;
+        });
+      }
+
+      // 策略4: 相似度匹配（阈值 0.8）
+      if (!league) {
+        const normalizedSearch = englishNameTrimmed.toLowerCase();
+        let bestMatch: { league: any; score: number } | null = null;
+
+        for (const l of allLeagues) {
+          if (!l.name_en) continue;
+          const normalizedDb = l.name_en.toLowerCase();
+          const score = similarity(normalizedSearch, normalizedDb);
+
+          if (score >= 0.8 && (!bestMatch || score > bestMatch.score)) {
+            bestMatch = { league: l, score };
+          }
+        }
+
+        if (bestMatch) {
+          league = bestMatch.league;
+        }
+      }
 
       if (league) {
         try {
@@ -211,11 +296,49 @@ async function importTeamsFromExcel(filePath: string): Promise<number> {
         continue;
       }
 
-      // 根据英文名称查找球队（忽略大小写和前后空格）
+      // 多策略匹配球队
       const englishNameTrimmed = String(englishName).trim();
-      const team = allTeams.find(t =>
+
+      // 策略1: 精确匹配 name_en
+      let team = allTeams.find(t =>
         t.name_en && t.name_en.trim().toLowerCase() === englishNameTrimmed.toLowerCase()
       );
+
+      // 策略2: 通过 canonical_key 匹配
+      if (!team) {
+        const canonicalKey = nameAliasService.normalizeKey('team', englishNameTrimmed);
+        team = allTeams.find(t => t.canonical_key === canonicalKey);
+      }
+
+      // 策略3: 模糊匹配（去除特殊字符后比较）
+      if (!team) {
+        const normalized = englishNameTrimmed.toLowerCase().replace(/[^a-z0-9]/g, '');
+        team = allTeams.find(t => {
+          if (!t.name_en) return false;
+          const dbNormalized = t.name_en.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return dbNormalized === normalized;
+        });
+      }
+
+      // 策略4: 相似度匹配（阈值 0.85，球队名称要求更严格）
+      if (!team) {
+        const normalizedSearch = englishNameTrimmed.toLowerCase();
+        let bestMatch: { team: any; score: number } | null = null;
+
+        for (const t of allTeams) {
+          if (!t.name_en) continue;
+          const normalizedDb = t.name_en.toLowerCase();
+          const score = similarity(normalizedSearch, normalizedDb);
+
+          if (score >= 0.85 && (!bestMatch || score > bestMatch.score)) {
+            bestMatch = { team: t, score };
+          }
+        }
+
+        if (bestMatch) {
+          team = bestMatch.team;
+        }
+      }
 
       if (team) {
         try {
