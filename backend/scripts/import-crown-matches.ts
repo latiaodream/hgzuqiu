@@ -73,19 +73,24 @@ async function parseCrownGameList(xml: string): Promise<CrownMatch[]> {
         continue;
       }
 
-      const league = ec.$.ecname || ec.$.ECNAME || '';
       const games = Array.isArray(ec.game) ? ec.game : [ec.game];
 
-      console.log(`  - 联赛: ${league}, 比赛数: ${games.length}`);
+      console.log(`  - ec 节点, 比赛数: ${games.length}`);
 
       for (const game of games) {
-        const attrs = game.$ || {};
+        // 联赛名称在 game 节点的 LEAGUE 字段，不在 ec 节点
+        const league = game.LEAGUE || game.$.LEAGUE || '';
+        const gid = game.GID || game.$.GID || '';
+        const home = game.TEAM_H || game.$.TEAM_H || '';
+        const away = game.TEAM_C || game.$.TEAM_C || '';
+        const datetime = game.DATETIME || game.$.DATETIME || '';
+
         matches.push({
-          gid: attrs.gid || attrs.GID || '',
-          league: league,
-          home: attrs.team_h || attrs.TEAM_H || '',
-          away: attrs.team_c || attrs.TEAM_C || '',
-          datetime: attrs.datetime || attrs.DATETIME || '',
+          gid,
+          league,
+          home,
+          away,
+          datetime,
         });
       }
     }
