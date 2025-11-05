@@ -52,11 +52,20 @@ const normalizeStatus = (value: any): number => {
 async function fetchTodaySchedule() {
   const params: any = { api_key: API_KEY, date };
   if (lang) params.lang = lang;
-  const res = await axios.get(`${BASE_URL}/schedule/basic`, { params, timeout: 30000 });
-  if (res.data?.code !== 0) {
-    throw new Error(`iSports /schedule/basic error: ${JSON.stringify(res.data)}`);
+  try {
+    const res = await axios.get(`${BASE_URL}/schedule/basic`, { params, timeout: 30000 });
+    if (res.data?.code !== 0) {
+      throw new Error(`iSports /schedule/basic error: ${JSON.stringify(res.data)}`);
+    }
+    return res.data.data || [];
+  } catch (error: any) {
+    console.error('❌ 请求失败:', error.message);
+    if (error.response) {
+      console.error('   状态码:', error.response.status);
+      console.error('   响应:', JSON.stringify(error.response.data).slice(0, 200));
+    }
+    throw error;
   }
-  return res.data.data || [];
 }
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -69,24 +78,29 @@ async function fetchCrownOddsPresence(matchIds: string[]): Promise<Set<string>> 
   const present = new Set<string>();
   const batches = chunk(matchIds, 50);
   for (const batch of batches) {
-    const res = await axios.get(`${BASE_URL}/odds/all`, {
-      params: { api_key: API_KEY, companyId: '3', matchId: batch.join(',') },
-      timeout: 30000,
-    });
-    if (res.data?.code !== 0) continue;
-    const d = res.data?.data || {};
-    const add = (rows?: string[]) => {
-      (rows || []).forEach((row) => {
-        const parts = String(row).split(',');
-        const matchId = parts[0];
-        if (matchId) present.add(String(matchId));
+    try {
+      const res = await axios.get(`${BASE_URL}/odds/all`, {
+        params: { api_key: API_KEY, companyId: '3', matchId: batch.join(',') },
+        timeout: 30000,
       });
-    };
-    add(d.handicap);
-    add(d.europeOdds);
-    add(d.overUnder);
-    add(d.handicapHalf);
-    add(d.overUnderHalf);
+      if (res.data?.code !== 0) continue;
+      const d = res.data?.data || {};
+      const add = (rows?: string[]) => {
+        (rows || []).forEach((row) => {
+          const parts = String(row).split(',');
+          const matchId = parts[0];
+          if (matchId) present.add(String(matchId));
+        });
+      };
+      add(d.handicap);
+      add(d.europeOdds);
+      add(d.overUnder);
+      add(d.handicapHalf);
+      add(d.overUnderHalf);
+    } catch (error: any) {
+      console.error(`⚠️  批次获取赔率失败:`, error.message);
+    }
+    await new Promise((r) => setTimeout(r, 1000));
   }
   return present;
 }
