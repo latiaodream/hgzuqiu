@@ -87,48 +87,6 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-async function fetchCrownOddsPresence(matchIds: string[]): Promise<Set<string>> {
-  const present = new Set<string>();
-  const batches = chunk(matchIds, 100); // 增加批次大小到 100
-  console.log(`   总批次: ${batches.length}，每批 100 场比赛`);
-
-  for (let i = 0; i < batches.length; i++) {
-    const batch = batches[i];
-    try {
-      // 显示进度
-      if (i % 10 === 0 || i === batches.length - 1) {
-        console.log(`   进度: [${i + 1}/${batches.length}] 已查询 ${(i + 1) * 100} 场，找到 ${present.size} 场有皇冠赔率`);
-      }
-
-      const res = await axios.get(`${BASE_URL}/odds/all`, {
-        params: { api_key: API_KEY, companyId: '3', matchId: batch.join(',') },
-        timeout: 15000, // 减少超时时间到 15 秒
-      });
-      if (res.data?.code !== 0) continue;
-      const d = res.data?.data || {};
-      const add = (rows?: string[]) => {
-        (rows || []).forEach((row) => {
-          const parts = String(row).split(',');
-          const matchId = parts[0];
-          if (matchId) present.add(String(matchId));
-        });
-      };
-      add(d.handicap);
-      add(d.europeOdds);
-      add(d.overUnder);
-      add(d.handicapHalf);
-      add(d.overUnderHalf);
-    } catch (error: any) {
-      console.error(`⚠️  批次 [${i + 1}/${batches.length}] 获取赔率失败:`, error.message);
-    }
-    // 减少间隔到 500ms
-    if (i < batches.length - 1) {
-      await new Promise((r) => setTimeout(r, 500));
-    }
-  }
-  return present;
-}
-
 async function main() {
   console.log('============================================================');
   console.log('🚀 导入 iSports 赛事到本地别名库（仅皇冠）');
@@ -182,95 +140,153 @@ async function main() {
     return;
   }
 
-  // 4. 筛选有皇冠赔率的比赛
-  console.log('\n👑 筛选有皇冠赔率的比赛（分批查询）...');
-  const crownSet = await fetchCrownOddsPresence(candidates.map((c: any) => c.matchId));
-  const crownMatches = candidates.filter((c: any) => crownSet.has(c.matchId));
-  console.log(`✅ 拥有皇冠赔率的比赛: ${crownMatches.length}`);
+  // 4. 边查询边导入（分批处理）
+  console.log('\n👑 开始分批查询皇冠赔率并导入...');
+  const batches = chunk(candidates, 100);
+  console.log(`   总批次: ${batches.length}，每批 100 场比赛`);
 
-  // 5. 收集联赛和球队 ID（去重）
-  const leagueIds = new Set<string>();
-  const teamIds = new Set<string>();
-  const leagueIdToName = new Map<string, string>();
-  const teamIdToName = new Map<string, string>();
+  let totalCrownMatches = 0;
+  let totalLeaguesImported = 0;
+  let totalTeamsImported = 0;
+  const processedLeagueIds = new Set<string>();
+  const processedTeamIds = new Set<string>();
 
-  crownMatches.forEach((m: any) => {
-    if (m.leagueId) {
-      leagueIds.add(m.leagueId);
-      if (!leagueIdToName.has(m.leagueId)) {
-        leagueIdToName.set(m.leagueId, m.leagueName);
-      }
-    }
-    if (m.homeId) {
-      teamIds.add(m.homeId);
-      if (!teamIdToName.has(m.homeId)) {
-        teamIdToName.set(m.homeId, m.homeName);
-      }
-    }
-    if (m.awayId) {
-      teamIds.add(m.awayId);
-      if (!teamIdToName.has(m.awayId)) {
-        teamIdToName.set(m.awayId, m.awayName);
-      }
-    }
-  });
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    const batchMatchIds = batch.map((c: any) => c.matchId);
 
-  console.log(`\n🏷️  联赛 ID（去重）: ${leagueIds.size}`);
-  console.log(`🏷️  球队 ID（去重）: ${teamIds.size}`);
-
-  // 6. 导入联赛别名（英文 + 繁体）
-  console.log('\n📝 导入联赛别名...');
-  let leagueOk = 0;
-  for (const leagueId of leagueIds) {
     try {
-      const nameEn = leagueIdToName.get(leagueId) || '';
-      const nameZhTw = languageService.getLeagueName(leagueId) || '';
+      // 显示进度
+      console.log(`\n📦 批次 [${i + 1}/${batches.length}] 查询 ${batchMatchIds.length} 场比赛...`);
 
-      if (!nameEn && !nameZhTw) {
-        console.warn(`⚠️  联赛 ${leagueId} 无英文和繁体名称，跳过`);
+      // 查询这批比赛的皇冠赔率
+      const res = await axios.get(`${BASE_URL}/odds/all`, {
+        params: { api_key: API_KEY, companyId: '3', matchId: batchMatchIds.join(',') },
+        timeout: 15000,
+      });
+
+      if (res.data?.code !== 0) {
+        console.warn(`⚠️  批次 [${i + 1}/${batches.length}] API 返回错误，跳过`);
         continue;
       }
 
-      await nameAliasService.createLeagueAlias({
-        nameEn: nameEn || undefined,
-        nameZhTw: nameZhTw || undefined,
-        aliases: [],
-      });
-      leagueOk++;
-    } catch (e: any) {
-      console.error(`⚠️  联赛 ${leagueId} 导入失败:`, e?.message || e);
-    }
-  }
+      // 提取有皇冠赔率的 matchId
+      const crownMatchIds = new Set<string>();
+      const d = res.data?.data || {};
+      const add = (rows?: string[]) => {
+        (rows || []).forEach((row) => {
+          const parts = String(row).split(',');
+          const matchId = parts[0];
+          if (matchId) crownMatchIds.add(String(matchId));
+        });
+      };
+      add(d.handicap);
+      add(d.europeOdds);
+      add(d.overUnder);
+      add(d.handicapHalf);
+      add(d.overUnderHalf);
 
-  // 7. 导入球队别名（英文 + 繁体）
-  console.log('\n📝 导入球队别名...');
-  let teamOk = 0;
-  for (const teamId of teamIds) {
-    try {
-      const nameEn = teamIdToName.get(teamId) || '';
-      const nameZhTw = languageService.getTeamName(teamId) || '';
+      const crownMatches = batch.filter((c: any) => crownMatchIds.has(c.matchId));
+      totalCrownMatches += crownMatches.length;
+      console.log(`   ✅ 找到 ${crownMatches.length} 场有皇冠赔率`);
 
-      if (!nameEn && !nameZhTw) {
-        console.warn(`⚠️  球队 ${teamId} 无英文和繁体名称，跳过`);
+      if (crownMatches.length === 0) {
+        console.log(`   ⏭️  本批次无皇冠赔率，跳过导入`);
         continue;
       }
 
-      await nameAliasService.createTeamAlias({
-        nameEn: nameEn || undefined,
-        nameZhTw: nameZhTw || undefined,
-        aliases: [],
+      // 收集本批次的联赛和球队
+      const batchLeagueIds = new Set<string>();
+      const batchTeamIds = new Set<string>();
+      const leagueIdToName = new Map<string, string>();
+      const teamIdToName = new Map<string, string>();
+
+      crownMatches.forEach((m: any) => {
+        if (m.leagueId && !processedLeagueIds.has(m.leagueId)) {
+          batchLeagueIds.add(m.leagueId);
+          leagueIdToName.set(m.leagueId, m.leagueName);
+        }
+        if (m.homeId && !processedTeamIds.has(m.homeId)) {
+          batchTeamIds.add(m.homeId);
+          teamIdToName.set(m.homeId, m.homeName);
+        }
+        if (m.awayId && !processedTeamIds.has(m.awayId)) {
+          batchTeamIds.add(m.awayId);
+          teamIdToName.set(m.awayId, m.awayName);
+        }
       });
-      teamOk++;
-    } catch (e: any) {
-      console.error(`⚠️  球队 ${teamId} 导入失败:`, e?.message || e);
+
+      // 导入联赛
+      if (batchLeagueIds.size > 0) {
+        console.log(`   📝 导入 ${batchLeagueIds.size} 个联赛...`);
+        for (const leagueId of batchLeagueIds) {
+          try {
+            const nameEn = leagueIdToName.get(leagueId) || '';
+            const nameZhTw = languageService.getLeagueName(leagueId) || '';
+
+            if (!nameEn && !nameZhTw) continue;
+
+            await nameAliasService.createLeagueAlias({
+              nameEn: nameEn || undefined,
+              nameZhTw: nameZhTw || undefined,
+              aliases: [],
+            });
+            processedLeagueIds.add(leagueId);
+            totalLeaguesImported++;
+          } catch (e: any) {
+            // 忽略错误，继续处理
+          }
+        }
+      }
+
+      // 导入球队
+      if (batchTeamIds.size > 0) {
+        console.log(`   📝 导入 ${batchTeamIds.size} 个球队...`);
+        for (const teamId of batchTeamIds) {
+          try {
+            const nameEn = teamIdToName.get(teamId) || '';
+            const nameZhTw = languageService.getTeamName(teamId) || '';
+
+            if (!nameEn && !nameZhTw) continue;
+
+            await nameAliasService.createTeamAlias({
+              nameEn: nameEn || undefined,
+              nameZhTw: nameZhTw || undefined,
+              aliases: [],
+            });
+            processedTeamIds.add(teamId);
+            totalTeamsImported++;
+          } catch (e: any) {
+            // 忽略错误，继续处理
+          }
+        }
+      }
+
+      console.log(`   📊 当前进度: 已处理 ${totalCrownMatches} 场有皇冠赔率的比赛，导入 ${totalLeaguesImported} 个联赛，${totalTeamsImported} 个球队`);
+
+    } catch (error: any) {
+      console.error(`⚠️  批次 [${i + 1}/${batches.length}] 处理失败:`, error.message);
+      console.log(`   💾 已保存的数据不会丢失，继续处理下一批次...`);
+    }
+
+    // 请求间隔
+    if (i < batches.length - 1) {
+      await new Promise((r) => setTimeout(r, 500));
     }
   }
 
   console.log('\n============================================================');
-  console.log(`✅ 导入完成：联赛 ${leagueOk}/${leagueIds.size}，球队 ${teamOk}/${teamIds.size}`);
-  console.log(`📊 统计：共抓取 ${dateList.length} 天，${allSchedule.length} 场比赛，${crownMatches.length} 场有皇冠赔率`);
+  console.log(`✅ 导入完成！`);
+  console.log(`📊 统计：`);
+  console.log(`   - 抓取天数: ${dateList.length} 天 (${dateList[0]} ~ ${dateList[dateList.length - 1]})`);
+  console.log(`   - 总比赛数: ${allSchedule.length} 场`);
+  console.log(`   - 候选比赛: ${candidates.length} 场`);
+  console.log(`   - 有皇冠赔率: ${totalCrownMatches} 场`);
+  console.log(`   - 导入联赛: ${totalLeaguesImported} 个`);
+  console.log(`   - 导入球队: ${totalTeamsImported} 个`);
   console.log('💡 提示：繁体中文来自 iSports 语言包，英文来自赛程 API');
   console.log('💡 提示：请在页面上手动填写"皇冠简体"字段');
+  console.log('💡 提示：如果中途中断，已导入的数据已保存，可以重新运行继续导入');
 }
 
 main().catch((err) => {
