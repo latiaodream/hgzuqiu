@@ -255,6 +255,22 @@ class NameAliasService {
     return result.rows.map((row) => this.mapTeamRow(row));
   }
 
+  async getLeagueByKey(canonicalKey: string): Promise<LeagueAlias | null> {
+    const result = await query('SELECT * FROM league_aliases WHERE canonical_key = $1', [canonicalKey]);
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return this.mapLeagueRow(result.rows[0]);
+  }
+
+  async getTeamByKey(canonicalKey: string): Promise<TeamAlias | null> {
+    const result = await query('SELECT * FROM team_aliases WHERE canonical_key = $1', [canonicalKey]);
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return this.mapTeamRow(result.rows[0]);
+  }
+
   async createLeagueAlias(payload: {
     canonicalKey?: string;
     nameEn?: string | null;
