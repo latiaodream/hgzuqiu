@@ -5,9 +5,8 @@
 
 import { createObjectCsvWriter } from 'csv-writer';
 import path from 'path';
-import { NameAliasService } from '../src/services/name-alias-service';
-
-const nameAliasService = new NameAliasService();
+import { nameAliasService } from '../src/services/name-alias-service';
+import type { LeagueAlias, TeamAlias } from '../src/types';
 
 async function exportToCSV() {
   console.log('============================================================');
@@ -16,13 +15,13 @@ async function exportToCSV() {
 
   // 1. 导出联赛
   console.log('📋 导出联赛...');
-  const leagues = await nameAliasService.getAllLeagues();
-  
+  const leagues: LeagueAlias[] = await nameAliasService.getAllLeagues();
+
   // 过滤出有英文名称的联赛
-  const leaguesWithEn = leagues.filter(l => l.name_en && l.name_en.trim() !== '');
-  
+  const leaguesWithEn = leagues.filter((l: LeagueAlias) => l.name_en && l.name_en.trim() !== '');
+
   console.log(`✅ 找到 ${leaguesWithEn.length} 个有英文名称的联赛`);
-  
+
   const leagueCsvWriter = createObjectCsvWriter({
     path: path.join(__dirname, '../../exports/leagues-en.csv'),
     header: [
@@ -36,7 +35,7 @@ async function exportToCSV() {
   });
 
   await leagueCsvWriter.writeRecords(
-    leaguesWithEn.map(l => ({
+    leaguesWithEn.map((l: LeagueAlias) => ({
       id: l.id,
       canonical_key: l.canonical_key,
       name_en: l.name_en || '',
@@ -49,13 +48,13 @@ async function exportToCSV() {
 
   // 2. 导出球队
   console.log('📋 导出球队...');
-  const teams = await nameAliasService.getAllTeams();
-  
+  const teams: TeamAlias[] = await nameAliasService.getAllTeams();
+
   // 过滤出有英文名称的球队
-  const teamsWithEn = teams.filter(t => t.name_en && t.name_en.trim() !== '');
-  
+  const teamsWithEn = teams.filter((t: TeamAlias) => t.name_en && t.name_en.trim() !== '');
+
   console.log(`✅ 找到 ${teamsWithEn.length} 个有英文名称的球队`);
-  
+
   const teamCsvWriter = createObjectCsvWriter({
     path: path.join(__dirname, '../../exports/teams-en.csv'),
     header: [
@@ -69,7 +68,7 @@ async function exportToCSV() {
   });
 
   await teamCsvWriter.writeRecords(
-    teamsWithEn.map(t => ({
+    teamsWithEn.map((t: TeamAlias) => ({
       id: t.id,
       canonical_key: t.canonical_key,
       name_en: t.name_en || '',

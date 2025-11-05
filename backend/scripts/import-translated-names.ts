@@ -6,9 +6,7 @@
 import csv from 'csv-parser';
 import fs from 'fs';
 import path from 'path';
-import { NameAliasService } from '../src/services/name-alias-service';
-
-const nameAliasService = new NameAliasService();
+import { nameAliasService } from '../src/services/name-alias-service';
 
 interface LeagueRow {
   ID: string;
