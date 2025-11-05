@@ -27,10 +27,29 @@ interface CrownMatch {
 const now = new Date();
 const todayDate = now.toISOString().slice(0, 10);
 
+const parseArgs = () => {
+  const args = process.argv.slice(2);
+  const options: Record<string, string | boolean> = {};
+  args.forEach((arg) => {
+    const [key, value] = arg.split('=');
+    if (key.startsWith('--')) {
+      const optionKey = key.slice(2);
+      options[optionKey] = value !== undefined ? value : true;
+    }
+  });
+  return options;
+};
+
+const options = parseArgs();
+const mode = (options.mode as string)?.toLowerCase() || 'today';
+const customDate = typeof options.date === 'string' ? options.date : undefined;
+const effectiveDate = customDate || todayDate;
+
 const candidateFiles = [
+  typeof options.file === 'string' ? options.file : null,
   path.join(__dirname, '../../fetcher/data/latest-matches.json'),
   path.join(__dirname, '../../fetcher-isports/data/latest-matches.json'),
-];
+].filter((file): file is string => !!file);
 
 const parseTimestamp = (match: CrownMatch): number | null => {
   const raw = match.matchTime ?? match.match_time ?? match.time ?? match.timer;
@@ -83,8 +102,13 @@ const loadMatches = async (): Promise<CrownMatch[]> => {
   return [];
 };
 
-const filterTodayMatches = (matches: CrownMatch[]): CrownMatch[] => {
-  return matches.filter((match) => {
+const filterMatches = (matches: CrownMatch[]): CrownMatch[] => {
+  if (mode === 'all') {
+    console.log('ℹ️ 模式: all，返回全部比赛');
+    return matches;
+  }
+
+  const filtered = matches.filter((match) => {
     const showtype = (match.showtype || match.showType || '').toLowerCase();
     if (showtype) {
       return showtype === 'today';
@@ -92,8 +116,15 @@ const filterTodayMatches = (matches: CrownMatch[]): CrownMatch[] => {
     const ts = parseTimestamp(match);
     if (!ts) return false;
     const matchDate = new Date(ts).toISOString().slice(0, 10);
-    return matchDate === todayDate;
+    return matchDate === effectiveDate;
   });
+
+  if (filtered.length === 0 && mode === 'today') {
+    console.warn('⚠️ 今日筛选结果为空，自动回退到全部比赛');
+    return matches;
+  }
+
+  return filtered;
 };
 
 const extractLeagueName = (match: CrownMatch): string | null => {
@@ -182,8 +213,8 @@ const run = async () => {
       return;
     }
 
-    const todayMatches = filterTodayMatches(allMatches);
-    console.log(`📅 今日比赛共 ${todayMatches.length} 场`);
+    const todayMatches = filterMatches(allMatches);
+    console.log(`📅 选中比赛共 ${todayMatches.length} 场 (模式: ${mode}, 日期: ${effectiveDate})`);
 
     const leagueNames = new Set<string>();
     const teamNames = new Set<string>();
