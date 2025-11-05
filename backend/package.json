@@ -18,6 +18,7 @@
     "list:leagues": "ts-node scripts/list-leagues.ts",
     "diagnose:isports": "ts-node scripts/diagnose-isports.ts",
     "aliases:import-isports": "ts-node scripts/import-isports-aliases.ts",
+    "aliases:import-crown": "ts-node scripts/import-crown-matches.ts",
     "analyze:unmatched": "ts-node scripts/analyze-unmatched-details.ts",
     "cron:install": "bash scripts/install-cron.sh",
     "cron:uninstall": "bash scripts/uninstall-cron.sh",

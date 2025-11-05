@@ -245,6 +245,16 @@ class NameAliasService {
     return result.rows.map((row) => this.mapTeamRow(row));
   }
 
+  async getAllLeagues(): Promise<LeagueAlias[]> {
+    const result = await query('SELECT * FROM league_aliases ORDER BY canonical_key');
+    return result.rows.map((row) => this.mapLeagueRow(row));
+  }
+
+  async getAllTeams(): Promise<TeamAlias[]> {
+    const result = await query('SELECT * FROM team_aliases ORDER BY canonical_key');
+    return result.rows.map((row) => this.mapTeamRow(row));
+  }
+
   async createLeagueAlias(payload: {
     canonicalKey?: string;
     nameEn?: string | null;
