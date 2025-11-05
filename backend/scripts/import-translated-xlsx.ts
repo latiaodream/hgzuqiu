@@ -29,13 +29,29 @@ async function importLeaguesFromExcel(filePath: string): Promise<number> {
   const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
-  const rows: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet);
+
+  // 尝试两种读取方式
+  let rows: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet);
+  let columnNames = Object.keys(rows[0] || {});
+
+  // 检测是否第一行是数据而不是表头
+  // 如果列名看起来像数据（包含中文或长度较长），则没有表头
+  const firstColumnName = columnNames[0] || '';
+  const hasNoHeader = /[\u4e00-\u9fa5]/.test(firstColumnName) || firstColumnName.length > 50;
+
+  if (hasNoHeader) {
+    console.log('📋 检测到无表头格式，使用 header: 1 重新读取');
+    // 重新读取，不使用第一行作为表头
+    const rawData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    // 转换为对象数组，使用索引作为键
+    rows = rawData.map(row => ({
+      col0: row[0],
+      col1: row[1],
+    }));
+    columnNames = ['col0', 'col1'];
+  }
 
   console.log(`📋 读取到 ${rows.length} 条联赛记录`);
-
-  // 检测列名格式
-  const firstRow = rows[0];
-  const columnNames = Object.keys(firstRow);
   console.log(`📋 检测到的列名: ${columnNames.join(', ')}`);
 
   // 判断是简化格式（两列）还是完整格式（五列）
@@ -143,13 +159,28 @@ async function importTeamsFromExcel(filePath: string): Promise<number> {
   const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
-  const rows: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet);
+
+  // 尝试两种读取方式
+  let rows: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet);
+  let columnNames = Object.keys(rows[0] || {});
+
+  // 检测是否第一行是数据而不是表头
+  const firstColumnName = columnNames[0] || '';
+  const hasNoHeader = /[\u4e00-\u9fa5]/.test(firstColumnName) || firstColumnName.length > 50;
+
+  if (hasNoHeader) {
+    console.log('📋 检测到无表头格式，使用 header: 1 重新读取');
+    // 重新读取，不使用第一行作为表头
+    const rawData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    // 转换为对象数组，使用索引作为键
+    rows = rawData.map(row => ({
+      col0: row[0],
+      col1: row[1],
+    }));
+    columnNames = ['col0', 'col1'];
+  }
 
   console.log(`📋 读取到 ${rows.length} 条球队记录`);
-
-  // 检测列名格式
-  const firstRow = rows[0];
-  const columnNames = Object.keys(firstRow);
   console.log(`📋 检测到的列名: ${columnNames.join(', ')}`);
 
   // 判断是简化格式（两列）还是完整格式（五列）
