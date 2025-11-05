@@ -6,6 +6,7 @@ type AliasRecord = {
   nameEn?: string | null;
   nameZhCn?: string | null;
   nameZhTw?: string | null;
+  nameCrownZhCn?: string | null;
   aliases: string[];
 };
 
@@ -93,6 +94,7 @@ class NameAliasService {
       nameEn: row.name_en,
       nameZhCn: row.name_zh_cn,
       nameZhTw: row.name_zh_tw,
+      nameCrownZhCn: row.name_crown_zh_cn,
       aliases: this.buildAliasSet(row),
     }));
 
@@ -101,16 +103,18 @@ class NameAliasService {
       nameEn: row.name_en,
       nameZhCn: row.name_zh_cn,
       nameZhTw: row.name_zh_tw,
+      nameCrownZhCn: row.name_crown_zh_cn,
       aliases: this.buildAliasSet(row),
     }));
 
     this.loadedAt = now;
   }
 
-  private buildAliasSet(record: { name_en?: string | null; name_zh_cn?: string | null; name_zh_tw?: string | null; aliases?: string[] }): string[] {
+  private buildAliasSet(record: { name_en?: string | null; name_zh_cn?: string | null; name_zh_tw?: string | null; name_crown_zh_cn?: string | null; aliases?: string[] }): string[] {
     const set = new Set<string>();
     if (record.name_en) set.add(normalize(record.name_en));
     if (record.name_zh_cn) set.add(normalize(record.name_zh_cn));
+    if (record.name_crown_zh_cn) set.add(normalize(record.name_crown_zh_cn));
     if (record.name_zh_tw) set.add(normalize(record.name_zh_tw));
     if (Array.isArray(record.aliases)) {
       record.aliases.forEach((alias) => {
@@ -192,6 +196,7 @@ class NameAliasService {
       name_en: row.name_en,
       name_zh_cn: row.name_zh_cn,
       name_zh_tw: row.name_zh_tw,
+      name_crown_zh_cn: row.name_crown_zh_cn,
       aliases: this.parseAliasesColumn(row.aliases),
       created_at: row.created_at,
       updated_at: row.updated_at,
@@ -204,6 +209,7 @@ class NameAliasService {
       canonical_key: row.canonical_key,
       name_en: row.name_en,
       name_zh_cn: row.name_zh_cn,
+      name_crown_zh_cn: row.name_crown_zh_cn,
       name_zh_tw: row.name_zh_tw,
       aliases: this.parseAliasesColumn(row.aliases),
       created_at: row.created_at,
@@ -244,9 +250,10 @@ class NameAliasService {
     nameEn?: string | null;
     nameZhCn?: string | null;
     nameZhTw?: string | null;
+    nameCrownZhCn?: string | null;
     aliases?: string[];
   }): Promise<LeagueAlias> {
-    const primaryName = payload.nameZhCn || payload.nameZhTw || payload.nameEn;
+    const primaryName = payload.nameZhCn || payload.nameZhTw || payload.nameEn || payload.nameCrownZhCn;
     const canonicalKey = (payload.canonicalKey && payload.canonicalKey.trim()) || this.normalizeKey('league', primaryName || '');
     if (!canonicalKey || canonicalKey.endsWith(':unknown')) {
       throw new Error('缺少 canonical_key 或有效名称');
@@ -255,16 +262,17 @@ class NameAliasService {
     const aliases = this.sanitizeAliasArray(payload.aliases);
 
     const result = await query(
-      `INSERT INTO league_aliases (canonical_key, name_en, name_zh_cn, name_zh_tw, aliases, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `INSERT INTO league_aliases (canonical_key, name_en, name_zh_cn, name_zh_tw, name_crown_zh_cn, aliases, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        ON CONFLICT (canonical_key) DO UPDATE SET
          name_en = COALESCE(EXCLUDED.name_en, league_aliases.name_en),
          name_zh_cn = COALESCE(EXCLUDED.name_zh_cn, league_aliases.name_zh_cn),
          name_zh_tw = COALESCE(EXCLUDED.name_zh_tw, league_aliases.name_zh_tw),
+         name_crown_zh_cn = COALESCE(EXCLUDED.name_crown_zh_cn, league_aliases.name_crown_zh_cn),
          aliases = CASE WHEN EXCLUDED.aliases::text = '[]' THEN league_aliases.aliases ELSE EXCLUDED.aliases END,
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
-      [canonicalKey, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, JSON.stringify(aliases)]
+      [canonicalKey, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, payload.nameCrownZhCn || null, JSON.stringify(aliases)]
     );
 
     this.invalidateCache();
@@ -276,6 +284,7 @@ class NameAliasService {
     nameEn?: string | null;
     nameZhCn?: string | null;
     nameZhTw?: string | null;
+    nameCrownZhCn?: string | null;
     aliases?: string[];
   }): Promise<LeagueAlias> {
     const aliases = this.sanitizeAliasArray(payload.aliases);
@@ -292,11 +301,12 @@ class NameAliasService {
          name_en = $3,
          name_zh_cn = $4,
          name_zh_tw = $5,
-         aliases = $6::jsonb,
+         name_crown_zh_cn = $6,
+         aliases = $7::jsonb,
          updated_at = CURRENT_TIMESTAMP
        WHERE id = $1
        RETURNING *`,
-      [id, canonical || null, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, JSON.stringify(aliases)]
+      [id, canonical || null, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, payload.nameCrownZhCn || null, JSON.stringify(aliases)]
     );
 
     if (result.rows.length === 0) {
@@ -317,9 +327,10 @@ class NameAliasService {
     nameEn?: string | null;
     nameZhCn?: string | null;
     nameZhTw?: string | null;
+    nameCrownZhCn?: string | null;
     aliases?: string[];
   }): Promise<TeamAlias> {
-    const primaryName = payload.nameZhCn || payload.nameZhTw || payload.nameEn;
+    const primaryName = payload.nameZhCn || payload.nameZhTw || payload.nameEn || payload.nameCrownZhCn;
     const canonicalKey = (payload.canonicalKey && payload.canonicalKey.trim()) || this.normalizeKey('team', primaryName || '');
     if (!canonicalKey || canonicalKey.endsWith(':unknown')) {
       throw new Error('缺少 canonical_key 或有效名称');
@@ -328,16 +339,17 @@ class NameAliasService {
     const aliases = this.sanitizeAliasArray(payload.aliases);
 
     const result = await query(
-      `INSERT INTO team_aliases (canonical_key, name_en, name_zh_cn, name_zh_tw, aliases, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `INSERT INTO team_aliases (canonical_key, name_en, name_zh_cn, name_zh_tw, name_crown_zh_cn, aliases, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        ON CONFLICT (canonical_key) DO UPDATE SET
          name_en = COALESCE(EXCLUDED.name_en, team_aliases.name_en),
          name_zh_cn = COALESCE(EXCLUDED.name_zh_cn, team_aliases.name_zh_cn),
          name_zh_tw = COALESCE(EXCLUDED.name_zh_tw, team_aliases.name_zh_tw),
+         name_crown_zh_cn = COALESCE(EXCLUDED.name_crown_zh_cn, team_aliases.name_crown_zh_cn),
          aliases = CASE WHEN EXCLUDED.aliases::text = '[]' THEN team_aliases.aliases ELSE EXCLUDED.aliases END,
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
-      [canonicalKey, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, JSON.stringify(aliases)]
+      [canonicalKey, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, payload.nameCrownZhCn || null, JSON.stringify(aliases)]
     );
 
     this.invalidateCache();
@@ -349,6 +361,7 @@ class NameAliasService {
     nameEn?: string | null;
     nameZhCn?: string | null;
     nameZhTw?: string | null;
+    nameCrownZhCn?: string | null;
     aliases?: string[];
   }): Promise<TeamAlias> {
     const aliases = this.sanitizeAliasArray(payload.aliases);
@@ -365,11 +378,12 @@ class NameAliasService {
          name_en = $3,
          name_zh_cn = $4,
          name_zh_tw = $5,
-         aliases = $6::jsonb,
+         name_crown_zh_cn = $6,
+         aliases = $7::jsonb,
          updated_at = CURRENT_TIMESTAMP
        WHERE id = $1
        RETURNING *`,
-      [id, canonical || null, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, JSON.stringify(aliases)]
+      [id, canonical || null, payload.nameEn || null, payload.nameZhCn || null, payload.nameZhTw || null, payload.nameCrownZhCn || null, JSON.stringify(aliases)]
     );
 
     if (result.rows.length === 0) {

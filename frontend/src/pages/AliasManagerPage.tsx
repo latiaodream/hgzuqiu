@@ -77,6 +77,7 @@ const AliasManagerPage: React.FC = () => {
         name_en: record.name_en,
         name_zh_cn: record.name_zh_cn,
         name_zh_tw: record.name_zh_tw,
+        name_crown_zh_cn: record.name_crown_zh_cn,
         aliases: record.aliases,
       });
     } else {
@@ -100,10 +101,11 @@ const AliasManagerPage: React.FC = () => {
         name_en: values.name_en?.trim() || undefined,
         name_zh_cn: values.name_zh_cn?.trim() || undefined,
         name_zh_tw: values.name_zh_tw?.trim() || undefined,
+        name_crown_zh_cn: values.name_crown_zh_cn?.trim() || undefined,
         aliases: sanitizeAliases(values.aliases),
       };
 
-      if (!payload.name_en && !payload.name_zh_cn && !payload.name_zh_tw) {
+      if (!payload.name_en && !payload.name_zh_cn && !payload.name_zh_tw && !payload.name_crown_zh_cn) {
         message.warning('至少填写一个名称字段');
         return;
       }
@@ -163,19 +165,24 @@ const AliasManagerPage: React.FC = () => {
       width: 220,
     },
     {
-      title: '名称（简体）',
+      title: 'iSports 简体',
       dataIndex: 'name_zh_cn',
       render: (text: string) => text || '-'
     },
     {
-      title: '名称（繁体）',
+      title: 'iSports 繁体',
       dataIndex: 'name_zh_tw',
       render: (text: string) => text || '-'
     },
     {
-      title: '名称（英文）',
+      title: 'iSports 英文',
       dataIndex: 'name_en',
       render: (text: string) => text || '-'
+    },
+    {
+      title: '皇冠简体',
+      dataIndex: 'name_crown_zh_cn',
+      render: (text: string) => text ? <Tag color="gold">{text}</Tag> : '-'
     },
     {
       title: '别名',
@@ -275,13 +282,16 @@ const AliasManagerPage: React.FC = () => {
           <Form.Item label="Canonical Key" name="canonical_key">
             <Input placeholder="可留空，系统会自动生成" allowClear />
           </Form.Item>
-          <Form.Item label="名称（简体）" name="name_zh_cn">
+          <Form.Item label="iSports 简体" name="name_zh_cn">
             <Input placeholder="例：英格兰超级联赛" allowClear />
           </Form.Item>
-          <Form.Item label="名称（繁体）" name="name_zh_tw">
+          <Form.Item label="iSports 繁体" name="name_zh_tw">
             <Input placeholder="例：英格蘭超級聯賽" allowClear />
           </Form.Item>
-          <Form.Item label="名称（英文）" name="name_en">
+          <Form.Item label="皇冠信用盘简体" name="name_crown_zh_cn">
+            <Input placeholder="例：英超" allowClear />
+          </Form.Item>
+          <Form.Item label="iSports 英文" name="name_en">
             <Input placeholder="例：English Premier League" allowClear />
           </Form.Item>
           <Form.Item label="别名" name="aliases">

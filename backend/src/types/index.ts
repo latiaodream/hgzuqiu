@@ -277,6 +277,7 @@ export interface LeagueAlias {
     name_en?: string;
     name_zh_cn?: string;
     name_zh_tw?: string;
+    name_crown_zh_cn?: string;
     aliases: string[];
     created_at: string;
     updated_at: string;
@@ -288,6 +289,7 @@ export interface TeamAlias {
     name_en?: string;
     name_zh_cn?: string;
     name_zh_tw?: string;
+    name_crown_zh_cn?: string;
     aliases: string[];
     created_at: string;
     updated_at: string;
