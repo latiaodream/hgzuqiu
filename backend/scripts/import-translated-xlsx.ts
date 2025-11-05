@@ -176,7 +176,7 @@ async function importLeaguesFromExcel(filePath: string): Promise<number> {
       if (league) {
         try {
           await nameAliasService.updateLeagueAlias(league.id, {
-            nameCrownZhCn: String(chineseName).trim(),
+            nameZhCn: String(chineseName).trim(),
           });
           updated++;
           if (updated % 10 === 0) {
@@ -343,7 +343,7 @@ async function importTeamsFromExcel(filePath: string): Promise<number> {
       if (team) {
         try {
           await nameAliasService.updateTeamAlias(team.id, {
-            nameCrownZhCn: String(chineseName).trim(),
+            nameZhCn: String(chineseName).trim(),
           });
           updated++;
           if (updated % 50 === 0) {
