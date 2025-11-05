@@ -286,7 +286,12 @@ const AliasManagerPage: React.FC = () => {
         dataSource={filteredRecords}
         columns={columns}
         scroll={{ x: 900 }}
-        pagination={{ pageSize: 20, showSizeChanger: false }}
+        pagination={{
+          pageSize: 50,
+          showSizeChanger: true,
+          pageSizeOptions: ['20', '50', '100', '200', '500'],
+          showTotal: (total) => `共 ${total} 条记录`
+        }}
         footer={() => {
           const totalCount = records.length;
           const hasCrownCount = records.filter(r => r.name_crown_zh_cn).length;
