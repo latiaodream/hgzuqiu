@@ -40,6 +40,7 @@ const AliasManagerPage: React.FC = () => {
   const [records, setRecords] = useState<AliasRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'unmatched'>('all');
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AliasRecord | null>(null);
   const [form] = Form.useForm();
@@ -68,6 +69,14 @@ const AliasManagerPage: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // 筛选数据
+  const filteredRecords = useMemo(() => {
+    if (filterType === 'unmatched') {
+      return records.filter(r => !r.name_crown_zh_cn || r.name_crown_zh_cn.trim() === '');
+    }
+    return records;
+  }, [records, filterType]);
 
   const openModal = (record?: AliasRecord) => {
     if (record) {
@@ -249,6 +258,17 @@ const AliasManagerPage: React.FC = () => {
             onSearch={() => setRefreshFlag((flag) => flag + 1)}
           />
         </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Select
+            style={{ width: '100%' }}
+            value={filterType}
+            onChange={(value) => setFilterType(value)}
+            options={[
+              { label: '全部', value: 'all' },
+              { label: '仅显示未匹配皇冠简体', value: 'unmatched' },
+            ]}
+          />
+        </Col>
         <Col flex="auto" />
         <Col>
           <Space>
@@ -263,25 +283,45 @@ const AliasManagerPage: React.FC = () => {
       <Table<AliasRecord>
         rowKey="id"
         loading={loading}
-        dataSource={records}
+        dataSource={filteredRecords}
         columns={columns}
         scroll={{ x: 900 }}
         pagination={{ pageSize: 20, showSizeChanger: false }}
-        footer={() => (
-          <div style={{ textAlign: 'center', color: '#666' }}>
-            共 <strong>{records.length}</strong> 条{activeTab === 'leagues' ? '联赛' : '球队'}记录
-            {records.length > 0 && (
-              <>
-                {' | '}
-                有繁体: <strong>{records.filter(r => r.name_zh_tw).length}</strong>
-                {' | '}
-                有英文: <strong>{records.filter(r => r.name_en).length}</strong>
-                {' | '}
-                有皇冠简体: <strong style={{ color: '#faad14' }}>{records.filter(r => r.name_crown_zh_cn).length}</strong>
-              </>
-            )}
-          </div>
-        )}
+        footer={() => {
+          const totalCount = records.length;
+          const hasCrownCount = records.filter(r => r.name_crown_zh_cn).length;
+          const matchRate = totalCount > 0 ? ((hasCrownCount / totalCount) * 100).toFixed(1) : '0.0';
+
+          return (
+            <div style={{ textAlign: 'center', color: '#666' }}>
+              {filterType === 'unmatched' ? (
+                <>
+                  显示 <strong>{filteredRecords.length}</strong> 条未匹配记录
+                  {' | '}
+                  总记录: <strong>{totalCount}</strong>
+                  {' | '}
+                  匹配率: <strong style={{ color: hasCrownCount >= totalCount * 0.8 ? '#52c41a' : '#faad14' }}>{matchRate}%</strong>
+                </>
+              ) : (
+                <>
+                  共 <strong>{totalCount}</strong> 条{activeTab === 'leagues' ? '联赛' : '球队'}记录
+                  {totalCount > 0 && (
+                    <>
+                      {' | '}
+                      有繁体: <strong>{records.filter(r => r.name_zh_tw).length}</strong>
+                      {' | '}
+                      有英文: <strong>{records.filter(r => r.name_en).length}</strong>
+                      {' | '}
+                      有皇冠简体: <strong style={{ color: '#faad14' }}>{hasCrownCount}</strong>
+                      {' | '}
+                      匹配率: <strong style={{ color: hasCrownCount >= totalCount * 0.8 ? '#52c41a' : '#faad14' }}>{matchRate}%</strong>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        }}
       />
 
       <Modal
