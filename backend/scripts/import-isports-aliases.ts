@@ -89,12 +89,20 @@ function chunk<T>(arr: T[], size: number): T[][] {
 
 async function fetchCrownOddsPresence(matchIds: string[]): Promise<Set<string>> {
   const present = new Set<string>();
-  const batches = chunk(matchIds, 50);
-  for (const batch of batches) {
+  const batches = chunk(matchIds, 100); // 增加批次大小到 100
+  console.log(`   总批次: ${batches.length}，每批 100 场比赛`);
+
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
     try {
+      // 显示进度
+      if (i % 10 === 0 || i === batches.length - 1) {
+        console.log(`   进度: [${i + 1}/${batches.length}] 已查询 ${(i + 1) * 100} 场，找到 ${present.size} 场有皇冠赔率`);
+      }
+
       const res = await axios.get(`${BASE_URL}/odds/all`, {
         params: { api_key: API_KEY, companyId: '3', matchId: batch.join(',') },
-        timeout: 30000,
+        timeout: 15000, // 减少超时时间到 15 秒
       });
       if (res.data?.code !== 0) continue;
       const d = res.data?.data || {};
@@ -111,9 +119,12 @@ async function fetchCrownOddsPresence(matchIds: string[]): Promise<Set<string>> 
       add(d.handicapHalf);
       add(d.overUnderHalf);
     } catch (error: any) {
-      console.error(`⚠️  批次获取赔率失败:`, error.message);
+      console.error(`⚠️  批次 [${i + 1}/${batches.length}] 获取赔率失败:`, error.message);
     }
-    await new Promise((r) => setTimeout(r, 1000));
+    // 减少间隔到 500ms
+    if (i < batches.length - 1) {
+      await new Promise((r) => setTimeout(r, 500));
+    }
   }
   return present;
 }
