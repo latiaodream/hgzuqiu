@@ -613,6 +613,7 @@ export class CrownApiClient {
     rtype?: string;       // 盘口类型 (rb=滚球)
     ltype?: string;       // 联赛类型
     sorttype?: string;    // 排序类型 (L=联赛)
+    langx?: string;       // 语言 (zh-cn=简体, zh-tw=繁体)
   } = {}): Promise<any> {
     console.log('📋 开始获取赛事列表...');
 
@@ -625,7 +626,7 @@ export class CrownApiClient {
     const requestParams = new URLSearchParams({
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-tw',  // 使用繁体中文版本
+      langx: params.langx || 'zh-tw',  // 默认繁体，可传入 zh-cn 使用简体
       p: 'get_game_list',
       p3type: '',
       date: '',

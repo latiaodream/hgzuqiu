@@ -188,6 +188,7 @@ async function main() {
     rtype: 'r',         // 让球盘
     ltype: '3',
     sorttype: 'L',
+    langx: 'zh-cn',     // 使用简体中文
   });
 
   const matches = await parseCrownGameList(xml);
