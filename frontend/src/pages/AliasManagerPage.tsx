@@ -267,6 +267,21 @@ const AliasManagerPage: React.FC = () => {
         columns={columns}
         scroll={{ x: 900 }}
         pagination={{ pageSize: 20, showSizeChanger: false }}
+        footer={() => (
+          <div style={{ textAlign: 'center', color: '#666' }}>
+            共 <strong>{records.length}</strong> 条{activeTab === 'leagues' ? '联赛' : '球队'}记录
+            {records.length > 0 && (
+              <>
+                {' | '}
+                有繁体: <strong>{records.filter(r => r.name_zh_tw).length}</strong>
+                {' | '}
+                有英文: <strong>{records.filter(r => r.name_en).length}</strong>
+                {' | '}
+                有皇冠简体: <strong style={{ color: '#faad14' }}>{records.filter(r => r.name_crown_zh_cn).length}</strong>
+              </>
+            )}
+          </div>
+        )}
       />
 
       <Modal
