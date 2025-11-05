@@ -1370,23 +1370,24 @@ router.get('/matches-system', async (req: any, res) => {
         // 尝试使用内置的独立抓取服务
         const fetcher = getMatchFetcher();
         if (fetcher) {
-        const data = fetcher.getLatestMatches();
-        let filteredMatches = filterMatchesByShowtype(data.matches ?? [], String(showtype));
-        if (String(showtype).toLowerCase() === 'today' && filteredMatches.length > 0) {
-            try {
-                filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
-                    gtype: String(gtype),
-                    date: new Date().toISOString().slice(0, 10),
-                });
-            } catch (mergeError) {
-                console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+            const data = fetcher.getLatestMatches();
+            let filteredMatches = filterMatchesByShowtype(data.matches ?? [], String(showtype));
+            if (String(showtype).toLowerCase() === 'today' && filteredMatches.length > 0) {
+                try {
+                    filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
+                        gtype: String(gtype),
+                        date: new Date().toISOString().slice(0, 10),
+                    });
+                } catch (mergeError) {
+                    console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+                }
             }
-        }
-        res.json({
-            success: true,
-            data: {
-                matches: filteredMatches,
-                meta: { gtype, showtype, rtype, ltype, sorttype },
+
+            res.json({
+                success: true,
+                data: {
+                    matches: filteredMatches,
+                    meta: { gtype, showtype, rtype, ltype, sorttype },
                     raw: data.xml,
                     source: 'dedicated-fetcher',
                     lastUpdate: data.lastUpdate,

@@ -9,11 +9,12 @@
 
   使用：
   - 设置环境变量 ISP0RTS_API_KEY（或使用 --apiKey 参数）
-  - node scripts/isports_today.js [--date=YYYY-MM-DD] [--sport=ft|bk] [--onlyCrownOdds]
+  - node scripts/isports_today.js [--date=YYYY-MM-DD] [--sport=ft|bk] [--onlyCrownOdds] [--lang=en|zh-cn|zh-tw]
 
   示例：
   - node scripts/isports_today.js --onlyCrownOdds
   - node scripts/isports_today.js --date=2025-11-05 --sport=ft
+  - node scripts/isports_today.js --lang=en
 
   说明：
   - date 默认取当前 UTC 日期（与项目现有 fetcher 一致）
@@ -33,6 +34,7 @@ const API_KEY = process.env.ISPORTS_API_KEY || getArg('apiKey', '');
 const sport = getArg('sport', 'ft'); // ft | bk
 const date = getArg('date', new Date().toISOString().split('T')[0]);
 const onlyCrownOdds = hasFlag('onlyCrownOdds');
+const lang = getArg('lang', ''); // iSports 常见: en | zh-cn | zh-tw 等
 
 if (!API_KEY) {
   console.error('❌ 缺少 ISPORTS_API_KEY，请通过环境变量或 --apiKey 传入');
@@ -81,7 +83,9 @@ function chunk(arr, size) {
 }
 
 async function fetchTodaySchedule() {
-  const body = await get('/schedule/basic', { api_key: API_KEY, date });
+  const params = { api_key: API_KEY, date };
+  if (lang) params.lang = lang;
+  const body = await get('/schedule/basic', params);
   if (body.code !== 0) {
     throw new Error(`iSports /schedule/basic error: ${JSON.stringify(body)}`);
   }
@@ -147,7 +151,7 @@ async function fetchCrownOddsByMatchIds(matchIds) {
       .filter((row) => (onlyCrownOdds ? row.crownOddsAvailable : true))
       .sort((a, b) => (a.matchTime || 0) - (b.matchTime || 0));
 
-    console.log(JSON.stringify({ date, sport, count: result.length, matches: result }, null, 2));
+    console.log(JSON.stringify({ date, sport, lang: lang || undefined, count: result.length, matches: result }, null, 2));
   } catch (err) {
     console.error('❌ 运行失败:', err?.message || err);
     process.exit(1);
