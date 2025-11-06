@@ -105,6 +105,53 @@ async function parseCrownGameList(xml: string): Promise<CrownMatch[]> {
 }
 
 /**
+ * 解析皇冠时间格式 "11-08 08:30a" 或 "11-08 08:30p"
+ * 返回 ISO 格式字符串 "YYYY-MM-DD HH:mm:ss"
+ */
+function parseCrownDateTime(crownTime: string): string | undefined {
+  try {
+    if (!crownTime || crownTime.trim() === '') {
+      return undefined;
+    }
+
+    // 格式: "11-08 08:30a" 或 "11-08 08:30p"
+    const match = crownTime.match(/^(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})([ap])$/i);
+    if (!match) {
+      console.warn(`无法解析时间格式: ${crownTime}`);
+      return undefined;
+    }
+
+    const [, month, day, hour, minute, period] = match;
+
+    // 获取当前年份
+    const now = new Date();
+    let year = now.getFullYear();
+
+    // 如果月份小于当前月份，可能是明年的比赛
+    const monthNum = parseInt(month);
+    if (monthNum < now.getMonth() + 1) {
+      year += 1;
+    }
+
+    // 转换 12 小时制到 24 小时制
+    let hourNum = parseInt(hour);
+    if (period.toLowerCase() === 'p' && hourNum !== 12) {
+      hourNum += 12;
+    } else if (period.toLowerCase() === 'a' && hourNum === 12) {
+      hourNum = 0;
+    }
+
+    // 格式化为 ISO 字符串
+    const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${hourNum.toString().padStart(2, '0')}:${minute}:00`;
+
+    return dateStr;
+  } catch (error) {
+    console.error(`解析时间失败: ${crownTime}`, error);
+    return undefined;
+  }
+}
+
+/**
  * 计算字符串相似度（简单版本）
  */
 function similarity(s1: string, s2: string): number {
@@ -362,13 +409,16 @@ async function main() {
     // 匹配客队
     const awayMatch = await matchTeam(match.away);
 
+    // 解析时间
+    const parsedTime = parseCrownDateTime(match.datetime);
+
     // 存储到数据库
     await crownMatchService.upsertMatch({
       crownGid: match.gid,
       crownLeague: match.league,
       crownHome: match.home,
       crownAway: match.away,
-      matchTime: match.datetime,
+      matchTime: parsedTime,
       leagueMatched: leagueMatch.matched,
       homeMatched: homeMatch.matched,
       awayMatched: awayMatch.matched,
