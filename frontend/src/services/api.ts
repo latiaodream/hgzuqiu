@@ -588,6 +588,16 @@ export const crownMatchApi = {
 
   deleteOldMatches: (daysAgo?: number): Promise<ApiResponse<{ deleted: number }>> =>
     apiClient.delete('/crown-matches/old', { params: { daysAgo } }).then(res => res.data),
+
+  rematch: (data: {
+    startDate: string;
+    endDate?: string;
+  }): Promise<ApiResponse<{
+    total: number;
+    matched: number;
+    unmatched: number;
+  }>> =>
+    apiClient.post('/crown-matches/rematch', data).then(res => res.data),
 };
 
 // iSports 赛事 API

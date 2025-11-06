@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Card, Statistic, Row, Col, Select, Button, message, Tag, Space, Modal, DatePicker, Input } from 'antd';
-import { ReloadOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined } from '@ant-design/icons';
+import { ReloadOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, SyncOutlined } from '@ant-design/icons';
 import { crownMatchApi } from '../services/api';
 import dayjs, { Dayjs } from 'dayjs';
 
@@ -21,6 +21,9 @@ const CrownMatchesPage: React.FC = () => {
   const [searchLeague, setSearchLeague] = useState<string>('');
   const [searchHome, setSearchHome] = useState<string>('');
   const [searchAway, setSearchAway] = useState<string>('');
+  const [rematchModalVisible, setRematchModalVisible] = useState(false);
+  const [rematchDate, setRematchDate] = useState<Dayjs>(dayjs());
+  const [rematching, setRematching] = useState(false);
 
   // 加载赛事数据
   const loadMatches = async (page: number = 1, pageSize: number = 50) => {
@@ -94,6 +97,42 @@ const CrownMatchesPage: React.FC = () => {
     setSearchHome('');
     setSearchAway('');
     setFilteredMatches(matches);
+  };
+
+  // 重新匹配
+  const handleRematch = async () => {
+    try {
+      setRematching(true);
+      const response = await crownMatchApi.rematch({
+        startDate: rematchDate.format('YYYY-MM-DD'),
+        endDate: rematchDate.format('YYYY-MM-DD'),
+      });
+
+      if (response.success && response.data) {
+        message.success(response.message || '重新匹配完成');
+        Modal.success({
+          title: '重新匹配结果',
+          content: (
+            <div>
+              <p>总比赛数: {response.data.total}</p>
+              <p>完全匹配: {response.data.matched}</p>
+              <p>未完全匹配: {response.data.unmatched}</p>
+              <p>匹配率: {response.data.total > 0 ? ((response.data.matched / response.data.total) * 100).toFixed(1) : 0}%</p>
+            </div>
+          ),
+        });
+        setRematchModalVisible(false);
+        loadMatches(pagination.current, pagination.pageSize);
+        loadStats();
+      } else {
+        message.error(response.error || '重新匹配失败');
+      }
+    } catch (error: any) {
+      console.error('重新匹配失败:', error);
+      message.error(error.message || '重新匹配失败');
+    } finally {
+      setRematching(false);
+    }
   };
 
   // 监听搜索条件变化
@@ -314,6 +353,13 @@ const CrownMatchesPage: React.FC = () => {
               刷新
             </Button>
             <Button
+              icon={<SyncOutlined />}
+              type="primary"
+              onClick={() => setRematchModalVisible(true)}
+            >
+              重新匹配
+            </Button>
+            <Button
               icon={<DeleteOutlined />}
               danger
               onClick={handleDeleteOld}
@@ -380,6 +426,36 @@ const CrownMatchesPage: React.FC = () => {
           }}
         />
       </Card>
+
+      {/* 重新匹配 Modal */}
+      <Modal
+        title="重新匹配赛事"
+        open={rematchModalVisible}
+        onOk={handleRematch}
+        onCancel={() => setRematchModalVisible(false)}
+        confirmLoading={rematching}
+        okText="开始匹配"
+        cancelText="取消"
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <p>选择要重新匹配的日期：</p>
+          <DatePicker
+            value={rematchDate}
+            onChange={(date) => {
+              if (date) {
+                setRematchDate(date);
+              }
+            }}
+            format="YYYY-MM-DD"
+            placeholder="选择日期"
+            style={{ width: '100%' }}
+            allowClear={false}
+          />
+          <p style={{ color: '#666', fontSize: '12px', marginTop: '8px' }}>
+            将重新匹配该日期的所有赛事到别名库，更新匹配状态。
+          </p>
+        </Space>
+      </Modal>
     </div>
   );
 };
