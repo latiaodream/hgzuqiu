@@ -405,30 +405,30 @@ async function main() {
   let fullyMatchedCount = 0;
 
   for (const match of matches) {
+    // 匹配联赛
+    const leagueMatch = await matchLeague(match.league);
+
+    // 匹配主队
+    const homeMatch = await matchTeam(match.home);
+
+    // 匹配客队
+    const awayMatch = await matchTeam(match.away);
+
+    // 解析时间
+    const parsedTime = parseCrownDateTime(match.datetime);
+
+    // 调试日志
+    if (savedCount < 3) {
+      console.log(`\n调试第 ${savedCount + 1} 场比赛:`);
+      console.log(`  GID: ${match.gid}`);
+      console.log(`  联赛: ${match.league}`);
+      console.log(`  主队: ${match.home}`);
+      console.log(`  客队: ${match.away}`);
+      console.log(`  原始时间: ${match.datetime}`);
+      console.log(`  解析时间: ${parsedTime}`);
+    }
+
     try {
-      // 匹配联赛
-      const leagueMatch = await matchLeague(match.league);
-
-      // 匹配主队
-      const homeMatch = await matchTeam(match.home);
-
-      // 匹配客队
-      const awayMatch = await matchTeam(match.away);
-
-      // 解析时间
-      const parsedTime = parseCrownDateTime(match.datetime);
-
-      // 调试日志
-      if (savedCount < 3) {
-        console.log(`\n调试第 ${savedCount + 1} 场比赛:`);
-        console.log(`  GID: ${match.gid}`);
-        console.log(`  联赛: ${match.league}`);
-        console.log(`  主队: ${match.home}`);
-        console.log(`  客队: ${match.away}`);
-        console.log(`  原始时间: ${match.datetime}`);
-        console.log(`  解析时间: ${parsedTime}`);
-      }
-
       // 存储到数据库
       await crownMatchService.upsertMatch({
         crownGid: match.gid,
