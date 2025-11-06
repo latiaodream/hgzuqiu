@@ -386,18 +386,18 @@ router.get('/teams/export-untranslated', ensureAdmin, async (req, res) => {
 });
 
 /**
- * 从 iSports API 导入联赛和球队名称
+ * 从 iSports API 导入联赛和球队名称（仅导入有皇冠赔率的赛事）
  * POST /api/aliases/import-from-isports
  */
 router.post('/import-from-isports', ensureAdmin, async (req, res) => {
   try {
-    console.log('📥 开始从 iSports API 导入名称...');
+    console.log('📥 开始从 iSports API 导入名称（仅有皇冠赔率的赛事）...');
 
     const isportsClient = new ISportsClient(
       process.env.ISPORTS_API_KEY || 'GvpziueL9ouzIJNj'
     );
 
-    // 1. 获取最近7天的赛事（获取更多联赛和球队）
+    // 1. 获取最近7天的赛事
     const dates: string[] = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date();
@@ -421,11 +421,56 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
 
     console.log(`✅ 总共获取到 ${allMatches.length} 场比赛`);
 
-    // 3. 提取唯一的联赛和球队
+    if (allMatches.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          leagues: { total: 0, inserted: 0, updated: 0, skipped: 0 },
+          teams: { total: 0, inserted: 0, updated: 0, skipped: 0 },
+        },
+      });
+    }
+
+    // 3. 获取皇冠赔率（分批获取，每批50场）
+    console.log('📥 获取皇冠赔率...');
+    const matchIds = allMatches.map(m => m.matchId);
+    const batchSize = 50;
+    const allOdds = {
+      handicap: [] as any[],
+      europeOdds: [] as any[],
+      overUnder: [] as any[],
+    };
+
+    for (let i = 0; i < matchIds.length; i += batchSize) {
+      const batchIds = matchIds.slice(i, i + batchSize);
+      try {
+        const oddsData = await isportsClient.getMainOdds(batchIds, ['3']); // companyId=3 是皇冠
+        allOdds.handicap.push(...oddsData.handicap);
+        allOdds.europeOdds.push(...oddsData.europeOdds);
+        allOdds.overUnder.push(...oddsData.overUnder);
+        console.log(`  批次 ${Math.floor(i / batchSize) + 1}: ${batchIds.length} 场比赛`);
+      } catch (error: any) {
+        console.error(`  批次 ${Math.floor(i / batchSize) + 1} 获取赔率失败:`, error.message);
+      }
+    }
+
+    console.log(`✅ 获取到赔率: 让球盘 ${allOdds.handicap.length}, 独赢盘 ${allOdds.europeOdds.length}, 大小球 ${allOdds.overUnder.length}`);
+
+    // 4. 筛选有皇冠赔率的赛事
+    const matchesWithCrownOdds = allMatches.filter(match => {
+      const hasHandicap = allOdds.handicap.some(h => h.matchId === match.matchId && h.companyId === '3');
+      const hasEurope = allOdds.europeOdds.some(e => e.matchId === match.matchId && e.companyId === '3');
+      const hasOverUnder = allOdds.overUnder.some(o => o.matchId === match.matchId && o.companyId === '3');
+      return hasHandicap || hasEurope || hasOverUnder;
+    });
+
+    console.log(`✅ 筛选出 ${matchesWithCrownOdds.length} 场有皇冠赔率的赛事`);
+
+    // 5. 提取唯一的联赛和球队（仅从有皇冠赔率的赛事中提取）
     const leaguesMap = new Map<string, { id: string; name: string }>();
     const teamsMap = new Map<string, { id: string; name: string }>();
 
-    for (const match of allMatches) {
+    for (const match of matchesWithCrownOdds) {
       // 联赛
       if (match.leagueId && match.leagueName) {
         leaguesMap.set(match.leagueId, {
@@ -454,7 +499,7 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
     const leagues = Array.from(leaguesMap.values());
     const teams = Array.from(teamsMap.values());
 
-    console.log(`✅ 找到 ${leagues.length} 个联赛，${teams.length} 个球队`);
+    console.log(`✅ 找到 ${leagues.length} 个联赛，${teams.length} 个球队（仅有皇冠赔率）`);
 
     // 4. 插入联赛（如果不存在）
     let leagueInserted = 0;
