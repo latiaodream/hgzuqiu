@@ -15,6 +15,7 @@ import { betRoutes } from './routes/bets';
 import { coinRoutes } from './routes/coins';
 import { aliasRoutes } from './routes/aliases';
 import { crownMatchRoutes } from './routes/crown-matches';
+import isportsMatchRoutes from './routes/isports-matches';
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/logger';
 import { getCrownAutomation } from './services/crown-automation';
@@ -61,6 +62,7 @@ app.use('/api/bets', betRoutes);
 app.use('/api/coins', coinRoutes);
 app.use('/api/aliases', aliasRoutes);
 app.use('/api/crown-matches', crownMatchRoutes);
+app.use('/api/isports-matches', isportsMatchRoutes);
 
 // 错误处理中间件
 app.use(errorHandler);

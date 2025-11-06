@@ -108,9 +108,19 @@ const MainLayout: React.FC = () => {
           label: '赛事管理',
         },
         {
-          key: '/crown-matches',
+          key: 'match-records',
           icon: <CalendarOutlined />,
           label: '赛事记录',
+          children: [
+            {
+              key: '/crown-matches',
+              label: '皇冠足球赛事',
+            },
+            {
+              key: '/isports-matches',
+              label: 'iSports足球赛事',
+            },
+          ],
         },
         {
           key: '/aliases',
@@ -175,9 +185,19 @@ const MainLayout: React.FC = () => {
           label: '赛事管理',
         },
         {
-          key: '/crown-matches',
+          key: 'match-records-staff',
           icon: <CalendarOutlined />,
           label: '赛事记录',
+          children: [
+            {
+              key: '/crown-matches',
+              label: '皇冠足球赛事',
+            },
+            {
+              key: '/isports-matches',
+              label: 'iSports足球赛事',
+            },
+          ],
         },
         {
           key: '/coins',

@@ -576,4 +576,16 @@ export const crownMatchApi = {
     apiClient.delete('/crown-matches/old', { params: { daysAgo } }).then(res => res.data),
 };
 
+// iSports 赛事 API
+export const isportsMatchApi = {
+  getMatches: (params: {
+    date?: string;
+  }): Promise<ApiResponse<{
+    matches: any[];
+    total: number;
+    date: string;
+  }>> =>
+    apiClient.get('/isports-matches', { params }).then(res => res.data),
+};
+
 export default apiClient;
