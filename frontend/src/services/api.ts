@@ -537,4 +537,41 @@ export const aliasApi = {
     }).then(res => res.data),
 };
 
+// 皇冠赛事 API
+export const crownMatchApi = {
+  getMatches: (params: {
+    page?: number;
+    pageSize?: number;
+    leagueMatched?: boolean;
+    homeMatched?: boolean;
+    awayMatched?: boolean;
+  }): Promise<ApiResponse<{
+    matches: any[];
+    total: number;
+  }>> =>
+    apiClient.get('/crown-matches', { params }).then(res => res.data),
+
+  getStats: (): Promise<ApiResponse<{
+    total_matches: number;
+    league_matched: number;
+    home_matched: number;
+    away_matched: number;
+    fully_matched: number;
+    league_match_rate: number;
+    home_match_rate: number;
+    away_match_rate: number;
+    full_match_rate: number;
+  }>> =>
+    apiClient.get('/crown-matches/stats').then(res => res.data),
+
+  getUnmatchedLeagues: (limit?: number): Promise<ApiResponse<string[]>> =>
+    apiClient.get('/crown-matches/unmatched-leagues', { params: { limit } }).then(res => res.data),
+
+  getUnmatchedTeams: (limit?: number): Promise<ApiResponse<string[]>> =>
+    apiClient.get('/crown-matches/unmatched-teams', { params: { limit } }).then(res => res.data),
+
+  deleteOldMatches: (daysAgo?: number): Promise<ApiResponse<{ deleted: number }>> =>
+    apiClient.delete('/crown-matches/old', { params: { daysAgo } }).then(res => res.data),
+};
+
 export default apiClient;

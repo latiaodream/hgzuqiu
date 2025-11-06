@@ -295,6 +295,40 @@ export interface TeamAlias {
     updated_at: string;
 }
 
+// 皇冠赛事数据
+export interface CrownMatch {
+    id: number;
+    crown_gid: string;
+    crown_league: string;
+    crown_home: string;
+    crown_away: string;
+    match_time?: string;
+    league_matched: boolean;
+    home_matched: boolean;
+    away_matched: boolean;
+    league_alias_id?: number;
+    home_alias_id?: number;
+    away_alias_id?: number;
+    league_match_method?: string;
+    home_match_method?: string;
+    away_match_method?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+// 皇冠匹配统计
+export interface CrownMatchStats {
+    total_matches: number;
+    league_matched: number;
+    home_matched: number;
+    away_matched: number;
+    fully_matched: number;  // 联赛、主队、客队都匹配
+    league_match_rate: number;
+    home_match_rate: number;
+    away_match_rate: number;
+    full_match_rate: number;
+}
+
 // 请求认证类型
 export interface AuthRequest extends Request {
     user?: User;

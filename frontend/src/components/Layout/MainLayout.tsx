@@ -108,6 +108,11 @@ const MainLayout: React.FC = () => {
           label: '赛事管理',
         },
         {
+          key: '/crown-matches',
+          icon: <CalendarOutlined />,
+          label: '赛事记录',
+        },
+        {
           key: '/aliases',
           icon: <TagsOutlined />,
           label: '名称映射',
@@ -168,6 +173,11 @@ const MainLayout: React.FC = () => {
           key: '/matches',
           icon: <CalendarOutlined />,
           label: '赛事管理',
+        },
+        {
+          key: '/crown-matches',
+          icon: <CalendarOutlined />,
+          label: '赛事记录',
         },
         {
           key: '/coins',

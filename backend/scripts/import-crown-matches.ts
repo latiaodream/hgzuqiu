@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { CrownApiClient } from '../src/services/crown-api-client';
 import { nameAliasService } from '../src/services/name-alias-service';
+import { crownMatchService } from '../src/services/crown-match-service';
 import { parseStringPromise } from 'xml2js';
 
 /**
@@ -346,97 +347,116 @@ async function main() {
     return;
   }
 
-  // 3. 收集联赛和球队
-  const leagueSet = new Set<string>();
-  const teamSet = new Set<string>();
+  // 3. 匹配并存储赛事数据
+  console.log('\n📝 匹配并存储赛事数据...');
+  let savedCount = 0;
+  let fullyMatchedCount = 0;
 
-  matches.forEach((m) => {
-    if (m.league) leagueSet.add(m.league);
-    if (m.home) teamSet.add(m.home);
-    if (m.away) teamSet.add(m.away);
-  });
+  for (const match of matches) {
+    // 匹配联赛
+    const leagueMatch = await matchLeague(match.league);
 
-  console.log(`\n🏷️  联赛（去重）: ${leagueSet.size}`);
-  console.log(`🏷️  球队（去重）: ${teamSet.size}`);
+    // 匹配主队
+    const homeMatch = await matchTeam(match.home);
 
-  // 4. 匹配并更新联赛
-  console.log('\n📝 匹配并更新联赛...');
-  let leagueMatched = 0;
-  let leagueUpdated = 0;
-  const unmatchedLeagues: string[] = [];
+    // 匹配客队
+    const awayMatch = await matchTeam(match.away);
 
-  for (const leagueName of leagueSet) {
-    const match = await matchLeague(leagueName);
-    if (match.matched && match.id) {
-      leagueMatched++;
-      // 更新 name_crown_zh_cn 字段
+    // 存储到数据库
+    await crownMatchService.upsertMatch({
+      crownGid: match.gid,
+      crownLeague: match.league,
+      crownHome: match.home,
+      crownAway: match.away,
+      matchTime: match.datetime,
+      leagueMatched: leagueMatch.matched,
+      homeMatched: homeMatch.matched,
+      awayMatched: awayMatch.matched,
+      leagueAliasId: leagueMatch.id,
+      homeAliasId: homeMatch.id,
+      awayAliasId: awayMatch.id,
+      leagueMatchMethod: leagueMatch.method,
+      homeMatchMethod: homeMatch.method,
+      awayMatchMethod: awayMatch.method,
+    });
+
+    savedCount++;
+
+    // 如果联赛、主队、客队都匹配成功，则更新别名表的 name_crown_zh_cn
+    if (leagueMatch.matched && leagueMatch.id) {
       try {
-        await nameAliasService.updateLeagueAlias(match.id, {
-          nameCrownZhCn: leagueName,
+        await nameAliasService.updateLeagueAlias(leagueMatch.id, {
+          nameCrownZhCn: match.league,
         });
-        leagueUpdated++;
       } catch (e) {
         // 忽略错误
       }
-    } else {
-      unmatchedLeagues.push(leagueName);
     }
-  }
 
-  // 5. 匹配并更新球队
-  console.log('\n📝 匹配并更新球队...');
-  let teamMatched = 0;
-  let teamUpdated = 0;
-  const unmatchedTeams: string[] = [];
-
-  for (const teamName of teamSet) {
-    const match = await matchTeam(teamName);
-    if (match.matched && match.id) {
-      teamMatched++;
-      // 更新 name_crown_zh_cn 字段
+    if (homeMatch.matched && homeMatch.id) {
       try {
-        await nameAliasService.updateTeamAlias(match.id, {
-          nameCrownZhCn: teamName,
+        await nameAliasService.updateTeamAlias(homeMatch.id, {
+          nameCrownZhCn: match.home,
         });
-        teamUpdated++;
       } catch (e) {
         // 忽略错误
       }
-    } else {
-      unmatchedTeams.push(teamName);
+    }
+
+    if (awayMatch.matched && awayMatch.id) {
+      try {
+        await nameAliasService.updateTeamAlias(awayMatch.id, {
+          nameCrownZhCn: match.away,
+        });
+      } catch (e) {
+        // 忽略错误
+      }
+    }
+
+    if (leagueMatch.matched && homeMatch.matched && awayMatch.matched) {
+      fullyMatchedCount++;
+    }
+
+    // 每 50 场显示一次进度
+    if (savedCount % 50 === 0) {
+      console.log(`   已处理 ${savedCount}/${matches.length} 场比赛...`);
     }
   }
 
-  // 6. 统计结果
+  console.log(`✅ 已保存 ${savedCount} 场比赛到数据库`);
+
+  // 4. 获取匹配统计
+  console.log('\n📊 获取匹配统计...');
+  const stats = await crownMatchService.getMatchStats();
+
+  // 5. 显示统计结果
   console.log('\n============================================================');
-  console.log('✅ 匹配完成！');
-  console.log('📊 统计：');
-  console.log(`   - 总比赛数: ${matches.length} 场`);
-  console.log(`   - 联赛总数: ${leagueSet.size} 个`);
-  console.log(`   - 联赛匹配: ${leagueMatched} 个 (${((leagueMatched / leagueSet.size) * 100).toFixed(1)}%)`);
-  console.log(`   - 联赛更新: ${leagueUpdated} 个`);
-  console.log(`   - 球队总数: ${teamSet.size} 个`);
-  console.log(`   - 球队匹配: ${teamMatched} 个 (${((teamMatched / teamSet.size) * 100).toFixed(1)}%)`);
-  console.log(`   - 球队更新: ${teamUpdated} 个`);
+  console.log('✅ 导入完成！');
+  console.log('📊 匹配统计（以皇冠为基准）：');
+  console.log(`   - 总比赛数: ${stats.total_matches} 场`);
+  console.log(`   - 联赛匹配: ${stats.league_matched} 个 (${stats.league_match_rate.toFixed(1)}%)`);
+  console.log(`   - 主队匹配: ${stats.home_matched} 个 (${stats.home_match_rate.toFixed(1)}%)`);
+  console.log(`   - 客队匹配: ${stats.away_matched} 个 (${stats.away_match_rate.toFixed(1)}%)`);
+  console.log(`   - 完全匹配: ${stats.fully_matched} 场 (${stats.full_match_rate.toFixed(1)}%)`);
+  console.log('   （完全匹配 = 联赛、主队、客队都匹配成功）');
+
+  // 6. 显示未匹配的联赛和球队
+  const unmatchedLeagues = await crownMatchService.getUnmatchedLeagues(20);
+  const unmatchedTeams = await crownMatchService.getUnmatchedTeams(20);
 
   if (unmatchedLeagues.length > 0) {
-    console.log(`\n⚠️  未匹配的联赛 (${unmatchedLeagues.length} 个):`);
-    unmatchedLeagues.slice(0, 20).forEach((name) => console.log(`   - ${name}`));
-    if (unmatchedLeagues.length > 20) {
-      console.log(`   ... 还有 ${unmatchedLeagues.length - 20} 个`);
-    }
+    console.log(`\n⚠️  未匹配的联赛（前 20 个）:`);
+    unmatchedLeagues.forEach((name) => console.log(`   - ${name}`));
   }
 
   if (unmatchedTeams.length > 0) {
-    console.log(`\n⚠️  未匹配的球队 (${unmatchedTeams.length} 个):`);
-    unmatchedTeams.slice(0, 20).forEach((name) => console.log(`   - ${name}`));
-    if (unmatchedTeams.length > 20) {
-      console.log(`   ... 还有 ${unmatchedTeams.length - 20} 个`);
-    }
+    console.log(`\n⚠️  未匹配的球队（前 20 个）:`);
+    unmatchedTeams.forEach((name) => console.log(`   - ${name}`));
   }
 
   console.log('\n💡 提示：未匹配的联赛/球队可能是 iSports 没有的数据');
   console.log('💡 提示：可以在页面上手动添加或等待 iSports 导入脚本更新');
+  console.log('💡 提示：运行 npm run aliases:export-en 导出未翻译的记录进行翻译');
 }
 
 main().catch((err) => {

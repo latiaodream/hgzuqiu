@@ -16,6 +16,7 @@ import StaffPage from './pages/StaffPage';
 import AgentsPage from './pages/AgentsPage';
 import SettingsPage from './pages/SettingsPage';
 import AliasManagerPage from './pages/AliasManagerPage';
+import CrownMatchesPage from './pages/CrownMatchesPage';
 import './App.css';
 
 const App: React.FC = () => {
@@ -63,6 +64,7 @@ const App: React.FC = () => {
         <Route path="groups" element={<GroupsPage />} />
         <Route path="betting" element={<BettingPage />} />
         <Route path="matches" element={<MatchesPage />} />
+        <Route path="crown-matches" element={<CrownMatchesPage />} />
         <Route path="aliases" element={<AliasManagerPage />} />
         <Route path="coins" element={<CoinsPage />} />
         <Route path="settings" element={<SettingsPage />} />
