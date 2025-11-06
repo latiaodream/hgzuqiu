@@ -434,6 +434,33 @@ export class CrownClient {
         const datetime = pickString(game, ['DATETIME', 'TIME']);
         const running = pickString(game, ['RUNNING', 'STATUS']);
 
+        // 转换时间格式：将 "11-07 01:00" 转换为 ISO 格式
+        const convertToISO = (timeStr: string): string => {
+          if (!timeStr) return '';
+          try {
+            // 格式: "11-07 01:00" 或 "11-07 01:00:00"
+            const parts = timeStr.trim().split(/[\s-:]+/);
+            if (parts.length >= 3) {
+              const month = parts[0].padStart(2, '0');
+              const day = parts[1].padStart(2, '0');
+              const hour = parts[2]?.padStart(2, '0') || '00';
+              const minute = parts[3]?.padStart(2, '0') || '00';
+              const second = parts[4]?.padStart(2, '0') || '00';
+
+              // 使用当前年份
+              const year = new Date().getFullYear();
+
+              // 构造 ISO 格式
+              return `${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`;
+            }
+          } catch (e) {
+            console.error('时间转换失败:', timeStr, e);
+          }
+          return timeStr;
+        };
+
+        const isoDatetime = convertToISO(datetime);
+
         return {
           gid,
           ecid,
@@ -445,10 +472,10 @@ export class CrownClient {
           team_c: away,
           score,
           current_score: score,
-          time: datetime,
-          datetime,
-          match_time: datetime,
-          timer: datetime,
+          time: isoDatetime,
+          datetime: isoDatetime,
+          match_time: isoDatetime,
+          timer: isoDatetime,
           status: running,
           state: running,
           period: running === '1' ? '滚球' : running === '0' ? '未开赛' : '',
