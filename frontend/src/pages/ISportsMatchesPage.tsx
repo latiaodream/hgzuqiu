@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, DatePicker, Space, message } from 'antd';
+import { Table, Card, DatePicker, Space, message, Tag } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { isportsMatchApi } from '../services/api';
 import dayjs, { Dayjs } from 'dayjs';
 
@@ -43,21 +44,51 @@ const ISportsMatchesPage: React.FC = () => {
     },
     {
       title: '联赛',
-      dataIndex: 'leagueName',
-      key: 'leagueName',
+      dataIndex: 'leagueNameZhCn',
+      key: 'leagueNameZhCn',
       width: 200,
+      render: (_: any, record: any) => (
+        <div>
+          <div>{record.leagueNameZhCn}</div>
+          {!record.leagueMapped && (
+            <div style={{ fontSize: '12px', color: '#999' }}>
+              原名: {record.leagueName}
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       title: '主队',
-      dataIndex: 'homeName',
-      key: 'homeName',
+      dataIndex: 'homeNameZhCn',
+      key: 'homeNameZhCn',
       width: 150,
+      render: (_: any, record: any) => (
+        <div>
+          <div>{record.homeNameZhCn}</div>
+          {!record.homeMapped && (
+            <div style={{ fontSize: '12px', color: '#999' }}>
+              原名: {record.homeName}
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       title: '客队',
-      dataIndex: 'awayName',
-      key: 'awayName',
+      dataIndex: 'awayNameZhCn',
+      key: 'awayNameZhCn',
       width: 150,
+      render: (_: any, record: any) => (
+        <div>
+          <div>{record.awayNameZhCn}</div>
+          {!record.awayMapped && (
+            <div style={{ fontSize: '12px', color: '#999' }}>
+              原名: {record.awayName}
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       title: '比赛时间',
@@ -102,7 +133,7 @@ const ISportsMatchesPage: React.FC = () => {
     <div style={{ padding: '24px' }}>
       <h1>iSports 足球赛事记录</h1>
       <p style={{ color: '#666', marginBottom: '24px' }}>
-        iSports 足球赛事数据（可按日期查询）
+        iSports 足球赛事数据（仅显示有皇冠赔率的赛事，已映射为简体中文）
       </p>
 
       <Card>
