@@ -67,20 +67,67 @@ router.get('/', ensureAdmin, async (req, res) => {
     console.log(`📥 获取 iSports 赛事列表: ${date}`);
 
     // 1. 获取所有赛事
-    const matches = await isportsClient.getSchedule(date);
-    console.log(`✅ 获取到 ${matches.length} 场赛事`);
+    let matches;
+    try {
+      matches = await isportsClient.getSchedule(date);
+      console.log(`✅ 获取到 ${matches.length} 场赛事`);
+    } catch (error: any) {
+      console.error('❌ 获取赛程失败:', error.message);
+      return res.status(500).json({
+        success: false,
+        message: `获取赛程失败: ${error.message}`,
+      });
+    }
 
-    // 2. 获取皇冠赔率（只获取有赔率的比赛）
-    const matchIds = matches.map(m => m.matchId);
+    if (!matches || matches.length === 0) {
+      console.log(`ℹ️ ${date} 没有赛事`);
+      return res.json({
+        success: true,
+        data: {
+          matches: [],
+          total: 0,
+          totalAll: 0,
+          date,
+        },
+      });
+    }
+
+    // 2. 获取皇冠赔率（分批获取，避免 URL 过长）
     console.log(`📥 获取皇冠赔率...`);
+    const matchIds = matches.map(m => m.matchId);
+    const batchSize = 50; // 每批最多 50 场比赛
+    let allOddsData = {
+      handicap: [] as any[],
+      europeOdds: [] as any[],
+      overUnder: [] as any[],
+      handicapHalf: [] as any[],
+      overUnderHalf: [] as any[],
+    };
 
-    const oddsData = await isportsClient.getMainOdds(matchIds, ['3']); // companyId=3 是皇冠
+    try {
+      for (let i = 0; i < matchIds.length; i += batchSize) {
+        const batchIds = matchIds.slice(i, i + batchSize);
+        console.log(`  批次 ${Math.floor(i / batchSize) + 1}: ${batchIds.length} 场比赛`);
+
+        const oddsData = await isportsClient.getMainOdds(batchIds, ['3']);
+        allOddsData.handicap.push(...oddsData.handicap);
+        allOddsData.europeOdds.push(...oddsData.europeOdds);
+        allOddsData.overUnder.push(...oddsData.overUnder);
+        if (oddsData.handicapHalf) allOddsData.handicapHalf.push(...oddsData.handicapHalf);
+        if (oddsData.overUnderHalf) allOddsData.overUnderHalf.push(...oddsData.overUnderHalf);
+      }
+      console.log(`✅ 获取到赔率: 让球盘 ${allOddsData.handicap.length}, 独赢盘 ${allOddsData.europeOdds.length}, 大小球 ${allOddsData.overUnder.length}`);
+    } catch (error: any) {
+      console.error('❌ 获取赔率失败:', error.message);
+      // 赔率获取失败，返回所有赛事但不筛选
+      console.log('⚠️ 赔率获取失败，返回所有赛事');
+    }
 
     // 3. 筛选出有皇冠赔率的比赛
     const matchesWithOdds = matches.filter(match => {
-      const hasHandicap = oddsData.handicap.some(h => h.matchId === match.matchId && h.companyId === '3');
-      const hasEurope = oddsData.europeOdds.some(e => e.matchId === match.matchId && e.companyId === '3');
-      const hasOverUnder = oddsData.overUnder.some(o => o.matchId === match.matchId && o.companyId === '3');
+      const hasHandicap = allOddsData.handicap.some(h => h.matchId === match.matchId && h.companyId === '3');
+      const hasEurope = allOddsData.europeOdds.some(e => e.matchId === match.matchId && e.companyId === '3');
+      const hasOverUnder = allOddsData.overUnder.some(o => o.matchId === match.matchId && o.companyId === '3');
       return hasHandicap || hasEurope || hasOverUnder;
     });
 
@@ -118,6 +165,7 @@ router.get('/', ensureAdmin, async (req, res) => {
     });
   } catch (error: any) {
     console.error('❌ 获取 iSports 赛事失败:', error);
+    console.error('错误堆栈:', error.stack);
     res.status(500).json({
       success: false,
       message: error.message || '获取赛事失败',
