@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Avatar, Dropdown, Space, Button, theme, Tag } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -19,6 +20,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { coinApi } from '../../services/api';
 
 const { Header, Sider, Content } = Layout;
+
+type MenuItem = Required<MenuProps>['items'][number];
 
 const MainLayout: React.FC = () => {
   // 移动端默认收起侧边栏
@@ -65,8 +68,8 @@ const MainLayout: React.FC = () => {
   };
 
   // 根据角色配置菜单项
-  const getMenuItems = () => {
-    const baseItems = [
+  const getMenuItems = (): MenuItem[] => {
+    const baseItems: MenuItem[] = [
       {
         key: '/dashboard',
         icon: <DashboardOutlined />,

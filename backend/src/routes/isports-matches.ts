@@ -1,8 +1,16 @@
 import { Router } from 'express';
-import { ensureAdmin } from '../middleware/auth';
+import { authenticateToken } from '../middleware/auth';
 import { ISportsClient } from '../services/isports-client';
 
 const router = Router();
+router.use(authenticateToken);
+
+const ensureAdmin = (req: any, res: any, next: any) => {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, error: '仅管理员可访问' });
+  }
+  return next();
+};
 
 // 初始化 iSports 客户端
 const isportsClient = new ISportsClient(
