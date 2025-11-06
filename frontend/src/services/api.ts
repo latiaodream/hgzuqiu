@@ -474,6 +474,20 @@ export const aliasApi = {
   deleteLeague: (id: number): Promise<ApiResponse> =>
     apiClient.delete(`/aliases/leagues/${id}`).then(res => res.data),
 
+  importLeagues: (file: File): Promise<ApiResponse<{
+    type: string;
+    total: number;
+    updated: number;
+    skipped: number;
+    notFound: number;
+  }>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/aliases/leagues/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data);
+  },
+
   listTeams: (params?: { search?: string }): Promise<ApiResponse<AliasRecord[]>> =>
     apiClient.get('/aliases/teams', { params }).then(res => res.data),
 
@@ -497,6 +511,20 @@ export const aliasApi = {
 
   deleteTeam: (id: number): Promise<ApiResponse> =>
     apiClient.delete(`/aliases/teams/${id}`).then(res => res.data),
+
+  importTeams: (file: File): Promise<ApiResponse<{
+    type: string;
+    total: number;
+    updated: number;
+    skipped: number;
+    notFound: number;
+  }>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/aliases/teams/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data);
+  },
 };
 
 export default apiClient;

@@ -22,6 +22,7 @@
     "aliases:export-en": "ts-node scripts/export-isports-names.ts",
     "aliases:import-translated": "ts-node scripts/import-translated-names.ts",
     "aliases:import-xlsx": "ts-node scripts/import-translated-xlsx.ts",
+    "aliases:generate-sample": "ts-node scripts/generate-sample-xlsx.ts",
     "analyze:unmatched": "ts-node scripts/analyze-unmatched-details.ts",
     "cron:install": "bash scripts/install-cron.sh",
     "cron:uninstall": "bash scripts/uninstall-cron.sh",

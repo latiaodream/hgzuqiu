@@ -14,8 +14,10 @@ import {
   Typography,
   Row,
   Col,
+  Upload,
 } from 'antd';
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
+import type { UploadProps } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { aliasApi } from '../services/api';
@@ -45,6 +47,7 @@ const AliasManagerPage: React.FC = () => {
   const [editingRecord, setEditingRecord] = useState<AliasRecord | null>(null);
   const [form] = Form.useForm();
   const [refreshFlag, setRefreshFlag] = useState(0);
+  const [uploading, setUploading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -166,6 +169,77 @@ const AliasManagerPage: React.FC = () => {
     }
   };
 
+  // 处理文件上传
+  const handleUpload: UploadProps['customRequest'] = async (options) => {
+    const { file, onSuccess, onError } = options;
+
+    setUploading(true);
+    try {
+      const response = activeTab === 'leagues'
+        ? await aliasApi.importLeagues(file as File)
+        : await aliasApi.importTeams(file as File);
+
+      if (response.success && response.data) {
+        message.success(
+          `${response.message || '导入成功'}`,
+          5
+        );
+        Modal.info({
+          title: '导入结果',
+          content: (
+            <div>
+              <p>总行数: {response.data.total}</p>
+              <p>更新成功: {response.data.updated}</p>
+              <p>跳过: {response.data.skipped}</p>
+              <p>未找到: {response.data.notFound}</p>
+            </div>
+          ),
+        });
+        setRefreshFlag((flag) => flag + 1);
+        onSuccess?.(response);
+      } else {
+        message.error(response.error || '导入失败');
+        onError?.(new Error(response.error || '导入失败'));
+      }
+    } catch (error: any) {
+      console.error('上传文件失败:', error);
+      message.error(error.message || '上传文件失败');
+      onError?.(error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // 下载样本文件
+  const handleDownloadSample = () => {
+    const sampleData = activeTab === 'leagues'
+      ? [
+          ['AFC Champions League 2', '亚冠联赛2'],
+          ['Argentina Cup', '阿根廷杯'],
+          ['Australia A-League', '澳大利亚甲级联赛'],
+        ]
+      : [
+          ['AC Milan', 'AC米兰'],
+          ['Manchester United', '曼联'],
+          ['Real Madrid', '皇家马德里'],
+        ];
+
+    // 创建 CSV 内容
+    const csvContent = sampleData.map(row => row.join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${activeTab === 'leagues' ? 'leagues' : 'teams'}-sample.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    message.success('样本文件已下载');
+  };
+
   const columns: ColumnsType<AliasRecord> = useMemo(() => [
     {
       title: 'Canonical Key',
@@ -272,6 +346,25 @@ const AliasManagerPage: React.FC = () => {
         <Col flex="auto" />
         <Col>
           <Space>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleDownloadSample}
+            >
+              下载样本
+            </Button>
+            <Upload
+              accept=".xlsx,.xls"
+              showUploadList={false}
+              customRequest={handleUpload}
+              disabled={uploading}
+            >
+              <Button
+                icon={<UploadOutlined />}
+                loading={uploading}
+              >
+                导入翻译
+              </Button>
+            </Upload>
             <Button icon={<ReloadOutlined />} onClick={() => setRefreshFlag((flag) => flag + 1)}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
               新增{activeTab === 'leagues' ? '联赛' : '球队'}
