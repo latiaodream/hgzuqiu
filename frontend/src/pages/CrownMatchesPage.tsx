@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, Statistic, Row, Col, Select, Button, message, Tag, Space, Modal, DatePicker } from 'antd';
-import { ReloadOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Table, Card, Statistic, Row, Col, Select, Button, message, Tag, Space, Modal, DatePicker, Input } from 'antd';
+import { ReloadOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import { crownMatchApi } from '../services/api';
 import dayjs, { Dayjs } from 'dayjs';
 
@@ -8,6 +8,7 @@ const { Option } = Select;
 
 const CrownMatchesPage: React.FC = () => {
   const [matches, setMatches] = useState<any[]>([]);
+  const [filteredMatches, setFilteredMatches] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({
@@ -17,6 +18,9 @@ const CrownMatchesPage: React.FC = () => {
   });
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs()); // 默认今天
+  const [searchLeague, setSearchLeague] = useState<string>('');
+  const [searchHome, setSearchHome] = useState<string>('');
+  const [searchAway, setSearchAway] = useState<string>('');
 
   // 加载赛事数据
   const loadMatches = async (page: number = 1, pageSize: number = 50) => {
@@ -44,6 +48,7 @@ const CrownMatchesPage: React.FC = () => {
 
       if (response.success && response.data) {
         setMatches(response.data.matches);
+        setFilteredMatches(response.data.matches);
         setPagination({
           current: page,
           pageSize,
@@ -57,6 +62,44 @@ const CrownMatchesPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // 搜索过滤
+  const handleSearch = () => {
+    let filtered = [...matches];
+
+    if (searchLeague) {
+      filtered = filtered.filter(m =>
+        m.crown_league?.toLowerCase().includes(searchLeague.toLowerCase())
+      );
+    }
+
+    if (searchHome) {
+      filtered = filtered.filter(m =>
+        m.crown_home?.toLowerCase().includes(searchHome.toLowerCase())
+      );
+    }
+
+    if (searchAway) {
+      filtered = filtered.filter(m =>
+        m.crown_away?.toLowerCase().includes(searchAway.toLowerCase())
+      );
+    }
+
+    setFilteredMatches(filtered);
+  };
+
+  // 重置搜索
+  const handleResetSearch = () => {
+    setSearchLeague('');
+    setSearchHome('');
+    setSearchAway('');
+    setFilteredMatches(matches);
+  };
+
+  // 监听搜索条件变化
+  useEffect(() => {
+    handleSearch();
+  }, [searchLeague, searchHome, searchAway, matches]);
 
   // 加载统计数据
   const loadStats = async () => {
@@ -238,44 +281,78 @@ const CrownMatchesPage: React.FC = () => {
 
       {/* 操作栏 */}
       <Card style={{ marginBottom: '16px' }}>
-        <Space wrap>
-          <DatePicker
-            value={selectedDate}
-            onChange={(date) => {
-              if (date) {
-                setSelectedDate(date);
-              }
-            }}
-            format="YYYY-MM-DD"
-            placeholder="选择日期"
-            style={{ width: 200 }}
-            allowClear={false}
-          />
-          <Select
-            value={filterType}
-            onChange={setFilterType}
-            style={{ width: 200 }}
-          >
-            <Option value="all">全部赛事</Option>
-            <Option value="fully-matched">完全匹配</Option>
-            <Option value="unmatched">有未匹配项</Option>
-          </Select>
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => {
-              loadMatches(1, pagination.pageSize);
-              loadStats();
-            }}
-          >
-            刷新
-          </Button>
-          <Button
-            icon={<DeleteOutlined />}
-            danger
-            onClick={handleDeleteOld}
-          >
-            删除过期赛事
-          </Button>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Space wrap>
+            <DatePicker
+              value={selectedDate}
+              onChange={(date) => {
+                if (date) {
+                  setSelectedDate(date);
+                }
+              }}
+              format="YYYY-MM-DD"
+              placeholder="选择日期"
+              style={{ width: 200 }}
+              allowClear={false}
+            />
+            <Select
+              value={filterType}
+              onChange={setFilterType}
+              style={{ width: 200 }}
+            >
+              <Option value="all">全部赛事</Option>
+              <Option value="fully-matched">完全匹配</Option>
+              <Option value="unmatched">有未匹配项</Option>
+            </Select>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                loadMatches(1, pagination.pageSize);
+                loadStats();
+              }}
+            >
+              刷新
+            </Button>
+            <Button
+              icon={<DeleteOutlined />}
+              danger
+              onClick={handleDeleteOld}
+            >
+              删除过期赛事
+            </Button>
+          </Space>
+
+          {/* 搜索条件 */}
+          <Space wrap>
+            <Input
+              placeholder="搜索联赛"
+              prefix={<SearchOutlined />}
+              value={searchLeague}
+              onChange={(e) => setSearchLeague(e.target.value)}
+              style={{ width: 200 }}
+              allowClear
+            />
+            <Input
+              placeholder="搜索主队"
+              prefix={<SearchOutlined />}
+              value={searchHome}
+              onChange={(e) => setSearchHome(e.target.value)}
+              style={{ width: 200 }}
+              allowClear
+            />
+            <Input
+              placeholder="搜索客队"
+              prefix={<SearchOutlined />}
+              value={searchAway}
+              onChange={(e) => setSearchAway(e.target.value)}
+              style={{ width: 200 }}
+              allowClear
+            />
+            <Button onClick={handleResetSearch}>重置</Button>
+            <span style={{ color: '#666' }}>
+              显示 {filteredMatches.length} / {matches.length} 场比赛
+            </span>
+          </Space>
         </Space>
       </Card>
 
@@ -283,7 +360,7 @@ const CrownMatchesPage: React.FC = () => {
       <Card>
         <Table
           columns={columns}
-          dataSource={matches}
+          dataSource={filteredMatches}
           rowKey="id"
           loading={loading}
           pagination={pagination}

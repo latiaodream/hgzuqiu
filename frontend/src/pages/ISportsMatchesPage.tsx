@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, DatePicker, Space, message, Tag } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Table, Card, DatePicker, Space, message, Tag, Input, Button } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import { isportsMatchApi } from '../services/api';
 import dayjs, { Dayjs } from 'dayjs';
 
 const ISportsMatchesPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [matches, setMatches] = useState<any[]>([]);
+  const [filteredMatches, setFilteredMatches] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
+  const [searchLeague, setSearchLeague] = useState<string>('');
+  const [searchHome, setSearchHome] = useState<string>('');
+  const [searchAway, setSearchAway] = useState<string>('');
 
   // 加载赛事数据
   const loadMatches = async () => {
@@ -15,9 +19,10 @@ const ISportsMatchesPage: React.FC = () => {
       setLoading(true);
       const date = selectedDate.format('YYYY-MM-DD');
       const response = await isportsMatchApi.getMatches({ date });
-      
+
       if (response.success && response.data) {
         setMatches(response.data.matches);
+        setFilteredMatches(response.data.matches);
       } else {
         message.error(response.message || '加载失败');
       }
@@ -29,10 +34,51 @@ const ISportsMatchesPage: React.FC = () => {
     }
   };
 
+  // 搜索过滤
+  const handleSearch = () => {
+    let filtered = [...matches];
+
+    if (searchLeague) {
+      filtered = filtered.filter(m =>
+        m.leagueNameZhCn?.toLowerCase().includes(searchLeague.toLowerCase()) ||
+        m.leagueName?.toLowerCase().includes(searchLeague.toLowerCase())
+      );
+    }
+
+    if (searchHome) {
+      filtered = filtered.filter(m =>
+        m.homeNameZhCn?.toLowerCase().includes(searchHome.toLowerCase()) ||
+        m.homeName?.toLowerCase().includes(searchHome.toLowerCase())
+      );
+    }
+
+    if (searchAway) {
+      filtered = filtered.filter(m =>
+        m.awayNameZhCn?.toLowerCase().includes(searchAway.toLowerCase()) ||
+        m.awayName?.toLowerCase().includes(searchAway.toLowerCase())
+      );
+    }
+
+    setFilteredMatches(filtered);
+  };
+
+  // 重置搜索
+  const handleResetSearch = () => {
+    setSearchLeague('');
+    setSearchHome('');
+    setSearchAway('');
+    setFilteredMatches(matches);
+  };
+
   // 日期变化时重新加载
   useEffect(() => {
     loadMatches();
   }, [selectedDate]);
+
+  // 监听搜索条件变化
+  useEffect(() => {
+    handleSearch();
+  }, [searchLeague, searchHome, searchAway, matches]);
 
   // 表格列定义
   const columns = [
@@ -137,21 +183,55 @@ const ISportsMatchesPage: React.FC = () => {
       </p>
 
       <Card>
-        <Space style={{ marginBottom: 16 }} wrap>
-          <DatePicker
-            value={selectedDate}
-            onChange={(date) => date && setSelectedDate(date)}
-            format="YYYY-MM-DD"
-            placeholder="选择日期"
-          />
-          <span style={{ color: '#666' }}>
-            共 {matches.length} 场比赛
-          </span>
+        <Space direction="vertical" size="middle" style={{ width: '100%', marginBottom: 16 }}>
+          <Space wrap>
+            <DatePicker
+              value={selectedDate}
+              onChange={(date) => date && setSelectedDate(date)}
+              format="YYYY-MM-DD"
+              placeholder="选择日期"
+            />
+            <span style={{ color: '#666' }}>
+              共 {matches.length} 场比赛
+            </span>
+          </Space>
+
+          {/* 搜索条件 */}
+          <Space wrap>
+            <Input
+              placeholder="搜索联赛"
+              prefix={<SearchOutlined />}
+              value={searchLeague}
+              onChange={(e) => setSearchLeague(e.target.value)}
+              style={{ width: 200 }}
+              allowClear
+            />
+            <Input
+              placeholder="搜索主队"
+              prefix={<SearchOutlined />}
+              value={searchHome}
+              onChange={(e) => setSearchHome(e.target.value)}
+              style={{ width: 200 }}
+              allowClear
+            />
+            <Input
+              placeholder="搜索客队"
+              prefix={<SearchOutlined />}
+              value={searchAway}
+              onChange={(e) => setSearchAway(e.target.value)}
+              style={{ width: 200 }}
+              allowClear
+            />
+            <Button onClick={handleResetSearch}>重置</Button>
+            <span style={{ color: '#666' }}>
+              显示 {filteredMatches.length} / {matches.length} 场比赛
+            </span>
+          </Space>
         </Space>
 
         <Table
           columns={columns}
-          dataSource={matches}
+          dataSource={filteredMatches}
           rowKey="matchId"
           loading={loading}
           pagination={{
