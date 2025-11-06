@@ -123,13 +123,18 @@ function parseCrownDateTime(crownTime: string): string | undefined {
 
     const [, month, day, hour, minute, period] = match;
 
-    // 获取当前年份
+    // 获取当前年份和日期
     const now = new Date();
     let year = now.getFullYear();
-
-    // 如果月份小于当前月份，可能是明年的比赛
     const monthNum = parseInt(month);
-    if (monthNum < now.getMonth() + 1) {
+    const dayNum = parseInt(day);
+
+    // 构造今年的日期
+    const matchDate = new Date(year, monthNum - 1, dayNum);
+
+    // 如果比赛日期早于今天超过 30 天，认为是明年的比赛
+    const diffDays = (matchDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays < -30) {
       year += 1;
     }
 
@@ -142,7 +147,7 @@ function parseCrownDateTime(crownTime: string): string | undefined {
     }
 
     // 格式化为 ISO 字符串
-    const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${hourNum.toString().padStart(2, '0')}:${minute}:00`;
+    const dateStr = `${year}-${monthNum.toString().padStart(2, '0')}-${dayNum.toString().padStart(2, '0')} ${hourNum.toString().padStart(2, '0')}:${minute}:00`;
 
     return dateStr;
   } catch (error) {
@@ -400,35 +405,51 @@ async function main() {
   let fullyMatchedCount = 0;
 
   for (const match of matches) {
-    // 匹配联赛
-    const leagueMatch = await matchLeague(match.league);
+    try {
+      // 匹配联赛
+      const leagueMatch = await matchLeague(match.league);
 
-    // 匹配主队
-    const homeMatch = await matchTeam(match.home);
+      // 匹配主队
+      const homeMatch = await matchTeam(match.home);
 
-    // 匹配客队
-    const awayMatch = await matchTeam(match.away);
+      // 匹配客队
+      const awayMatch = await matchTeam(match.away);
 
-    // 解析时间
-    const parsedTime = parseCrownDateTime(match.datetime);
+      // 解析时间
+      const parsedTime = parseCrownDateTime(match.datetime);
 
-    // 存储到数据库
-    await crownMatchService.upsertMatch({
-      crownGid: match.gid,
-      crownLeague: match.league,
-      crownHome: match.home,
-      crownAway: match.away,
-      matchTime: parsedTime,
-      leagueMatched: leagueMatch.matched,
-      homeMatched: homeMatch.matched,
-      awayMatched: awayMatch.matched,
-      leagueAliasId: leagueMatch.id,
-      homeAliasId: homeMatch.id,
-      awayAliasId: awayMatch.id,
-      leagueMatchMethod: leagueMatch.method,
-      homeMatchMethod: homeMatch.method,
-      awayMatchMethod: awayMatch.method,
-    });
+      // 调试日志
+      if (savedCount < 3) {
+        console.log(`\n调试第 ${savedCount + 1} 场比赛:`);
+        console.log(`  GID: ${match.gid}`);
+        console.log(`  联赛: ${match.league}`);
+        console.log(`  主队: ${match.home}`);
+        console.log(`  客队: ${match.away}`);
+        console.log(`  原始时间: ${match.datetime}`);
+        console.log(`  解析时间: ${parsedTime}`);
+      }
+
+      // 存储到数据库
+      await crownMatchService.upsertMatch({
+        crownGid: match.gid,
+        crownLeague: match.league,
+        crownHome: match.home,
+        crownAway: match.away,
+        matchTime: parsedTime,
+        leagueMatched: leagueMatch.matched,
+        homeMatched: homeMatch.matched,
+        awayMatched: awayMatch.matched,
+        leagueAliasId: leagueMatch.id,
+        homeAliasId: homeMatch.id,
+        awayAliasId: awayMatch.id,
+        leagueMatchMethod: leagueMatch.method,
+        homeMatchMethod: homeMatch.method,
+        awayMatchMethod: awayMatch.method,
+      });
+    } catch (error) {
+      console.error(`❌ 存储比赛失败 (GID: ${match.gid}):`, error);
+      continue;
+    }
 
     savedCount++;
 
