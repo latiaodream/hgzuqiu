@@ -9,6 +9,13 @@ import { importLeaguesFromExcel, importTeamsFromExcel } from '../services/alias-
 import { pool } from '../models/database';
 import { ISportsClient } from '../services/isports-client';
 
+/**
+ * 生成 canonical_key
+ */
+function generateCanonicalKey(type: 'league' | 'team', name: string): string {
+  return nameAliasService.normalizeKey(type, name);
+}
+
 const router = Router();
 router.use(authenticateToken);
 
@@ -531,17 +538,19 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
 
         if (existing.rows.length === 0) {
           // 插入新记录
-          console.log(`    准备插入: isports_league_id=${league.id}, name=${league.name}`);
+          const canonicalKey = generateCanonicalKey('league', league.name);
+          console.log(`    准备插入: isports_league_id=${league.id}, name=${league.name}, canonical_key=${canonicalKey}`);
           const insertResult = await pool.query(`
             INSERT INTO league_aliases (
+              canonical_key,
               isports_league_id,
               name_zh_tw,
               name_en,
               created_at,
               updated_at
-            ) VALUES ($1, $2, $3, NOW(), NOW())
+            ) VALUES ($1, $2, $3, $4, NOW(), NOW())
             RETURNING id
-          `, [league.id, league.name, league.name]);
+          `, [canonicalKey, league.id, league.name, league.name]);
           leagueInserted++;
           console.log(`    ✅ 新增联赛: ${league.name} (新ID: ${insertResult.rows[0].id})`);
         } else {
@@ -589,17 +598,19 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
 
         if (existing.rows.length === 0) {
           // 插入新记录
-          console.log(`    准备插入: isports_team_id=${team.id}, name=${team.name}`);
+          const canonicalKey = generateCanonicalKey('team', team.name);
+          console.log(`    准备插入: isports_team_id=${team.id}, name=${team.name}, canonical_key=${canonicalKey}`);
           const insertResult = await pool.query(`
             INSERT INTO team_aliases (
+              canonical_key,
               isports_team_id,
               name_zh_tw,
               name_en,
               created_at,
               updated_at
-            ) VALUES ($1, $2, $3, NOW(), NOW())
+            ) VALUES ($1, $2, $3, $4, NOW(), NOW())
             RETURNING id
-          `, [team.id, team.name, team.name]);
+          `, [canonicalKey, team.id, team.name, team.name]);
           teamInserted++;
           console.log(`    ✅ 新增球队: ${team.name} (新ID: ${insertResult.rows[0].id})`);
         } else {
@@ -701,10 +712,11 @@ router.post('/import-from-crown', ensureAdmin, async (req, res) => {
 
         if (existing.rows.length === 0) {
           // 插入新记录
+          const canonicalKey = generateCanonicalKey('league', leagueName);
           await pool.query(`
-            INSERT INTO league_aliases (name_crown_zh_cn, created_at, updated_at)
-            VALUES ($1, NOW(), NOW())
-          `, [leagueName]);
+            INSERT INTO league_aliases (canonical_key, name_crown_zh_cn, created_at, updated_at)
+            VALUES ($1, $2, NOW(), NOW())
+          `, [canonicalKey, leagueName]);
           leagueInserted++;
         } else {
           leagueSkipped++;
@@ -728,10 +740,11 @@ router.post('/import-from-crown', ensureAdmin, async (req, res) => {
 
         if (existing.rows.length === 0) {
           // 插入新记录
+          const canonicalKey = generateCanonicalKey('team', teamName);
           await pool.query(`
-            INSERT INTO team_aliases (name_crown_zh_cn, created_at, updated_at)
-            VALUES ($1, NOW(), NOW())
-          `, [teamName]);
+            INSERT INTO team_aliases (canonical_key, name_crown_zh_cn, created_at, updated_at)
+            VALUES ($1, $2, NOW(), NOW())
+          `, [canonicalKey, teamName]);
           teamInserted++;
         } else {
           teamSkipped++;
