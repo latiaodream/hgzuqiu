@@ -160,21 +160,21 @@ function levenshteinDistance(s1: string, s2: string): number {
  * 匹配联赛名称（支持模糊匹配）
  * 优先使用 name_zh_cn（iSports 简体）匹配
  */
-async function matchLeague(crownName: string): Promise<{ matched: boolean; id?: number; similarity?: number }> {
+async function matchLeague(crownName: string): Promise<{ matched: boolean; id?: number; similarity?: number; method?: string }> {
   try {
     const allLeagues = await nameAliasService.getAllLeagues();
 
     // 1. 精确匹配 name_zh_cn（iSports 简体）
     for (const league of allLeagues) {
       if (league.name_zh_cn === crownName) {
-        return { matched: true, id: league.id, similarity: 1.0 };
+        return { matched: true, id: league.id, similarity: 1.0, method: 'exact_zh_cn' };
       }
     }
 
     // 2. 精确匹配 name_crown_zh_cn（皇冠简体）
     for (const league of allLeagues) {
       if (league.name_crown_zh_cn === crownName) {
-        return { matched: true, id: league.id, similarity: 1.0 };
+        return { matched: true, id: league.id, similarity: 1.0, method: 'exact_crown' };
       }
     }
 
@@ -183,7 +183,7 @@ async function matchLeague(crownName: string): Promise<{ matched: boolean; id?: 
     if (result && result.canonicalKey) {
       const league = await nameAliasService.getLeagueByKey(result.canonicalKey);
       if (league) {
-        return { matched: true, id: league.id, similarity: 1.0 };
+        return { matched: true, id: league.id, similarity: 1.0, method: 'alias' };
       }
     }
 
@@ -217,7 +217,7 @@ async function matchLeague(crownName: string): Promise<{ matched: boolean; id?: 
     }
 
     if (bestMatch) {
-      return { matched: true, id: bestMatch.league.id, similarity: bestMatch.score };
+      return { matched: true, id: bestMatch.league.id, similarity: bestMatch.score, method: 'fuzzy' };
     }
 
     return { matched: false };
@@ -230,21 +230,21 @@ async function matchLeague(crownName: string): Promise<{ matched: boolean; id?: 
  * 匹配球队名称（支持模糊匹配）
  * 优先使用 name_zh_cn（iSports 简体）匹配
  */
-async function matchTeam(crownName: string): Promise<{ matched: boolean; id?: number; similarity?: number }> {
+async function matchTeam(crownName: string): Promise<{ matched: boolean; id?: number; similarity?: number; method?: string }> {
   try {
     const allTeams = await nameAliasService.getAllTeams();
 
     // 1. 精确匹配 name_zh_cn（iSports 简体）
     for (const team of allTeams) {
       if (team.name_zh_cn === crownName) {
-        return { matched: true, id: team.id, similarity: 1.0 };
+        return { matched: true, id: team.id, similarity: 1.0, method: 'exact_zh_cn' };
       }
     }
 
     // 2. 精确匹配 name_crown_zh_cn（皇冠简体）
     for (const team of allTeams) {
       if (team.name_crown_zh_cn === crownName) {
-        return { matched: true, id: team.id, similarity: 1.0 };
+        return { matched: true, id: team.id, similarity: 1.0, method: 'exact_crown' };
       }
     }
 
@@ -253,7 +253,7 @@ async function matchTeam(crownName: string): Promise<{ matched: boolean; id?: nu
     if (result && result.canonicalKey) {
       const team = await nameAliasService.getTeamByKey(result.canonicalKey);
       if (team) {
-        return { matched: true, id: team.id, similarity: 1.0 };
+        return { matched: true, id: team.id, similarity: 1.0, method: 'alias' };
       }
     }
 
@@ -287,7 +287,7 @@ async function matchTeam(crownName: string): Promise<{ matched: boolean; id?: nu
     }
 
     if (bestMatch) {
-      return { matched: true, id: bestMatch.team.id, similarity: bestMatch.score };
+      return { matched: true, id: bestMatch.team.id, similarity: bestMatch.score, method: 'fuzzy' };
     }
 
     return { matched: false };
