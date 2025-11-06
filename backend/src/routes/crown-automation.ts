@@ -134,7 +134,6 @@ const filterMatchesByShowtype = (matches: any[], showtype: string) => {
 
     const todayStart = startOfDay(0);
     const tomorrowStart = startOfDay(1);
-    const dayAfterTomorrowStart = startOfDay(2);
 
     const isFinished = (match: any) => {
         const state = normalizeStateValue(match.state ?? match.status);
@@ -145,6 +144,19 @@ const filterMatchesByShowtype = (matches: any[], showtype: string) => {
         return finishedTokens.some((t) => period.includes(t));
     };
 
+    // 如果赛事已经标记了 showtype，优先使用标记进行过滤
+    const hasShowtypeTag = matches.some((m) => m.showtype || m.source_showtype);
+    if (hasShowtypeTag) {
+        return matches.filter((m) => {
+            const matchShowtype = m.showtype || m.source_showtype;
+            if (matchShowtype === showtype) {
+                return !isFinished(m);
+            }
+            return false;
+        });
+    }
+
+    // 如果没有 showtype 标记，使用时间和状态判断（兼容旧数据）
     if (showtype === 'live') {
         return matches.filter((m) => isLiveMatch(m));
     }
@@ -168,7 +180,8 @@ const filterMatchesByShowtype = (matches: any[], showtype: string) => {
             .filter((m) => {
                 const date = parseMatchDate(m);
                 if (date) {
-                    return date >= tomorrowStart && date < dayAfterTomorrowStart;
+                    // 早盘：明天及以后的比赛
+                    return date >= tomorrowStart;
                 }
                 const state = normalizeStateValue(m.state ?? m.status);
                 return state === 0;
