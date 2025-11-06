@@ -8,7 +8,6 @@ import { nameAliasService } from '../services/name-alias-service';
 import { importLeaguesFromExcel, importTeamsFromExcel } from '../services/alias-import-service';
 import { pool } from '../models/database';
 import { ISportsClient } from '../services/isports-client';
-import { pool } from '../models/database';
 
 const router = Router();
 router.use(authenticateToken);
