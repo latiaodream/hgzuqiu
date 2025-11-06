@@ -1334,10 +1334,17 @@ router.get('/matches-system', async (req: any, res) => {
                     const timestamp = fetcherData.timestamp || 0;
                     const age = Date.now() - timestamp;
 
-                    if (age < 10000) {
+                    console.log(`📂 检查数据文件: ${candidate.file}`);
+                    console.log(`   比赛数: ${matchCount}, 数据年龄: ${Math.floor(age / 1000)}秒`);
+
+                    // 放宽时间限制：5分钟内的数据都可以使用
+                    if (age < 300000) {
                         console.log(`✅ 使用独立抓取服务数据 (${matchCount} 场比赛, ${Math.max(0, Math.floor(age / 1000))}秒前)`);
                         const normalizedMatches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
+                        console.log(`   归一化后: ${normalizedMatches.length} 场比赛`);
+
                         let filteredMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
+                        console.log(`   过滤 ${showtype} 后: ${filteredMatches.length} 场比赛`);
 
                         // 如果是滚球且过滤后为空，则回退到直接抓取皇冠数据，确保有实时滚球
                         if (String(showtype) === 'live' && filteredMatches.length === 0) {
