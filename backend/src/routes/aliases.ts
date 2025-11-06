@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import XLSX from 'xlsx';
 import { authenticateToken } from '../middleware/auth';
 import { nameAliasService } from '../services/name-alias-service';
 import { importLeaguesFromExcel, importTeamsFromExcel } from '../services/alias-import-service';
@@ -301,8 +302,8 @@ router.get('/leagues/export-untranslated', ensureAdmin, async (req, res) => {
   try {
     console.log('📤 导出未翻译的联赛...');
 
-    const leagues = await nameAliasService.listLeagueAliases();
-    const untranslated = leagues.filter(league => !league.name_zh_cn || league.name_zh_cn.trim() === '');
+    const leagues = await nameAliasService.getAllLeagues();
+    const untranslated = leagues.filter(league => !league.nameZhCn || league.nameZhCn.trim() === '');
 
     if (untranslated.length === 0) {
       return res.status(404).json({
@@ -313,7 +314,7 @@ router.get('/leagues/export-untranslated', ensureAdmin, async (req, res) => {
 
     // 创建 Excel 数据
     const data = untranslated.map(league => [
-      league.name_en || '',
+      league.nameEn || '',
       '', // 空的简体中文列，等待填写
     ]);
 
@@ -344,8 +345,8 @@ router.get('/teams/export-untranslated', ensureAdmin, async (req, res) => {
   try {
     console.log('📤 导出未翻译的球队...');
 
-    const teams = await nameAliasService.listTeamAliases();
-    const untranslated = teams.filter(team => !team.name_zh_cn || team.name_zh_cn.trim() === '');
+    const teams = await nameAliasService.getAllTeams();
+    const untranslated = teams.filter(team => !team.nameZhCn || team.nameZhCn.trim() === '');
 
     if (untranslated.length === 0) {
       return res.status(404).json({
@@ -356,7 +357,7 @@ router.get('/teams/export-untranslated', ensureAdmin, async (req, res) => {
 
     // 创建 Excel 数据
     const data = untranslated.map(team => [
-      team.name_en || '',
+      team.nameEn || '',
       '', // 空的简体中文列，等待填写
     ]);
 
