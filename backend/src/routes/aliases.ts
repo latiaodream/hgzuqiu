@@ -527,9 +527,12 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
           [league.id]
         );
 
+        console.log(`    查询结果: ${existing.rows.length} 条记录`);
+
         if (existing.rows.length === 0) {
           // 插入新记录
-          await pool.query(`
+          console.log(`    准备插入: isports_league_id=${league.id}, name=${league.name}`);
+          const insertResult = await pool.query(`
             INSERT INTO league_aliases (
               isports_league_id,
               name_zh_tw,
@@ -537,12 +540,14 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
               created_at,
               updated_at
             ) VALUES ($1, $2, $3, NOW(), NOW())
+            RETURNING id
           `, [league.id, league.name, league.name]);
           leagueInserted++;
-          console.log(`    ✅ 新增联赛: ${league.name}`);
+          console.log(`    ✅ 新增联赛: ${league.name} (新ID: ${insertResult.rows[0].id})`);
         } else {
           // 更新现有记录（如果名称为空）
           const row = existing.rows[0];
+          console.log(`    已存在记录: id=${row.id}, name_zh_tw=${row.name_zh_tw}, name_en=${row.name_en}`);
           if (!row.name_zh_tw && !row.name_en) {
             await pool.query(`
               UPDATE league_aliases
@@ -558,6 +563,7 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
         }
       } catch (error: any) {
         console.error(`❌ 处理联赛失败: ${league.name}`, error);
+        console.error(`   错误详情:`, error.stack);
       }
     }
 
@@ -579,9 +585,12 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
           [team.id]
         );
 
+        console.log(`    查询结果: ${existing.rows.length} 条记录`);
+
         if (existing.rows.length === 0) {
           // 插入新记录
-          await pool.query(`
+          console.log(`    准备插入: isports_team_id=${team.id}, name=${team.name}`);
+          const insertResult = await pool.query(`
             INSERT INTO team_aliases (
               isports_team_id,
               name_zh_tw,
@@ -589,12 +598,14 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
               created_at,
               updated_at
             ) VALUES ($1, $2, $3, NOW(), NOW())
+            RETURNING id
           `, [team.id, team.name, team.name]);
           teamInserted++;
-          console.log(`    ✅ 新增球队: ${team.name}`);
+          console.log(`    ✅ 新增球队: ${team.name} (新ID: ${insertResult.rows[0].id})`);
         } else {
           // 更新现有记录（如果名称为空）
           const row = existing.rows[0];
+          console.log(`    已存在记录: id=${row.id}, name_zh_tw=${row.name_zh_tw}, name_en=${row.name_en}`);
           if (!row.name_zh_tw && !row.name_en) {
             await pool.query(`
               UPDATE team_aliases
@@ -610,6 +621,7 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
         }
       } catch (error: any) {
         console.error(`❌ 处理球队失败: ${team.name}`, error);
+        console.error(`   错误详情:`, error.stack);
       }
     }
 
