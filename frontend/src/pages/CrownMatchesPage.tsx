@@ -16,7 +16,7 @@ const CrownMatchesPage: React.FC = () => {
     total: 0,
   });
   const [filterType, setFilterType] = useState<string>('all');
-  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs().add(1, 'day')); // 默认明天（皇冠早盘数据从明天开始）
+  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs()); // 默认今天
 
   // 加载赛事数据
   const loadMatches = async (page: number = 1, pageSize: number = 50) => {
@@ -179,7 +179,7 @@ const CrownMatchesPage: React.FC = () => {
     <div style={{ padding: '24px' }}>
       <h1>赛事记录</h1>
       <p style={{ color: '#666', marginBottom: '24px' }}>
-        皇冠早盘赛事数据及匹配状态（早盘数据从明天开始，可按日期查询）
+        皇冠赛事数据及匹配状态（包含今日赛事和早盘赛事，可按日期查询）
       </p>
 
       {/* 统计卡片 */}

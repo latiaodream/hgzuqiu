@@ -5,8 +5,9 @@ import { crownMatchService } from '../src/services/crown-match-service';
 import { parseStringPromise } from 'xml2js';
 
 /**
- * 从皇冠抓取早盘赛事并匹配到 iSports 别名库
- * - 抓取早盘足球赛事
+ * 从皇冠抓取赛事并匹配到 iSports 别名库
+ * - 抓取今日赛事 (showtype=today)
+ * - 抓取早盘赛事 (showtype=early)
  * - 提取联赛和球队的简体中文名称
  * - 匹配到 iSports 别名库的 name_crown_zh_cn 字段
  * - 统计匹配率
@@ -372,9 +373,23 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. 获取早盘赛事
+  // 2. 获取今日赛事
+  console.log('\n📥 获取今日赛事...');
+  const todayXml = await client.getGameList({
+    gtype: 'ft',        // 足球
+    showtype: 'today',  // 今日
+    rtype: 'r',         // 让球盘
+    ltype: '3',
+    sorttype: 'L',
+    langx: 'zh-cn',     // 使用简体中文
+  });
+
+  const todayMatches = await parseCrownGameList(todayXml);
+  console.log(`✅ 今日赛事: ${todayMatches.length} 场`);
+
+  // 3. 获取早盘赛事
   console.log('\n📥 获取早盘赛事...');
-  const xml = await client.getGameList({
+  const earlyXml = await client.getGameList({
     gtype: 'ft',        // 足球
     showtype: 'early',  // 早盘
     rtype: 'r',         // 让球盘
@@ -383,19 +398,23 @@ async function main() {
     langx: 'zh-cn',     // 使用简体中文
   });
 
-  const matches = await parseCrownGameList(xml);
-  console.log(`✅ 获取到 ${matches.length} 场早盘比赛`);
+  const earlyMatches = await parseCrownGameList(earlyXml);
+  console.log(`✅ 早盘赛事: ${earlyMatches.length} 场`);
+
+  // 4. 合并所有赛事
+  const matches = [...todayMatches, ...earlyMatches];
+  console.log(`\n📊 总共获取到 ${matches.length} 场比赛 (今日: ${todayMatches.length}, 早盘: ${earlyMatches.length})`);
 
   // 调试：打印前 3 场比赛
   if (matches.length > 0) {
     console.log('\n📋 示例比赛（前 3 场）:');
     matches.slice(0, 3).forEach((m, i) => {
-      console.log(`  [${i + 1}] ${m.league} | ${m.home} vs ${m.away}`);
+      console.log(`  [${i + 1}] ${m.league} | ${m.home} vs ${m.away} | ${m.datetime}`);
     });
   }
 
   if (matches.length === 0) {
-    console.log('⚠️  没有早盘赛事，结束');
+    console.log('⚠️  没有找到赛事数据，结束');
     return;
   }
 
