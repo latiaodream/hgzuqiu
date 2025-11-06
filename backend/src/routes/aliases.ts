@@ -303,7 +303,7 @@ router.get('/leagues/export-untranslated', ensureAdmin, async (req, res) => {
     console.log('📤 导出未翻译的联赛...');
 
     const leagues = await nameAliasService.getAllLeagues();
-    const untranslated = leagues.filter(league => !league.nameZhCn || league.nameZhCn.trim() === '');
+    const untranslated = leagues.filter(league => !league.name_zh_cn || league.name_zh_cn.trim() === '');
 
     if (untranslated.length === 0) {
       return res.status(404).json({
@@ -314,7 +314,7 @@ router.get('/leagues/export-untranslated', ensureAdmin, async (req, res) => {
 
     // 创建 Excel 数据
     const data = untranslated.map(league => [
-      league.nameEn || '',
+      league.name_en || '',
       '', // 空的简体中文列，等待填写
     ]);
 
@@ -346,7 +346,7 @@ router.get('/teams/export-untranslated', ensureAdmin, async (req, res) => {
     console.log('📤 导出未翻译的球队...');
 
     const teams = await nameAliasService.getAllTeams();
-    const untranslated = teams.filter(team => !team.nameZhCn || team.nameZhCn.trim() === '');
+    const untranslated = teams.filter(team => !team.name_zh_cn || team.name_zh_cn.trim() === '');
 
     if (untranslated.length === 0) {
       return res.status(404).json({
@@ -357,7 +357,7 @@ router.get('/teams/export-untranslated', ensureAdmin, async (req, res) => {
 
     // 创建 Excel 数据
     const data = untranslated.map(team => [
-      team.nameEn || '',
+      team.name_en || '',
       '', // 空的简体中文列，等待填写
     ]);
 
