@@ -171,8 +171,10 @@ class CrownMatchService {
     leagueMatched?: boolean;
     homeMatched?: boolean;
     awayMatched?: boolean;
+    startDate?: string;  // YYYY-MM-DD
+    endDate?: string;    // YYYY-MM-DD
   } = {}): Promise<{ matches: CrownMatch[]; total: number }> {
-    const { page = 1, pageSize = 50, leagueMatched, homeMatched, awayMatched } = options;
+    const { page = 1, pageSize = 50, leagueMatched, homeMatched, awayMatched, startDate, endDate } = options;
     const offset = (page - 1) * pageSize;
 
     const whereClauses: string[] = [];
@@ -194,6 +196,17 @@ class CrownMatchService {
       params.push(awayMatched);
     }
 
+    // 日期范围筛选
+    if (startDate) {
+      whereClauses.push(`match_time >= $${paramIndex++}::date`);
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      whereClauses.push(`match_time < ($${paramIndex++}::date + interval '1 day')`);
+      params.push(endDate);
+    }
+
     const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
     // 获取总数
@@ -205,7 +218,7 @@ class CrownMatchService {
     const dataSql = `
       SELECT * FROM crown_matches
       ${whereClause}
-      ORDER BY match_time DESC, id DESC
+      ORDER BY match_time ASC, id ASC
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
     const dataResult = await query(dataSql, [...params, pageSize, offset]);

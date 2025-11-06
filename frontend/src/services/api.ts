@@ -545,6 +545,8 @@ export const crownMatchApi = {
     leagueMatched?: boolean;
     homeMatched?: boolean;
     awayMatched?: boolean;
+    startDate?: string;
+    endDate?: string;
   }): Promise<ApiResponse<{
     matches: any[];
     total: number;

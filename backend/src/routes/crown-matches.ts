@@ -20,6 +20,8 @@ router.get('/', ensureAdmin, async (req, res) => {
     const leagueMatched = req.query.leagueMatched === 'true' ? true : req.query.leagueMatched === 'false' ? false : undefined;
     const homeMatched = req.query.homeMatched === 'true' ? true : req.query.homeMatched === 'false' ? false : undefined;
     const awayMatched = req.query.awayMatched === 'true' ? true : req.query.awayMatched === 'false' ? false : undefined;
+    const startDate = req.query.startDate as string;
+    const endDate = req.query.endDate as string;
 
     const result = await crownMatchService.listMatches({
       page,
@@ -27,6 +29,8 @@ router.get('/', ensureAdmin, async (req, res) => {
       leagueMatched,
       homeMatched,
       awayMatched,
+      startDate,
+      endDate,
     });
 
     res.json({

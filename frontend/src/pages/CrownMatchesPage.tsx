@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, Statistic, Row, Col, Select, Button, message, Tag, Space, Modal } from 'antd';
+import { Table, Card, Statistic, Row, Col, Select, Button, message, Tag, Space, Modal, DatePicker } from 'antd';
 import { ReloadOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { crownMatchApi } from '../services/api';
-import dayjs from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 
 const { Option } = Select;
 
@@ -16,14 +16,20 @@ const CrownMatchesPage: React.FC = () => {
     total: 0,
   });
   const [filterType, setFilterType] = useState<string>('all');
+  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs()); // 默认今天
 
   // 加载赛事数据
   const loadMatches = async (page: number = 1, pageSize: number = 50) => {
     try {
       setLoading(true);
-      
-      const params: any = { page, pageSize };
-      
+
+      const params: any = {
+        page,
+        pageSize,
+        startDate: selectedDate.format('YYYY-MM-DD'),
+        endDate: selectedDate.format('YYYY-MM-DD'),
+      };
+
       // 根据筛选类型设置参数
       if (filterType === 'fully-matched') {
         params.leagueMatched = true;
@@ -35,7 +41,7 @@ const CrownMatchesPage: React.FC = () => {
       }
 
       const response = await crownMatchApi.getMatches(params);
-      
+
       if (response.success && response.data) {
         setMatches(response.data.matches);
         setPagination({
@@ -87,7 +93,7 @@ const CrownMatchesPage: React.FC = () => {
   useEffect(() => {
     loadMatches(1, pagination.pageSize);
     loadStats();
-  }, [filterType]);
+  }, [filterType, selectedDate]);
 
   const handleTableChange = (newPagination: any) => {
     loadMatches(newPagination.current, newPagination.pageSize);
@@ -173,7 +179,7 @@ const CrownMatchesPage: React.FC = () => {
     <div style={{ padding: '24px' }}>
       <h1>赛事记录</h1>
       <p style={{ color: '#666', marginBottom: '24px' }}>
-        皇冠未来十天的比赛数据及匹配状态
+        皇冠赛事数据及匹配状态（默认显示今日赛事，可按日期查询）
       </p>
 
       {/* 统计卡片 */}
@@ -232,7 +238,19 @@ const CrownMatchesPage: React.FC = () => {
 
       {/* 操作栏 */}
       <Card style={{ marginBottom: '16px' }}>
-        <Space>
+        <Space wrap>
+          <DatePicker
+            value={selectedDate}
+            onChange={(date) => {
+              if (date) {
+                setSelectedDate(date);
+              }
+            }}
+            format="YYYY-MM-DD"
+            placeholder="选择日期"
+            style={{ width: 200 }}
+            allowClear={false}
+          />
           <Select
             value={filterType}
             onChange={setFilterType}
@@ -271,6 +289,18 @@ const CrownMatchesPage: React.FC = () => {
           pagination={pagination}
           onChange={handleTableChange}
           scroll={{ x: 1200 }}
+          locale={{
+            emptyText: (
+              <div style={{ padding: '40px 0' }}>
+                <p style={{ fontSize: '16px', color: '#999', marginBottom: '8px' }}>
+                  {selectedDate.format('YYYY-MM-DD')} 暂无赛事数据
+                </p>
+                <p style={{ fontSize: '14px', color: '#ccc' }}>
+                  请运行 <code>npm run aliases:import-crown</code> 导入皇冠数据
+                </p>
+              </div>
+            ),
+          }}
         />
       </Card>
     </div>
