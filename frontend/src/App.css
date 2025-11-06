@@ -1838,3 +1838,228 @@ body {
     padding: 16px !important;
   }
 }
+
+/* ========================================
+   V2 横向 6 列布局样式
+   ======================================== */
+
+/* 卡片容器 */
+.compact-match-card-v2 {
+  background: #ffffff;
+  border: 1px solid rgba(22, 119, 255, 0.2);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.compact-match-card-v2:hover {
+  border-color: rgba(22, 119, 255, 0.4);
+  box-shadow: 0 2px 8px rgba(22, 119, 255, 0.1);
+}
+
+/* 卡片头部：主队 + 联赛(时间) + 客队 */
+.match-header-v2 {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%);
+  border-bottom: 1px solid rgba(22, 119, 255, 0.15);
+  gap: 16px;
+}
+
+.match-header-v2 .header-home {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  text-align: right;
+}
+
+.match-header-v2 .header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.match-header-v2 .header-league {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1677ff;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.match-header-v2 .header-time {
+  font-size: 11px;
+  color: #666;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.match-header-v2 .header-away {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  text-align: left;
+}
+
+/* 盘口主体：6列横向排列 */
+.match-body-v2 {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  border-top: 1px solid rgba(22, 119, 255, 0.1);
+}
+
+.market-column {
+  border-right: 1px solid rgba(22, 119, 255, 0.1);
+  padding: 6px;
+  min-height: 60px;
+}
+
+.market-column:last-child {
+  border-right: none;
+}
+
+.market-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  text-align: center;
+  padding: 2px 6px;
+  background: #f5f5f5;
+  border-radius: 3px;
+  margin-bottom: 4px;
+}
+
+/* 独赢横向显示 */
+.moneyline-row-v2 {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.moneyline-row-v2 .odds-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  padding: 2px 4px;
+  border: 1px solid rgba(22, 119, 255, 0.15);
+  border-radius: 3px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  text-decoration: underline;
+  flex: 1;
+  text-align: center;
+}
+
+.moneyline-row-v2 .odds-value:hover {
+  background: #1677ff;
+  color: white;
+  border-color: #1677ff;
+  text-decoration: none;
+}
+
+.moneyline-row-v2 .odds-value.empty {
+  color: #ccc;
+  cursor: default;
+  text-decoration: none;
+  border-color: #f0f0f0;
+  background: #fafafa;
+}
+
+.moneyline-row-v2 .odds-value.empty:hover {
+  background: #fafafa;
+  color: #ccc;
+  border-color: #f0f0f0;
+}
+
+/* 盘口线表格 */
+.lines-table-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.line-row-v2 {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.line-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #666;
+  background: #f5f5f5;
+  padding: 4px 6px;
+  border-radius: 3px;
+  min-width: 45px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.line-row-v2 .odds-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  padding: 4px 8px;
+  border: 1px solid rgba(22, 119, 255, 0.15);
+  border-radius: 4px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  text-decoration: underline;
+  flex: 1;
+  text-align: center;
+}
+
+.line-row-v2 .odds-value:hover {
+  background: #1677ff;
+  color: white;
+  border-color: #1677ff;
+  text-decoration: none;
+}
+
+.line-row-v2 .odds-value.empty {
+  color: #ccc;
+  cursor: default;
+  text-decoration: none;
+  border-color: #f0f0f0;
+  background: #fafafa;
+}
+
+.line-row-v2 .odds-value.empty:hover {
+  background: #fafafa;
+  color: #ccc;
+  border-color: #f0f0f0;
+}
+
+/* 无盘口提示 */
+.no-odds {
+  font-size: 11px;
+  color: #999;
+  text-align: center;
+  padding: 6px;
+}
+
+/* 移动端响应式 */
+@media (max-width: 768px) {
+  .match-body-v2 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .market-column:nth-child(3) {
+    border-right: none;
+  }
+
+  .market-column:nth-child(4),
+  .market-column:nth-child(5),
+  .market-column:nth-child(6) {
+    border-top: 1px solid rgba(22, 119, 255, 0.1);
+  }
+}

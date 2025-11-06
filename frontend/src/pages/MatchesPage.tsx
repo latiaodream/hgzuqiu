@@ -265,20 +265,86 @@ const MatchesPage: React.FC = () => {
   }, [mode, useSSE, showtype, gtype]);
 
   const filtered = useMemo(() => {
-    // 首先过滤掉没有赔率的比赛
+    const isValidOdds = (value: any) => {
+      if (value === undefined || value === null) return false;
+      const str = String(value).trim();
+      if (str === '' || str === '0' || str === '0.00') return false;
+      if (/^[-+]?0(?:\.0+)?$/.test(str)) return false;
+      return true;
+    };
+
+    const checkMoneyline = (ml?: { home?: any; draw?: any; away?: any }) =>
+      !!ml && (isValidOdds(ml.home) || isValidOdds(ml.draw) || isValidOdds(ml.away));
+
+    const collectLines = (
+      source?: {
+        handicap?: { line?: string; home?: any; away?: any };
+        handicapLines?: Array<{ line?: string; home?: any; away?: any }>;
+        ou?: { line?: string; over?: any; under?: any };
+        overUnderLines?: Array<{ line?: string; over?: any; under?: any }>;
+      } | null,
+    ) => {
+      if (!source) return { handicap: [] as Array<{ home?: any; away?: any }>, overUnder: [] as Array<{ over?: any; under?: any }> };
+      const handicap: Array<{ line?: string; home?: any; away?: any }> = [];
+      const overUnder: Array<{ line?: string; over?: any; under?: any }> = [];
+
+      if (Array.isArray(source.handicapLines)) {
+        handicap.push(...source.handicapLines);
+      }
+      if (source.handicap) {
+        handicap.push(source.handicap);
+      }
+      if (Array.isArray(source.overUnderLines)) {
+        overUnder.push(...source.overUnderLines);
+      }
+      if (source.ou) {
+        overUnder.push(source.ou);
+      }
+
+      return { handicap, overUnder };
+    };
+
+    // 首先过滤掉没有赔率的比赛（兼容 legacy 字段、raw 以及新 markets 结构）
     const matchesWithOdds = matches.filter((m: any) => {
-      // 检查是否有任何有效赔率数据（不为 '0' 或空）
-      const isValidOdds = (value: any) => {
-        if (!value) return false;
-        const str = String(value).trim();
-        return str !== '' && str !== '0' && str !== '0.00';
-      };
+      const markets = m.markets || {};
+      const raw = m.raw || {};
 
-      const hasHandicap = isValidOdds(m.IOR_REH) || isValidOdds(m.IOR_REC);
-      const hasOverUnder = isValidOdds(m.IOR_ROUH) || isValidOdds(m.IOR_ROUC);
-      const hasEuropeOdds = isValidOdds(m.IOR_RMH) || isValidOdds(m.IOR_RMC) || isValidOdds(m.IOR_RMN);
+      const hasLegacyHandicap = isValidOdds(m.IOR_REH) || isValidOdds(m.IOR_REC);
+      const hasLegacyOU = isValidOdds(m.IOR_ROUH) || isValidOdds(m.IOR_ROUC);
+      const hasLegacyMoneyline = isValidOdds(m.IOR_RMH) || isValidOdds(m.IOR_RMC) || isValidOdds(m.IOR_RMN);
 
-      return hasHandicap || hasOverUnder || hasEuropeOdds;
+      const hasRawHandicap = isValidOdds(raw.IOR_REH) || isValidOdds(raw.IOR_REC);
+      const hasRawOU = isValidOdds(raw.IOR_ROUH) || isValidOdds(raw.IOR_ROUC);
+      const hasRawMoneyline = isValidOdds(raw.IOR_RMH) || isValidOdds(raw.IOR_RMC) || isValidOdds(raw.IOR_RMN);
+
+      const hasMarketMoneyline =
+        checkMoneyline(markets.moneyline || markets.moneyLine) ||
+        checkMoneyline(markets.full?.moneyline || markets.full?.moneyLine) ||
+        checkMoneyline(markets.half?.moneyline || markets.half?.moneyLine);
+
+      const marketHandicapSources = [
+        collectLines(markets),
+        collectLines(markets.full),
+        collectLines(markets.half),
+      ];
+      const hasMarketHandicap = marketHandicapSources.some(({ handicap }) =>
+        handicap.some(line => isValidOdds(line?.home) || isValidOdds(line?.away)),
+      );
+      const hasMarketOU = marketHandicapSources.some(({ overUnder }) =>
+        overUnder.some(line => isValidOdds(line?.over) || isValidOdds(line?.under)),
+      );
+
+      return (
+        hasLegacyHandicap ||
+        hasLegacyOU ||
+        hasLegacyMoneyline ||
+        hasRawHandicap ||
+        hasRawOU ||
+        hasRawMoneyline ||
+        hasMarketMoneyline ||
+        hasMarketHandicap ||
+        hasMarketOU
+      );
     });
 
     // 然后根据搜索关键词过滤
@@ -661,6 +727,228 @@ const MatchesPage: React.FC = () => {
     return renderMoneylineContent(match, ml, 'half');
   };
 
+  // V2 渲染函数：横向显示独赢赔率
+  const renderMoneylineV2 = (match: any, ml?: { home?: string; draw?: string; away?: string }, scope: MarketScope = 'full') => {
+    if (!ml || (!ml.home && !ml.draw && !ml.away)) {
+      return <div className="no-odds">-</div>;
+    }
+
+    const betType = scope === 'half' ? '半场独赢' : '独赢';
+    const scopeLabel = scope === 'half' ? '[半场独赢]' : '[全场]';
+    const baseWtype = scope === 'half' ? 'HRM' : 'RM';
+    const homeRtype = scope === 'half' ? 'HRMH' : 'RMH';
+    const drawRtype = scope === 'half' ? 'HRMN' : 'RMN';
+    const awayRtype = scope === 'half' ? 'HRMC' : 'RMC';
+
+    return (
+      <div className="moneyline-row-v2">
+        <span
+          className={`odds-value ${!ml.home ? 'empty' : ''}`}
+          onClick={() => ml.home && openBetModal(match, {
+            bet_type: betType,
+            bet_option: '主队',
+            odds: ml.home as string,
+            label: `${scopeLabel} ${(match.home || '主队')} 胜 @${ml.home}`,
+            market_category: 'moneyline',
+            market_scope: scope,
+            market_side: 'home',
+            market_wtype: baseWtype,
+            market_rtype: homeRtype,
+            market_chose_team: 'H',
+          })}
+        >
+          {ml.home || '-'}
+        </span>
+        <span
+          className={`odds-value ${!ml.draw ? 'empty' : ''}`}
+          onClick={() => ml.draw && openBetModal(match, {
+            bet_type: betType,
+            bet_option: '和局',
+            odds: ml.draw as string,
+            label: `${scopeLabel} 和局 @${ml.draw}`,
+            market_category: 'moneyline',
+            market_scope: scope,
+            market_side: 'draw',
+            market_wtype: baseWtype,
+            market_rtype: drawRtype,
+            market_chose_team: 'N',
+          })}
+        >
+          {ml.draw || '-'}
+        </span>
+        <span
+          className={`odds-value ${!ml.away ? 'empty' : ''}`}
+          onClick={() => ml.away && openBetModal(match, {
+            bet_type: betType,
+            bet_option: '客队',
+            odds: ml.away as string,
+            label: `${scopeLabel} ${(match.away || '客队')} 胜 @${ml.away}`,
+            market_category: 'moneyline',
+            market_scope: scope,
+            market_side: 'away',
+            market_wtype: baseWtype,
+            market_rtype: awayRtype,
+            market_chose_team: 'C',
+          })}
+        >
+          {ml.away || '-'}
+        </span>
+      </div>
+    );
+  };
+
+  // V2 渲染函数：让球盘口（多行）
+  const renderHandicapV2 = (
+    match: any,
+    lines?: Array<{ line?: string; home?: string; away?: string }>,
+    scope: MarketScope = 'full',
+  ) => {
+    if (!lines || lines.length === 0) {
+      return <div className="no-odds">-</div>;
+    }
+
+    return (
+      <div className="lines-table-v2">
+        {lines.map((data, index) => {
+          const line = data.line || '0';
+          const lineNum = parseFloat(line);
+          const absLine = Math.abs(lineNum);
+          const lineWtype = (data as any).wtype as string | undefined;
+          const homeRtype = (data as any).home_rtype as string | undefined;
+          const awayRtype = (data as any).away_rtype as string | undefined;
+          const homeChoseTeam = (((data as any).home_chose_team as string | undefined) || 'H') as 'H' | 'C' | 'N';
+          const awayChoseTeam = (((data as any).away_chose_team as string | undefined) || 'C') as 'H' | 'C' | 'N';
+
+          let formattedAbsLine = String(absLine);
+          if (line.includes('/')) {
+            formattedAbsLine = line.replace(/^-/, '');
+          }
+
+          const homeHandicap = lineNum >= 0 ? `+${formattedAbsLine}` : `-${formattedAbsLine}`;
+          const betType = scope === 'half' ? '半场让球' : '让球';
+          const labelPrefix = scope === 'half' ? '[半场让球]' : '[让球]';
+          const marketLine = typeof data.line === 'string' ? data.line : line;
+
+          return (
+            <div key={index} className="line-row-v2">
+              <span className="line-label">{homeHandicap}</span>
+              <span
+                className={`odds-value ${!data.home ? 'empty' : ''}`}
+                onClick={() => data.home && openBetModal(match, {
+                  bet_type: betType,
+                  bet_option: `${match.home || '主队'} ${homeHandicap ? `(${homeHandicap})` : ''}`,
+                  odds: data.home as string,
+                  label: `${labelPrefix} ${(match.home || '主队')} ${homeHandicap ? `(${homeHandicap})` : ''} @${data.home}`,
+                  market_category: 'handicap',
+                  market_scope: scope,
+                  market_side: 'home',
+                  market_line: marketLine,
+                  market_index: index,
+                  market_wtype: lineWtype,
+                  market_rtype: homeRtype,
+                  market_chose_team: homeChoseTeam,
+                })}
+              >
+                {data.home || '-'}
+              </span>
+              <span
+                className={`odds-value ${!data.away ? 'empty' : ''}`}
+                onClick={() => data.away && openBetModal(match, {
+                  bet_type: betType,
+                  bet_option: `${match.away || '客队'} ${homeHandicap ? `(${homeHandicap})` : ''}`,
+                  odds: data.away as string,
+                  label: `${labelPrefix} ${(match.away || '客队')} ${homeHandicap ? `(${homeHandicap})` : ''} @${data.away}`,
+                  market_category: 'handicap',
+                  market_scope: scope,
+                  market_side: 'away',
+                  market_line: marketLine,
+                  market_index: index,
+                  market_wtype: lineWtype,
+                  market_rtype: awayRtype,
+                  market_chose_team: awayChoseTeam,
+                })}
+              >
+                {data.away || '-'}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // V2 渲染函数：大小球盘口（多行）
+  const renderOverUnderV2 = (
+    match: any,
+    lines?: Array<{ line?: string; over?: string; under?: string }>,
+    scope: MarketScope = 'full',
+  ) => {
+    if (!lines || lines.length === 0) {
+      return <div className="no-odds">-</div>;
+    }
+
+    return (
+      <div className="lines-table-v2">
+        {lines.map((data, index) => {
+          const line = data.line || '';
+          const lineMeta = data as any;
+          const lineWtype = lineMeta.wtype as string | undefined;
+          const overRtype = lineMeta.over_rtype as string | undefined;
+          const underRtype = lineMeta.under_rtype as string | undefined;
+          const overChoseTeam = ((lineMeta.over_chose_team as string | undefined) || 'C') as 'H' | 'C' | 'N';
+          const underChoseTeam = ((lineMeta.under_chose_team as string | undefined) || 'H') as 'H' | 'C' | 'N';
+          const betType = scope === 'half' ? '半场大小球' : '大小球';
+          const labelPrefix = scope === 'half' ? '[半场大小]' : '[大小]';
+          const marketLine = typeof data.line === 'string' ? data.line : line;
+
+          return (
+            <div key={index} className="line-row-v2">
+              <span className="line-label">{line}</span>
+              <span
+                className={`odds-value ${!data.over ? 'empty' : ''}`}
+                onClick={() => data.over && openBetModal(match, {
+                  bet_type: betType,
+                  bet_option: `大球${line ? `(${line})` : ''}`,
+                  odds: data.over as string,
+                  label: `${labelPrefix} 大球${line ? `(${line})` : ''} @${data.over}`,
+                  market_category: 'overunder',
+                  market_scope: scope,
+                  market_side: 'over',
+                  market_line: marketLine,
+                  market_index: index,
+                  market_wtype: lineWtype,
+                  market_rtype: overRtype,
+                  market_chose_team: overChoseTeam,
+                })}
+              >
+                {data.over || '-'}
+              </span>
+              <span
+                className={`odds-value ${!data.under ? 'empty' : ''}`}
+                onClick={() => data.under && openBetModal(match, {
+                  bet_type: betType,
+                  bet_option: `小球${line ? `(${line})` : ''}`,
+                  odds: data.under as string,
+                  label: `${labelPrefix} 小球${line ? `(${line})` : ''} @${data.under}`,
+                  market_category: 'overunder',
+                  market_scope: scope,
+                  market_side: 'under',
+                  market_line: marketLine,
+                  market_index: index,
+                  market_wtype: lineWtype,
+                  market_rtype: underRtype,
+                  market_chose_team: underChoseTeam,
+                })}
+              >
+                {data.under || '-'}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="matches-page" style={{ padding: isMobile ? 0 : undefined }}>
       {!isMobile && <Title level={2}>赛事中心</Title>}
@@ -775,49 +1063,54 @@ const MatchesPage: React.FC = () => {
                 return (
                   <div
                     key={`${m.gid || m.match_id || idx}-${idx}`}
-                    className={`compact-match-card ${isEvenRow ? 'even' : 'odd'} ${isMobile ? 'mobile' : ''}`}
+                    className="compact-match-card-v2"
                   >
-                    <div className="match-header-box">
-                      <div className="match-league">
-                        ☆ {leagueDisplay}
+                    {/* 卡片头部：主队 + 联赛(时间) + 客队 */}
+                    <div className="match-header-v2">
+                      <div className="header-home">{homeLabel}</div>
+                      <div className="header-center">
+                        <div className="header-league">⭐ {leagueDisplay}</div>
+                        <div className="header-time">{displaySub}</div>
                       </div>
-                      <div className="match-score-box">
-                        <span className="match-team home">{homeLabel}</span>
-                        <div className="match-score-center">
-                          <span className="score-main">{scoreMain}</span>
-                          <span className="score-sub">{displaySub}</span>
-                        </div>
-                        <span className="match-team away">{awayLabel}</span>
-                      </div>
+                      <div className="header-away">{awayLabel}</div>
                     </div>
 
-                    {/* 全场盘口 */}
-                    <div className="odds-section">
-                      {!isMobile && <div className="odds-section-title">全场</div>}
-                      <div className="odds-header-row">
-                        <div className="odds-header-cell">独赢</div>
-                        <div className="odds-header-cell">让球</div>
-                        <div className="odds-header-cell">大/小</div>
+                    {/* 盘口区：6列横向排列 */}
+                    <div className="match-body-v2">
+                      {/* 独赢(1/2/X) - 全场 */}
+                      <div className="market-column">
+                        <div className="market-title">独赢(1/2/X)</div>
+                        {renderMoneylineV2(m, markets.moneyline || markets.full?.moneyline, 'full')}
                       </div>
-                      <div className="odds-grid">
-                        <div className="odds-col">{renderMoneyline(m, markets)}</div>
-                        <div className="odds-col">{renderHandicap(m, markets.full?.handicapLines || (markets.handicap ? [markets.handicap] : []), 'full')}</div>
-                        <div className="odds-col">{renderOverUnder(m, markets.full?.overUnderLines || (markets.ou ? [markets.ou] : []), 'full')}</div>
-                      </div>
-                    </div>
 
-                    {/* 半场盘口 */}
-                    <div className="odds-section half">
-                      {!isMobile && <div className="odds-section-title">半场</div>}
-                      <div className="odds-header-row">
-                        <div className="odds-header-cell">独赢(半)</div>
-                        <div className="odds-header-cell">让球(半)</div>
-                        <div className="odds-header-cell">大/小(半)</div>
+                      {/* 让球(1/2) - 全场 */}
+                      <div className="market-column">
+                        <div className="market-title">让球(1/2)</div>
+                        {renderHandicapV2(m, markets.full?.handicapLines || (markets.handicap ? [markets.handicap] : []), 'full')}
                       </div>
-                      <div className="odds-grid">
-                        <div className="odds-col">{renderHalfMoneyline(m, markets.half?.moneyline)}</div>
-                        <div className="odds-col">{renderHandicap(m, markets.half?.handicapLines || (markets.half?.handicap ? [markets.half.handicap] : []), 'half')}</div>
-                        <div className="odds-col">{renderOverUnder(m, markets.half?.overUnderLines || (markets.half?.ou ? [markets.half.ou] : []), 'half')}</div>
+
+                      {/* 大小(O/U) - 全场 */}
+                      <div className="market-column">
+                        <div className="market-title">大小(O/U)</div>
+                        {renderOverUnderV2(m, markets.full?.overUnderLines || (markets.ou ? [markets.ou] : []), 'full')}
+                      </div>
+
+                      {/* 独赢(半场) */}
+                      <div className="market-column">
+                        <div className="market-title">独赢(半场)</div>
+                        {renderMoneylineV2(m, markets.half?.moneyline, 'half')}
+                      </div>
+
+                      {/* 让球(半场) */}
+                      <div className="market-column">
+                        <div className="market-title">让球(半场)</div>
+                        {renderHandicapV2(m, markets.half?.handicapLines || (markets.half?.handicap ? [markets.half.handicap] : []), 'half')}
+                      </div>
+
+                      {/* 大小(半场) */}
+                      <div className="market-column">
+                        <div className="market-title">大小(O/U半)</div>
+                        {renderOverUnderV2(m, markets.half?.overUnderLines || (markets.half?.ou ? [markets.half.ou] : []), 'half')}
                       </div>
                     </div>
                   </div>
