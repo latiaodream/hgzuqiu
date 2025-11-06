@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import { ISportsClient } from '../services/isports-client';
-import { pool } from '../config/database';
+import { pool } from '../models/database';
 
 const router = Router();
 router.use(authenticateToken);
