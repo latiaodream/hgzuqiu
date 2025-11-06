@@ -16,7 +16,7 @@ import {
   Col,
   Upload,
 } from 'antd';
-import { PlusOutlined, ReloadOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, UploadOutlined, DownloadOutlined, ImportOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -48,6 +48,7 @@ const AliasManagerPage: React.FC = () => {
   const [form] = Form.useForm();
   const [refreshFlag, setRefreshFlag] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -271,6 +272,88 @@ const AliasManagerPage: React.FC = () => {
     }
   };
 
+  // 从皇冠赛事导入
+  const handleImportFromCrown = async () => {
+    Modal.confirm({
+      title: '从皇冠赛事导入',
+      content: '将从 crown_matches 表中提取所有联赛和球队名称，并添加到别名表中（已存在的会跳过）。确认继续？',
+      onOk: async () => {
+        setImporting(true);
+        try {
+          const response = await aliasApi.importFromCrown();
+          if (response.success && response.data) {
+            Modal.success({
+              title: '导入成功',
+              content: (
+                <div>
+                  <p><strong>联赛：</strong></p>
+                  <p>总数: {response.data.leagues.total}</p>
+                  <p>新增: {response.data.leagues.inserted}</p>
+                  <p>跳过: {response.data.leagues.skipped}</p>
+                  <br />
+                  <p><strong>球队：</strong></p>
+                  <p>总数: {response.data.teams.total}</p>
+                  <p>新增: {response.data.teams.inserted}</p>
+                  <p>跳过: {response.data.teams.skipped}</p>
+                </div>
+              ),
+            });
+            setRefreshFlag((flag) => flag + 1);
+          } else {
+            message.error(response.error || '导入失败');
+          }
+        } catch (error: any) {
+          console.error('从皇冠赛事导入失败:', error);
+          message.error(error.message || '导入失败');
+        } finally {
+          setImporting(false);
+        }
+      },
+    });
+  };
+
+  // 从 iSports API 导入
+  const handleImportFromISports = async () => {
+    Modal.confirm({
+      title: '从 iSports API 导入',
+      content: '将从 iSports API 获取最近7天的赛事数据，提取所有联赛和球队名称，并添加到别名表中。确认继续？',
+      onOk: async () => {
+        setImporting(true);
+        try {
+          const response = await aliasApi.importFromISports();
+          if (response.success && response.data) {
+            Modal.success({
+              title: '导入成功',
+              content: (
+                <div>
+                  <p><strong>联赛：</strong></p>
+                  <p>总数: {response.data.leagues.total}</p>
+                  <p>新增: {response.data.leagues.inserted}</p>
+                  <p>更新: {response.data.leagues.updated}</p>
+                  <p>跳过: {response.data.leagues.skipped}</p>
+                  <br />
+                  <p><strong>球队：</strong></p>
+                  <p>总数: {response.data.teams.total}</p>
+                  <p>新增: {response.data.teams.inserted}</p>
+                  <p>更新: {response.data.teams.updated}</p>
+                  <p>跳过: {response.data.teams.skipped}</p>
+                </div>
+              ),
+            });
+            setRefreshFlag((flag) => flag + 1);
+          } else {
+            message.error(response.error || '导入失败');
+          }
+        } catch (error: any) {
+          console.error('从 iSports API 导入失败:', error);
+          message.error(error.message || '导入失败');
+        } finally {
+          setImporting(false);
+        }
+      },
+    });
+  };
+
   const columns: ColumnsType<AliasRecord> = useMemo(() => [
     {
       title: 'Canonical Key',
@@ -376,7 +459,21 @@ const AliasManagerPage: React.FC = () => {
         </Col>
         <Col flex="auto" />
         <Col>
-          <Space>
+          <Space wrap>
+            <Button
+              icon={<ImportOutlined />}
+              onClick={handleImportFromCrown}
+              loading={importing}
+            >
+              从皇冠赛事导入
+            </Button>
+            <Button
+              icon={<ImportOutlined />}
+              onClick={handleImportFromISports}
+              loading={importing}
+            >
+              从iSports导入
+            </Button>
             <Button
               icon={<DownloadOutlined />}
               onClick={handleDownloadSample}

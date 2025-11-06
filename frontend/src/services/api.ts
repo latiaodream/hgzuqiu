@@ -535,6 +535,20 @@ export const aliasApi = {
     apiClient.get('/aliases/teams/export-untranslated', {
       responseType: 'blob'
     }).then(res => res.data),
+
+  // 从皇冠赛事导入
+  importFromCrown: (): Promise<ApiResponse<{
+    leagues: { total: number; inserted: number; skipped: number };
+    teams: { total: number; inserted: number; skipped: number };
+  }>> =>
+    apiClient.post('/aliases/import-from-crown').then(res => res.data),
+
+  // 从 iSports API 导入
+  importFromISports: (): Promise<ApiResponse<{
+    leagues: { total: number; inserted: number; updated: number; skipped: number };
+    teams: { total: number; inserted: number; updated: number; skipped: number };
+  }>> =>
+    apiClient.post('/aliases/import-from-isports').then(res => res.data),
 };
 
 // 皇冠赛事 API

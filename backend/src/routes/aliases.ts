@@ -6,6 +6,9 @@ import XLSX from 'xlsx';
 import { authenticateToken } from '../middleware/auth';
 import { nameAliasService } from '../services/name-alias-service';
 import { importLeaguesFromExcel, importTeamsFromExcel } from '../services/alias-import-service';
+import { pool } from '../models/database';
+import { ISportsClient } from '../services/isports-client';
+import { pool } from '../models/database';
 
 const router = Router();
 router.use(authenticateToken);
@@ -379,6 +382,305 @@ router.get('/teams/export-untranslated', ensureAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || '导出失败',
+    });
+  }
+});
+
+/**
+ * 从 iSports API 导入联赛和球队名称
+ * POST /api/aliases/import-from-isports
+ */
+router.post('/import-from-isports', ensureAdmin, async (req, res) => {
+  try {
+    console.log('📥 开始从 iSports API 导入名称...');
+
+    const isportsClient = new ISportsClient(
+      process.env.ISPORTS_API_KEY || 'GvpziueL9ouzIJNj'
+    );
+
+    // 1. 获取最近7天的赛事（获取更多联赛和球队）
+    const dates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      dates.push(date.toISOString().split('T')[0]);
+    }
+
+    console.log(`📅 获取日期范围: ${dates[0]} ~ ${dates[dates.length - 1]}`);
+
+    // 2. 获取所有赛事
+    const allMatches: any[] = [];
+    for (const date of dates) {
+      try {
+        const matches = await isportsClient.getSchedule(date);
+        allMatches.push(...matches);
+        console.log(`  ${date}: ${matches.length} 场比赛`);
+      } catch (error: any) {
+        console.error(`  ${date}: 获取失败 - ${error.message}`);
+      }
+    }
+
+    console.log(`✅ 总共获取到 ${allMatches.length} 场比赛`);
+
+    // 3. 提取唯一的联赛和球队
+    const leaguesMap = new Map<string, { id: string; name: string }>();
+    const teamsMap = new Map<string, { id: string; name: string }>();
+
+    for (const match of allMatches) {
+      // 联赛
+      if (match.leagueId && match.leagueName) {
+        leaguesMap.set(match.leagueId, {
+          id: match.leagueId,
+          name: match.leagueName,
+        });
+      }
+
+      // 主队
+      if (match.homeId && match.homeName) {
+        teamsMap.set(match.homeId, {
+          id: match.homeId,
+          name: match.homeName,
+        });
+      }
+
+      // 客队
+      if (match.awayId && match.awayName) {
+        teamsMap.set(match.awayId, {
+          id: match.awayId,
+          name: match.awayName,
+        });
+      }
+    }
+
+    const leagues = Array.from(leaguesMap.values());
+    const teams = Array.from(teamsMap.values());
+
+    console.log(`✅ 找到 ${leagues.length} 个联赛，${teams.length} 个球队`);
+
+    // 4. 插入联赛（如果不存在）
+    let leagueInserted = 0;
+    let leagueUpdated = 0;
+    let leagueSkipped = 0;
+
+    for (const league of leagues) {
+      try {
+        // 检查是否已存在（通过 isports_league_id）
+        const existing = await pool.query(
+          'SELECT id, name_zh_tw, name_en FROM league_aliases WHERE isports_league_id = $1',
+          [league.id]
+        );
+
+        if (existing.rows.length === 0) {
+          // 插入新记录
+          await pool.query(`
+            INSERT INTO league_aliases (
+              isports_league_id,
+              name_zh_tw,
+              name_en,
+              created_at,
+              updated_at
+            ) VALUES ($1, $2, $3, NOW(), NOW())
+          `, [league.id, league.name, league.name]);
+          leagueInserted++;
+        } else {
+          // 更新现有记录（如果名称为空）
+          const row = existing.rows[0];
+          if (!row.name_zh_tw && !row.name_en) {
+            await pool.query(`
+              UPDATE league_aliases
+              SET name_zh_tw = $1, name_en = $2, updated_at = NOW()
+              WHERE id = $3
+            `, [league.name, league.name, row.id]);
+            leagueUpdated++;
+          } else {
+            leagueSkipped++;
+          }
+        }
+      } catch (error: any) {
+        console.error(`❌ 处理联赛失败: ${league.name}`, error.message);
+      }
+    }
+
+    // 5. 插入球队（如果不存在）
+    let teamInserted = 0;
+    let teamUpdated = 0;
+    let teamSkipped = 0;
+
+    for (const team of teams) {
+      try {
+        // 检查是否已存在（通过 isports_team_id）
+        const existing = await pool.query(
+          'SELECT id, name_zh_tw, name_en FROM team_aliases WHERE isports_team_id = $1',
+          [team.id]
+        );
+
+        if (existing.rows.length === 0) {
+          // 插入新记录
+          await pool.query(`
+            INSERT INTO team_aliases (
+              isports_team_id,
+              name_zh_tw,
+              name_en,
+              created_at,
+              updated_at
+            ) VALUES ($1, $2, $3, NOW(), NOW())
+          `, [team.id, team.name, team.name]);
+          teamInserted++;
+        } else {
+          // 更新现有记录（如果名称为空）
+          const row = existing.rows[0];
+          if (!row.name_zh_tw && !row.name_en) {
+            await pool.query(`
+              UPDATE team_aliases
+              SET name_zh_tw = $1, name_en = $2, updated_at = NOW()
+              WHERE id = $3
+            `, [team.name, team.name, row.id]);
+            teamUpdated++;
+          } else {
+            teamSkipped++;
+          }
+        }
+      } catch (error: any) {
+        console.error(`❌ 处理球队失败: ${team.name}`, error.message);
+      }
+    }
+
+    console.log(`✅ 导入完成:`);
+    console.log(`   联赛: ${leagueInserted} 新增 / ${leagueUpdated} 更新 / ${leagueSkipped} 跳过`);
+    console.log(`   球队: ${teamInserted} 新增 / ${teamUpdated} 更新 / ${teamSkipped} 跳过`);
+
+    res.json({
+      success: true,
+      data: {
+        leagues: {
+          total: leagues.length,
+          inserted: leagueInserted,
+          updated: leagueUpdated,
+          skipped: leagueSkipped,
+        },
+        teams: {
+          total: teams.length,
+          inserted: teamInserted,
+          updated: teamUpdated,
+          skipped: teamSkipped,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error('❌ 从 iSports API 导入失败:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '导入失败',
+    });
+  }
+});
+
+/**
+ * 从皇冠赛事中导入联赛和球队名称
+ * POST /api/aliases/import-from-crown
+ */
+router.post('/import-from-crown', ensureAdmin, async (req, res) => {
+  try {
+    console.log('📥 开始从皇冠赛事导入名称...');
+
+    // 1. 从 crown_matches 表中获取所有唯一的联赛和球队名称
+    const leaguesResult = await pool.query(`
+      SELECT DISTINCT crown_league
+      FROM crown_matches
+      WHERE crown_league IS NOT NULL AND crown_league != ''
+      ORDER BY crown_league
+    `);
+
+    const teamsResult = await pool.query(`
+      SELECT DISTINCT name FROM (
+        SELECT crown_home AS name FROM crown_matches WHERE crown_home IS NOT NULL AND crown_home != ''
+        UNION
+        SELECT crown_away AS name FROM crown_matches WHERE crown_away IS NOT NULL AND crown_away != ''
+      ) AS teams
+      ORDER BY name
+    `);
+
+    const leagues = leaguesResult.rows.map(r => r.crown_league);
+    const teams = teamsResult.rows.map(r => r.name);
+
+    console.log(`✅ 找到 ${leagues.length} 个联赛，${teams.length} 个球队`);
+
+    // 2. 插入联赛（如果不存在）
+    let leagueInserted = 0;
+    let leagueSkipped = 0;
+
+    for (const leagueName of leagues) {
+      try {
+        // 检查是否已存在
+        const existing = await pool.query(
+          'SELECT id FROM league_aliases WHERE name_crown_zh_cn = $1',
+          [leagueName]
+        );
+
+        if (existing.rows.length === 0) {
+          // 插入新记录
+          await pool.query(`
+            INSERT INTO league_aliases (name_crown_zh_cn, created_at, updated_at)
+            VALUES ($1, NOW(), NOW())
+          `, [leagueName]);
+          leagueInserted++;
+        } else {
+          leagueSkipped++;
+        }
+      } catch (error: any) {
+        console.error(`❌ 插入联赛失败: ${leagueName}`, error.message);
+      }
+    }
+
+    // 3. 插入球队（如果不存在）
+    let teamInserted = 0;
+    let teamSkipped = 0;
+
+    for (const teamName of teams) {
+      try {
+        // 检查是否已存在
+        const existing = await pool.query(
+          'SELECT id FROM team_aliases WHERE name_crown_zh_cn = $1',
+          [teamName]
+        );
+
+        if (existing.rows.length === 0) {
+          // 插入新记录
+          await pool.query(`
+            INSERT INTO team_aliases (name_crown_zh_cn, created_at, updated_at)
+            VALUES ($1, NOW(), NOW())
+          `, [teamName]);
+          teamInserted++;
+        } else {
+          teamSkipped++;
+        }
+      } catch (error: any) {
+        console.error(`❌ 插入球队失败: ${teamName}`, error.message);
+      }
+    }
+
+    console.log(`✅ 导入完成: 联赛 ${leagueInserted} 新增 / ${leagueSkipped} 跳过, 球队 ${teamInserted} 新增 / ${teamSkipped} 跳过`);
+
+    res.json({
+      success: true,
+      data: {
+        leagues: {
+          total: leagues.length,
+          inserted: leagueInserted,
+          skipped: leagueSkipped,
+        },
+        teams: {
+          total: teams.length,
+          inserted: teamInserted,
+          skipped: teamSkipped,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error('❌ 从皇冠赛事导入失败:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '导入失败',
     });
   }
 });
