@@ -296,4 +296,90 @@ router.post('/teams/import', ensureAdmin, upload.single('file'), async (req, res
   }
 });
 
+// GET /api/aliases/leagues/export-untranslated
+router.get('/leagues/export-untranslated', ensureAdmin, async (req, res) => {
+  try {
+    console.log('📤 导出未翻译的联赛...');
+
+    const leagues = await nameAliasService.listLeagueAliases();
+    const untranslated = leagues.filter(league => !league.name_zh_cn || league.name_zh_cn.trim() === '');
+
+    if (untranslated.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '没有未翻译的联赛',
+      });
+    }
+
+    // 创建 Excel 数据
+    const data = untranslated.map(league => [
+      league.name_en || '',
+      '', // 空的简体中文列，等待填写
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Untranslated Leagues');
+
+    // 生成 buffer
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="leagues-untranslated-${Date.now()}.xlsx"`);
+    res.send(buffer);
+
+    console.log(`✅ 导出 ${untranslated.length} 个未翻译的联赛`);
+
+  } catch (error: any) {
+    console.error('导出未翻译联赛失败:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '导出失败',
+    });
+  }
+});
+
+// GET /api/aliases/teams/export-untranslated
+router.get('/teams/export-untranslated', ensureAdmin, async (req, res) => {
+  try {
+    console.log('📤 导出未翻译的球队...');
+
+    const teams = await nameAliasService.listTeamAliases();
+    const untranslated = teams.filter(team => !team.name_zh_cn || team.name_zh_cn.trim() === '');
+
+    if (untranslated.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '没有未翻译的球队',
+      });
+    }
+
+    // 创建 Excel 数据
+    const data = untranslated.map(team => [
+      team.name_en || '',
+      '', // 空的简体中文列，等待填写
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Untranslated Teams');
+
+    // 生成 buffer
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="teams-untranslated-${Date.now()}.xlsx"`);
+    res.send(buffer);
+
+    console.log(`✅ 导出 ${untranslated.length} 个未翻译的球队`);
+
+  } catch (error: any) {
+    console.error('导出未翻译球队失败:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '导出失败',
+    });
+  }
+});
+
 export { router as aliasRoutes };

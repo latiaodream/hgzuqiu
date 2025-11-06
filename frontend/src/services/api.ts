@@ -488,6 +488,11 @@ export const aliasApi = {
     }).then(res => res.data);
   },
 
+  exportUntranslatedLeagues: (): Promise<Blob> =>
+    apiClient.get('/aliases/leagues/export-untranslated', {
+      responseType: 'blob'
+    }).then(res => res.data),
+
   listTeams: (params?: { search?: string }): Promise<ApiResponse<AliasRecord[]>> =>
     apiClient.get('/aliases/teams', { params }).then(res => res.data),
 
@@ -525,6 +530,11 @@ export const aliasApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     }).then(res => res.data);
   },
+
+  exportUntranslatedTeams: (): Promise<Blob> =>
+    apiClient.get('/aliases/teams/export-untranslated', {
+      responseType: 'blob'
+    }).then(res => res.data),
 };
 
 export default apiClient;

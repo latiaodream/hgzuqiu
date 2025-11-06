@@ -240,6 +240,37 @@ const AliasManagerPage: React.FC = () => {
     message.success('样本文件已下载');
   };
 
+  // 导出未翻译的记录
+  const handleExportUntranslated = async () => {
+    try {
+      setLoading(true);
+      const blob = activeTab === 'leagues'
+        ? await aliasApi.exportUntranslatedLeagues()
+        : await aliasApi.exportUntranslatedTeams();
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${activeTab === 'leagues' ? 'leagues' : 'teams'}-untranslated-${Date.now()}.xlsx`;
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      message.success('未翻译记录已导出');
+    } catch (error: any) {
+      console.error('导出未翻译记录失败:', error);
+      if (error.response?.status === 404) {
+        message.info('没有未翻译的记录');
+      } else {
+        message.error('导出失败');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const columns: ColumnsType<AliasRecord> = useMemo(() => [
     {
       title: 'Canonical Key',
@@ -351,6 +382,13 @@ const AliasManagerPage: React.FC = () => {
               onClick={handleDownloadSample}
             >
               下载样本
+            </Button>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleExportUntranslated}
+              loading={loading}
+            >
+              导出未翻译
             </Button>
             <Upload
               accept=".xlsx,.xls"
