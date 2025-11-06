@@ -1,4 +1,4 @@
-import { query } from '../db';
+import { query } from '../models/database';
 import { CrownMatch, CrownMatchStats } from '../types';
 
 /**
@@ -119,7 +119,7 @@ class CrownMatchService {
     `;
 
     const result = await query(sql, [limit]);
-    return result.rows.map(row => row.crown_league);
+    return result.rows.map((row: any) => row.crown_league);
   }
 
   /**
@@ -139,7 +139,7 @@ class CrownMatchService {
     `;
 
     const result = await query(sql, [limit]);
-    return result.rows.map(row => row.team_name);
+    return result.rows.map((row: any) => row.team_name);
   }
 
   /**
@@ -211,7 +211,7 @@ class CrownMatchService {
     const dataResult = await query(dataSql, [...params, pageSize, offset]);
 
     return {
-      matches: dataResult.rows.map(row => this.mapRow(row)),
+      matches: dataResult.rows.map((row: any) => this.mapRow(row)),
       total,
     };
   }
