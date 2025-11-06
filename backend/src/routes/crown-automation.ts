@@ -236,6 +236,128 @@ const normalizeMatchForFrontend = (match: any) => {
     return normalized;
 };
 
+const mergeMarketLines = (existing: any[] | undefined, incoming: any[] | undefined) => {
+  if (!Array.isArray(incoming) || incoming.length === 0) {
+    return existing || [];
+  }
+  if (!Array.isArray(existing) || existing.length === 0) {
+    return incoming;
+  }
+  const map = new Map<string, any>();
+  for (const item of existing) {
+    const key = (item?.line || item?.ratio || `${map.size}`).toString();
+    map.set(key, item);
+  }
+  for (const item of incoming) {
+    const key = (item?.line || item?.ratio || `${map.size}`).toString();
+    map.set(key, { ...map.get(key), ...item });
+  }
+  return Array.from(map.values());
+};
+
+const enrichMatchesWithMoreMarkets = async (
+  matches: any[],
+  options: { showtype: string; gtype: string }
+) => {
+  if (!Array.isArray(matches) || matches.length === 0) return;
+  const showtype = (options.showtype || '').toLowerCase();
+  const gtype = options.gtype || 'ft';
+  if (!['live', 'today'].includes(showtype)) {
+    return;
+  }
+
+  const automation = getCrownAutomation();
+  const candidates = matches
+    .filter((match) => {
+      const counts = match?.markets?.counts || {};
+      const handicapCount = Number(counts.handicap || counts.R_COUNT || counts.r_count || 0);
+      const ouCount = Number(counts.overUnder || counts.OU_COUNT || counts.ou_count || 0);
+      const existingHandicap = match?.markets?.full?.handicapLines;
+      const existingOu = match?.markets?.full?.overUnderLines;
+      return (
+        handicapCount > 1 &&
+          (!Array.isArray(existingHandicap) || existingHandicap.length < handicapCount) ||
+        ouCount > 1 &&
+          (!Array.isArray(existingOu) || existingOu.length < ouCount)
+      );
+    })
+    .slice(0, 10);
+
+  if (candidates.length === 0) {
+    return;
+  }
+
+  await Promise.allSettled(
+    candidates.map(async (match) => {
+      try {
+        const raw = match.raw || {};
+        const gid =
+          match.ecid ||
+          match.gid ||
+          raw.ECID ||
+          raw.GID ||
+          raw.gid ||
+          raw.ecid;
+        const lid =
+          raw.LID ||
+          raw.lid ||
+          match.league_id ||
+          match.leagueId;
+
+        if (!gid || !lid) {
+          return;
+        }
+
+        const more = await automation.fetchMoreMarkets({
+          gid: String(gid),
+          lid: String(lid),
+          gtype,
+          showtype,
+          isRB: showtype === 'live' ? 'Y' : 'N',
+        });
+
+        if (!match.markets) match.markets = {};
+        if (!match.markets.full) match.markets.full = {};
+        if (!match.markets.half) match.markets.half = {};
+
+        if (more.handicapLines?.length) {
+          const merged = mergeMarketLines(match.markets.full.handicapLines, more.handicapLines);
+          match.markets.full.handicapLines = merged;
+          match.markets.full.handicap = merged[0];
+          match.markets.handicap = merged[0];
+        }
+
+        if (more.overUnderLines?.length) {
+          const merged = mergeMarketLines(match.markets.full.overUnderLines, more.overUnderLines);
+          match.markets.full.overUnderLines = merged;
+          match.markets.full.ou = merged[0];
+          match.markets.ou = merged[0];
+        }
+
+        if (more.halfHandicapLines?.length) {
+          const merged = mergeMarketLines(
+            match.markets.half.handicapLines,
+            more.halfHandicapLines
+          );
+          match.markets.half.handicapLines = merged;
+          match.markets.half.handicap = merged[0];
+        }
+
+        if (more.halfOverUnderLines?.length) {
+          const merged = mergeMarketLines(
+            match.markets.half.overUnderLines,
+            more.halfOverUnderLines
+          );
+          match.markets.half.overUnderLines = merged;
+          match.markets.half.ou = merged[0];
+        }
+      } catch (error) {
+        console.error('⚠️ enrich match with more markets failed:', error);
+      }
+    })
+  );
+};
+
 // 辅助函数：自动获取并保存账号限额
 async function autoFetchAndSaveLimits(accountId: number, account: any): Promise<void> {
     try {
@@ -1343,31 +1465,31 @@ router.get('/matches-system', async (req: any, res) => {
                         const normalizedMatches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
                         console.log(`   归一化后: ${normalizedMatches.length} 场比赛`);
 
-                        let filteredMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
-                        console.log(`   过滤 ${showtype} 后: ${filteredMatches.length} 场比赛`);
+                        // 根据 showtype 过滤比赛
+                        let allMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
+                        console.log(`   过滤后 (${showtype}): ${allMatches.length} 场`);
 
-                        // 如果是滚球且过滤后为空，则回退到直接抓取皇冠数据，确保有实时滚球
-                        if (String(showtype) === 'live' && filteredMatches.length === 0) {
-                            const fallback = await getCrownAutomation().fetchMatchesSystem({ gtype, showtype, rtype, ltype, sorttype });
-                            const fbNormalized = (fallback.matches || []).map((m: any) => normalizeMatchForFrontend(m));
-                            filteredMatches = filterMatchesByShowtype(fbNormalized, String(showtype));
-                        }
-
-                        if (String(showtype).toLowerCase() === 'today' && filteredMatches.length > 0) {
-                            try {
-                                filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
-                                    gtype: String(gtype),
-                                    date: new Date().toISOString().slice(0, 10),
-                                });
-                            } catch (mergeError) {
-                                console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+                        if (allMatches.length > 0) {
+                            if (String(showtype).toLowerCase() === 'today') {
+                                try {
+                                    allMatches = await mergeTodayMatchesWithISports(allMatches, {
+                                        gtype: String(gtype),
+                                        date: new Date().toISOString().slice(0, 10),
+                                    });
+                                } catch (mergeError) {
+                                    console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+                                }
                             }
+                            await enrichMatchesWithMoreMarkets(allMatches, {
+                                showtype: String(showtype),
+                                gtype: String(gtype),
+                            });
                         }
 
                         res.json({
                             success: true,
                             data: {
-                                matches: filteredMatches,
+                                matches: allMatches,
                                 meta: { gtype, showtype, rtype, ltype, sorttype },
                                 source: candidate.source,
                                 lastUpdate: timestamp,
@@ -1392,15 +1514,21 @@ router.get('/matches-system', async (req: any, res) => {
         if (fetcher) {
             const data = fetcher.getLatestMatches();
             let filteredMatches = filterMatchesByShowtype(data.matches ?? [], String(showtype));
-            if (String(showtype).toLowerCase() === 'today' && filteredMatches.length > 0) {
-                try {
-                    filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
-                        gtype: String(gtype),
-                        date: new Date().toISOString().slice(0, 10),
-                    });
-                } catch (mergeError) {
-                    console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+            if (filteredMatches.length > 0) {
+                if (String(showtype).toLowerCase() === 'today') {
+                    try {
+                        filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
+                            gtype: String(gtype),
+                            date: new Date().toISOString().slice(0, 10),
+                        });
+                    } catch (mergeError) {
+                        console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+                    }
                 }
+                await enrichMatchesWithMoreMarkets(filteredMatches, {
+                    showtype: String(showtype),
+                    gtype: String(gtype),
+                });
             }
 
             res.json({
@@ -1435,15 +1563,21 @@ router.get('/matches-system', async (req: any, res) => {
             filteredMatches = filterMatchesByShowtype(fbNormalized, String(showtype));
         }
 
-        if (String(showtype).toLowerCase() === 'today' && filteredMatches.length > 0) {
-            try {
-                filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
-                    gtype: String(gtype),
-                    date: new Date().toISOString().slice(0, 10),
-                });
-            } catch (mergeError) {
-                console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+        if (filteredMatches.length > 0) {
+            if (String(showtype).toLowerCase() === 'today') {
+                try {
+                    filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
+                        gtype: String(gtype),
+                        date: new Date().toISOString().slice(0, 10),
+                    });
+                } catch (mergeError) {
+                    console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+                }
             }
+            await enrichMatchesWithMoreMarkets(filteredMatches, {
+                showtype: String(showtype),
+                gtype: String(gtype),
+            });
         }
 
         res.json({
@@ -1959,6 +2093,21 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
           } catch (fbErr) {
             console.error('滚球回退抓取失败:', fbErr);
           }
+        }
+
+        if (filtered.length > 0) {
+          if (showtype === 'today') {
+            try {
+              filtered = await mergeTodayMatchesWithISports(filtered, {
+                gtype: String(gtype),
+                date: new Date().toISOString().slice(0, 10),
+              });
+            } catch (mergeError) {
+              console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
+            }
+          }
+
+          await enrichMatchesWithMoreMarkets(filtered, { showtype, gtype });
         }
 
         const payload = JSON.stringify({ matches: filtered, meta: { gtype, showtype, rtype, ltype, sorttype }, ts: Date.now() });

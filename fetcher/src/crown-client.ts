@@ -24,7 +24,7 @@ export class CrownClient {
   private client: AxiosInstance;
   private sessionFile: string;
   private loginTime: number = 0;
-  private lastEnrichTime: number = 0; // 上次获取更多盘口的时间
+  private lastEnrichByShowtype: Record<string, number> = {}; // 各 showtype 最近一次获取更多盘口的时间
 
   constructor(config: { baseUrl: string; username: string; password: string; dataDir: string }) {
     this.baseUrl = config.baseUrl;
@@ -555,12 +555,11 @@ export class CrownClient {
         match.source_showtype = showtype;
       });
 
-      // 每 5 秒才获取一次更多盘口，避免请求过多
       const now = Date.now();
-      if (now - this.lastEnrichTime > 5000 && showtype === 'live') {
-        this.lastEnrichTime = now;
-        // 只对滚球的前 5 场比赛获取更多盘口
-        await this.enrichMatches(matches.slice(0, 5));
+      const last = this.lastEnrichByShowtype[showtype] || 0;
+      if (now - last > 5000) {
+        this.lastEnrichByShowtype[showtype] = now;
+        await this.enrichMatches(matches, { showtype, gtype });
       }
 
       return {
@@ -577,8 +576,50 @@ export class CrownClient {
   /**
    * 获取更多盘口信息
    */
-  private async enrichMatches(matches: any[]): Promise<void> {
-    for (const match of matches) {
+  private mergeLines(existing: any[] | undefined, incoming: any[] | undefined) {
+    if (!Array.isArray(incoming) || incoming.length === 0) {
+      return existing || [];
+    }
+    if (!Array.isArray(existing) || existing.length === 0) {
+      return incoming;
+    }
+    const map = new Map<string, any>();
+    existing.forEach((item, idx) => {
+      const key = (item?.line || item?.ratio || `${idx}`).toString();
+      map.set(key, item);
+    });
+    incoming.forEach((item) => {
+      const key = (item?.line || item?.ratio || `${map.size}`).toString();
+      map.set(key, { ...map.get(key), ...item });
+    });
+    return Array.from(map.values());
+  }
+
+  private async enrichMatches(matches: any[], options: { showtype: string; gtype: string }): Promise<void> {
+    if (!Array.isArray(matches) || matches.length === 0) return;
+    const showtype = (options.showtype || '').toLowerCase();
+    const gtype = options.gtype || 'ft';
+    const isRB = showtype === 'live' ? 'Y' : 'N';
+
+    const candidates = matches
+      .filter((match) => {
+        const counts = match?.markets?.counts || {};
+        const handicapCount = Number(counts.handicap || counts.R_COUNT || counts.r_count || 0);
+        const ouCount = Number(counts.overUnder || counts.OU_COUNT || counts.ou_count || 0);
+        const fullHandicap = match?.markets?.full?.handicapLines;
+        const fullOu = match?.markets?.full?.overUnderLines;
+        return (
+          handicapCount > 1 && (!Array.isArray(fullHandicap) || fullHandicap.length < handicapCount) ||
+          ouCount > 1 && (!Array.isArray(fullOu) || fullOu.length < ouCount)
+        );
+      })
+      .slice(0, 10);
+
+    if (candidates.length === 0) {
+      return;
+    }
+
+    for (const match of candidates) {
       try {
         const ecid = match.ecid;
         const lid = match.raw?.LID || match.raw?.lid || match.raw?.['@_LID'];
@@ -588,10 +629,10 @@ export class CrownClient {
         const moreXml = await this.getGameMore({
           gid: String(ecid),
           lid: String(lid),
-          gtype: 'ft',
-          showtype: 'live',
+          gtype,
+          showtype,
           ltype: '3',
-          isRB: 'Y',
+          isRB,
         });
 
         if (moreXml) {
@@ -606,26 +647,30 @@ export class CrownClient {
 
           // 全场盘口
           if (handicapLines.length > 0) {
-            match.markets.full.handicapLines = handicapLines;
-            match.markets.handicap = handicapLines[0];
-            match.markets.full.handicap = handicapLines[0];
+            const merged = this.mergeLines(match.markets.full.handicapLines, handicapLines);
+            match.markets.full.handicapLines = merged;
+            match.markets.handicap = merged[0];
+            match.markets.full.handicap = merged[0];
           }
 
           if (overUnderLines.length > 0) {
-            match.markets.full.overUnderLines = overUnderLines;
-            match.markets.ou = overUnderLines[0];
-            match.markets.full.ou = overUnderLines[0];
+            const merged = this.mergeLines(match.markets.full.overUnderLines, overUnderLines);
+            match.markets.full.overUnderLines = merged;
+            match.markets.ou = merged[0];
+            match.markets.full.ou = merged[0];
           }
 
           // 半场盘口
           if (halfHandicapLines.length > 0) {
-            match.markets.half.handicapLines = halfHandicapLines;
-            match.markets.half.handicap = halfHandicapLines[0];
+            const merged = this.mergeLines(match.markets.half.handicapLines, halfHandicapLines);
+            match.markets.half.handicapLines = merged;
+            match.markets.half.handicap = merged[0];
           }
 
           if (halfOverUnderLines.length > 0) {
-            match.markets.half.overUnderLines = halfOverUnderLines;
-            match.markets.half.ou = halfOverUnderLines[0];
+            const merged = this.mergeLines(match.markets.half.overUnderLines, halfOverUnderLines);
+            match.markets.half.overUnderLines = merged;
+            match.markets.half.ou = merged[0];
           }
         }
 
@@ -763,4 +808,3 @@ export class CrownClient {
     }
   }
 }
-

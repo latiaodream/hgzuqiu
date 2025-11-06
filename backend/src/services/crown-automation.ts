@@ -7396,6 +7396,110 @@ export class CrownAutomationService {
     }
   }
 
+  private async loadAccountById(accountId: number): Promise<CrownAccount | null> {
+    const result = await query('SELECT * FROM crown_accounts WHERE id = $1 LIMIT 1', [accountId]);
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return result.rows[0] as CrownAccount;
+  }
+
+  private async pickAccountForApi(): Promise<CrownAccount | null> {
+    try {
+      let result = await query(
+        `SELECT * FROM crown_accounts
+         WHERE use_for_fetch = true AND is_enabled = true
+         ORDER BY last_login_at DESC NULLS LAST
+         LIMIT 1`
+      );
+      if (result.rows.length === 0) {
+        result = await query(
+          `SELECT * FROM crown_accounts
+           WHERE is_enabled = true
+           ORDER BY last_login_at DESC NULLS LAST
+           LIMIT 1`
+        );
+      }
+      if (result.rows.length === 0) {
+        console.warn('⚠️ 没有可用于抓取的账号');
+        return null;
+      }
+      return result.rows[0] as CrownAccount;
+    } catch (error) {
+      console.error('⚠️ 查找抓取账号失败:', error);
+      return null;
+    }
+  }
+
+  async fetchMoreMarkets(params: {
+    gid: string;
+    lid: string;
+    gtype?: string;
+    showtype?: string;
+    ltype?: string;
+    isRB?: string;
+    accountId?: number;
+  }): Promise<{
+    handicapLines: any[];
+    overUnderLines: any[];
+    halfHandicapLines: any[];
+    halfOverUnderLines: any[];
+  }> {
+    const showtype = (params.showtype || 'live').toLowerCase();
+    const gtype = params.gtype || 'ft';
+    const ltype = params.ltype || '3';
+    const isRB = params.isRB || (showtype === 'live' ? 'Y' : 'N');
+
+    let account: CrownAccount | null = null;
+    if (params.accountId) {
+      account = await this.loadAccountById(Number(params.accountId));
+    } else {
+      account = await this.pickAccountForApi();
+    }
+
+    if (!account) {
+      console.warn('⚠️ 无可用账号获取更多盘口');
+      return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+    }
+
+    let prepared = await this.prepareApiClient(account.id);
+    if (!prepared.success || !prepared.client) {
+      const loginResult = await this.loginAccountWithApi(account);
+      if (!loginResult.success) {
+        console.error(`❌ 账号 ${account.username} API 登录失败:`, loginResult.message);
+        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+      }
+      prepared = await this.prepareApiClient(account.id);
+      if (!prepared.success || !prepared.client) {
+        console.error(`❌ 无法获取账号 ${account.username} 的 API 客户端:`, prepared.message);
+        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+      }
+    }
+
+    const client = prepared.client!;
+    try {
+      const xml = await client.getGameMore({
+        gid: String(params.gid),
+        lid: String(params.lid),
+        gtype,
+        showtype,
+        ltype,
+        isRB,
+      });
+
+      if (typeof xml !== 'string' || xml.trim() === '') {
+        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+      }
+
+      return this.parseMoreMarketsFromXml(xml);
+    } catch (error) {
+      console.error('❌ 调用 get_game_more 失败:', error);
+      return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+    } finally {
+      await client.close();
+    }
+  }
+
   // 辅助方法：从对象中提取字符串值
   private pickString(obj: any, keys: string[]): string {
     if (!obj) return '';
