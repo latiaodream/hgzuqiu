@@ -431,15 +431,27 @@ export class CrownClient {
         };
         markets.counts = counts;
 
+        const datetime = pickString(game, ['DATETIME', 'TIME']);
+        const running = pickString(game, ['RUNNING', 'STATUS']);
+
         return {
           gid,
           ecid,
           league,
+          league_name: league,
           home,
           away,
+          team_h: home,
+          team_c: away,
           score,
-          time: pickString(game, ['DATETIME', 'TIME']),
-          status: pickString(game, ['RUNNING', 'STATUS']),
+          current_score: score,
+          time: datetime,
+          datetime,
+          match_time: datetime,
+          timer: datetime,
+          status: running,
+          state: running,
+          period: running === '1' ? '滚球' : running === '0' ? '未开赛' : '',
           markets,
           raw: game,
         };
@@ -453,13 +465,25 @@ export class CrownClient {
   }
 
   /**
-   * 抓取赛事列表
+   * 抓取赛事列表（支持不同类型）
+   * @param options 抓取选项
+   * @param options.showtype 显示类型 (live=滚球, today=今日, early=早盘)
+   * @param options.gtype 比赛类型 (ft=足球, bk=篮球等)
+   * @param options.rtype 盘口类型 (rb=滚球, r=非滚球)
    */
-  async fetchMatches(): Promise<FetchResult> {
+  async fetchMatches(options?: {
+    showtype?: string;
+    gtype?: string;
+    rtype?: string;
+  }): Promise<FetchResult> {
     try {
       if (!this.uid) {
         return { success: false, matches: [], timestamp: Date.now(), error: '未登录' };
       }
+
+      const showtype = options?.showtype || 'live';
+      const gtype = options?.gtype || 'ft';
+      const rtype = options?.rtype || (showtype === 'live' ? 'rb' : 'r');
 
       const timestamp = Date.now().toString();
 
@@ -470,9 +494,9 @@ export class CrownClient {
         p: 'get_game_list',
         p3type: '',
         date: '',
-        gtype: 'ft',
-        showtype: 'live',
-        rtype: 'rb',
+        gtype,
+        showtype,
+        rtype,
         ltype: '3',
         filter: '',
         cupFantasy: 'N',
@@ -498,11 +522,17 @@ export class CrownClient {
       // 解析赛事
       const matches = this.parseMatches(xml);
 
+      // 为每场比赛添加 showtype 标记
+      matches.forEach((match: any) => {
+        match.showtype = showtype;
+        match.source_showtype = showtype;
+      });
+
       // 每 5 秒才获取一次更多盘口，避免请求过多
       const now = Date.now();
-      if (now - this.lastEnrichTime > 5000) {
+      if (now - this.lastEnrichTime > 5000 && showtype === 'live') {
         this.lastEnrichTime = now;
-        // 只对前 5 场比赛获取更多盘口
+        // 只对滚球的前 5 场比赛获取更多盘口
         await this.enrichMatches(matches.slice(0, 5));
       }
 

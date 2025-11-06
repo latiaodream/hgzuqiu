@@ -41,12 +41,17 @@ let stats = {
   successFetches: 0,
   failedFetches: 0,
   lastFetchTime: 0,
-  lastMatchCount: 0,
+  lastMatchCount: {
+    live: 0,
+    today: 0,
+    early: 0,
+    total: 0,
+  },
   loginCount: 0,
 };
 
 /**
- * 主抓取循环
+ * 主抓取循环 - 抓取所有类型的赛事
  */
 async function fetchLoop() {
   try {
@@ -58,33 +63,70 @@ async function fetchLoop() {
       return;
     }
 
-    // 抓取赛事
-    const result = await client.fetchMatches();
-    stats.totalFetches++;
-    stats.lastFetchTime = Date.now();
+    // 抓取三种类型的赛事
+    const showtypes = [
+      { type: 'live', name: '滚球', rtype: 'rb' },
+      { type: 'today', name: '今日', rtype: 'r' },
+      { type: 'early', name: '早盘', rtype: 'r' },
+    ];
 
-    if (result.success) {
-      stats.successFetches++;
-      stats.lastMatchCount = result.matches.length;
+    const allMatches: any[] = [];
+    const matchCounts: any = { live: 0, today: 0, early: 0 };
 
-      // 保存数据到文件
-      const dataFile = path.join(config.dataDir, 'latest-matches.json');
-      fs.writeFileSync(
-        dataFile,
-        JSON.stringify({
-          timestamp: result.timestamp,
-          matches: result.matches,
-          matchCount: result.matches.length,
-        })
-      );
+    for (const showtype of showtypes) {
+      try {
+        const result = await client.fetchMatches({
+          showtype: showtype.type,
+          gtype: 'ft',
+          rtype: showtype.rtype,
+        });
 
-      console.log(
-        `✅ [${new Date().toLocaleTimeString()}] 抓取成功 | 比赛数: ${result.matches.length} | 成功率: ${((stats.successFetches / stats.totalFetches) * 100).toFixed(1)}%`
-      );
-    } else {
-      stats.failedFetches++;
-      console.error(`❌ [${new Date().toLocaleTimeString()}] 抓取失败: ${result.error}`);
+        stats.totalFetches++;
+
+        if (result.success) {
+          stats.successFetches++;
+          matchCounts[showtype.type] = result.matches.length;
+          allMatches.push(...result.matches);
+          console.log(
+            `✅ [${new Date().toLocaleTimeString()}] ${showtype.name}抓取成功 | 比赛数: ${result.matches.length}`
+          );
+        } else {
+          stats.failedFetches++;
+          console.error(`❌ [${new Date().toLocaleTimeString()}] ${showtype.name}抓取失败: ${result.error}`);
+        }
+
+        // 每种类型之间延迟 500ms，避免请求过快
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error: any) {
+        stats.failedFetches++;
+        console.error(`❌ [${new Date().toLocaleTimeString()}] ${showtype.name}抓取异常:`, error.message);
+      }
     }
+
+    // 更新统计
+    stats.lastFetchTime = Date.now();
+    stats.lastMatchCount = {
+      live: matchCounts.live,
+      today: matchCounts.today,
+      early: matchCounts.early,
+      total: allMatches.length,
+    };
+
+    // 保存合并后的数据到文件
+    const dataFile = path.join(config.dataDir, 'latest-matches.json');
+    fs.writeFileSync(
+      dataFile,
+      JSON.stringify({
+        timestamp: Date.now(),
+        matches: allMatches,
+        matchCount: allMatches.length,
+        breakdown: matchCounts,
+      })
+    );
+
+    console.log(
+      `✅ [${new Date().toLocaleTimeString()}] 总计: ${allMatches.length} 场 (滚球: ${matchCounts.live}, 今日: ${matchCounts.today}, 早盘: ${matchCounts.early}) | 成功率: ${((stats.successFetches / stats.totalFetches) * 100).toFixed(1)}%`
+    );
   } catch (error: any) {
     stats.failedFetches++;
     console.error(`❌ [${new Date().toLocaleTimeString()}] 抓取异常:`, error.message);
@@ -125,7 +167,7 @@ function printStats() {
   console.log(`❌ 失败次数: ${stats.failedFetches}`);
   console.log(`📊 成功率: ${stats.totalFetches > 0 ? ((stats.successFetches / stats.totalFetches) * 100).toFixed(1) : 0}%`);
   console.log(`🔐 登录次数: ${stats.loginCount}`);
-  console.log(`⚽ 最新比赛数: ${stats.lastMatchCount}`);
+  console.log(`⚽ 最新比赛数: ${stats.lastMatchCount.total} (滚球: ${stats.lastMatchCount.live}, 今日: ${stats.lastMatchCount.today}, 早盘: ${stats.lastMatchCount.early})`);
   console.log(`🕐 最后抓取: ${stats.lastFetchTime > 0 ? new Date(stats.lastFetchTime).toLocaleString() : '未开始'}`);
   console.log('='.repeat(60) + '\n');
 }
