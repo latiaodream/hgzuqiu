@@ -397,37 +397,32 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
       process.env.ISPORTS_API_KEY || 'GvpziueL9ouzIJNj'
     );
 
-    // 1. 获取最近7天的赛事
-    const dates: string[] = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() + i);
-      dates.push(date.toISOString().split('T')[0]);
+    // 1. 获取今天的赛事（改为只获取1天）
+    const today = new Date().toISOString().split('T')[0];
+    console.log(`📅 获取日期: ${today}`);
+
+    // 2. 获取今天的赛事
+    let allMatches: any[] = [];
+    try {
+      allMatches = await isportsClient.getSchedule(today);
+      console.log(`✅ 获取到 ${allMatches.length} 场比赛`);
+    } catch (error: any) {
+      console.error(`❌ 获取赛事失败:`, error);
+      return res.status(500).json({
+        success: false,
+        error: `获取赛事失败: ${error.message}`,
+      });
     }
-
-    console.log(`📅 获取日期范围: ${dates[0]} ~ ${dates[dates.length - 1]}`);
-
-    // 2. 获取所有赛事
-    const allMatches: any[] = [];
-    for (const date of dates) {
-      try {
-        const matches = await isportsClient.getSchedule(date);
-        allMatches.push(...matches);
-        console.log(`  ${date}: ${matches.length} 场比赛`);
-      } catch (error: any) {
-        console.error(`  ${date}: 获取失败 - ${error.message}`);
-      }
-    }
-
-    console.log(`✅ 总共获取到 ${allMatches.length} 场比赛`);
 
     if (allMatches.length === 0) {
+      console.log('⚠️  今天没有赛事');
       return res.json({
         success: true,
         data: {
           leagues: { total: 0, inserted: 0, updated: 0, skipped: 0 },
           teams: { total: 0, inserted: 0, updated: 0, skipped: 0 },
         },
+        message: '今天没有赛事',
       });
     }
 
@@ -444,53 +439,68 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
     for (let i = 0; i < matchIds.length; i += batchSize) {
       const batchIds = matchIds.slice(i, i + batchSize);
       try {
+        console.log(`  📥 批次 ${Math.floor(i / batchSize) + 1}: 获取 ${batchIds.length} 场比赛的赔率...`);
         const oddsData = await isportsClient.getMainOdds(batchIds, ['3']); // companyId=3 是皇冠
-        allOdds.handicap.push(...oddsData.handicap);
-        allOdds.europeOdds.push(...oddsData.europeOdds);
-        allOdds.overUnder.push(...oddsData.overUnder);
-        console.log(`  批次 ${Math.floor(i / batchSize) + 1}: ${batchIds.length} 场比赛`);
+        allOdds.handicap.push(...(oddsData.handicap || []));
+        allOdds.europeOdds.push(...(oddsData.europeOdds || []));
+        allOdds.overUnder.push(...(oddsData.overUnder || []));
+        console.log(`  ✅ 批次 ${Math.floor(i / batchSize) + 1}: 成功`);
       } catch (error: any) {
-        console.error(`  批次 ${Math.floor(i / batchSize) + 1} 获取赔率失败:`, error.message);
+        console.error(`  ❌ 批次 ${Math.floor(i / batchSize) + 1} 获取赔率失败:`, error.message);
       }
     }
 
     console.log(`✅ 获取到赔率: 让球盘 ${allOdds.handicap.length}, 独赢盘 ${allOdds.europeOdds.length}, 大小球 ${allOdds.overUnder.length}`);
 
     // 4. 筛选有皇冠赔率的赛事
+    console.log('🔍 筛选有皇冠赔率的赛事...');
     const matchesWithCrownOdds = allMatches.filter(match => {
-      const hasHandicap = allOdds.handicap.some(h => h.matchId === match.matchId && h.companyId === '3');
-      const hasEurope = allOdds.europeOdds.some(e => e.matchId === match.matchId && e.companyId === '3');
-      const hasOverUnder = allOdds.overUnder.some(o => o.matchId === match.matchId && o.companyId === '3');
+      const hasHandicap = allOdds.handicap.some(h => String(h.matchId) === String(match.matchId) && String(h.companyId) === '3');
+      const hasEurope = allOdds.europeOdds.some(e => String(e.matchId) === String(match.matchId) && String(e.companyId) === '3');
+      const hasOverUnder = allOdds.overUnder.some(o => String(o.matchId) === String(match.matchId) && String(o.companyId) === '3');
       return hasHandicap || hasEurope || hasOverUnder;
     });
 
     console.log(`✅ 筛选出 ${matchesWithCrownOdds.length} 场有皇冠赔率的赛事`);
 
+    if (matchesWithCrownOdds.length === 0) {
+      console.log('⚠️  今天没有皇冠赔率的赛事');
+      return res.json({
+        success: true,
+        data: {
+          leagues: { total: 0, inserted: 0, updated: 0, skipped: 0 },
+          teams: { total: 0, inserted: 0, updated: 0, skipped: 0 },
+        },
+        message: '今天没有皇冠赔率的赛事',
+      });
+    }
+
     // 5. 提取唯一的联赛和球队（仅从有皇冠赔率的赛事中提取）
+    console.log('📊 提取联赛和球队名称...');
     const leaguesMap = new Map<string, { id: string; name: string }>();
     const teamsMap = new Map<string, { id: string; name: string }>();
 
     for (const match of matchesWithCrownOdds) {
       // 联赛
       if (match.leagueId && match.leagueName) {
-        leaguesMap.set(match.leagueId, {
-          id: match.leagueId,
+        leaguesMap.set(String(match.leagueId), {
+          id: String(match.leagueId),
           name: match.leagueName,
         });
       }
 
       // 主队
       if (match.homeId && match.homeName) {
-        teamsMap.set(match.homeId, {
-          id: match.homeId,
+        teamsMap.set(String(match.homeId), {
+          id: String(match.homeId),
           name: match.homeName,
         });
       }
 
       // 客队
       if (match.awayId && match.awayName) {
-        teamsMap.set(match.awayId, {
-          id: match.awayId,
+        teamsMap.set(String(match.awayId), {
+          id: String(match.awayId),
           name: match.awayName,
         });
       }
@@ -501,13 +511,16 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
 
     console.log(`✅ 找到 ${leagues.length} 个联赛，${teams.length} 个球队（仅有皇冠赔率）`);
 
-    // 4. 插入联赛（如果不存在）
+    // 6. 插入联赛（如果不存在）
+    console.log('💾 插入联赛到数据库...');
     let leagueInserted = 0;
     let leagueUpdated = 0;
     let leagueSkipped = 0;
 
     for (const league of leagues) {
       try {
+        console.log(`  处理联赛: ${league.name} (ID: ${league.id})`);
+
         // 检查是否已存在（通过 isports_league_id）
         const existing = await pool.query(
           'SELECT id, name_zh_tw, name_en FROM league_aliases WHERE isports_league_id = $1',
@@ -526,6 +539,7 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
             ) VALUES ($1, $2, $3, NOW(), NOW())
           `, [league.id, league.name, league.name]);
           leagueInserted++;
+          console.log(`    ✅ 新增联赛: ${league.name}`);
         } else {
           // 更新现有记录（如果名称为空）
           const row = existing.rows[0];
@@ -536,22 +550,29 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
               WHERE id = $3
             `, [league.name, league.name, row.id]);
             leagueUpdated++;
+            console.log(`    ✅ 更新联赛: ${league.name}`);
           } else {
             leagueSkipped++;
+            console.log(`    ⏭️  跳过联赛: ${league.name} (已存在)`);
           }
         }
       } catch (error: any) {
-        console.error(`❌ 处理联赛失败: ${league.name}`, error.message);
+        console.error(`❌ 处理联赛失败: ${league.name}`, error);
       }
     }
 
-    // 5. 插入球队（如果不存在）
+    console.log(`✅ 联赛处理完成: 新增 ${leagueInserted}, 更新 ${leagueUpdated}, 跳过 ${leagueSkipped}`);
+
+    // 7. 插入球队（如果不存在）
+    console.log('💾 插入球队到数据库...');
     let teamInserted = 0;
     let teamUpdated = 0;
     let teamSkipped = 0;
 
     for (const team of teams) {
       try {
+        console.log(`  处理球队: ${team.name} (ID: ${team.id})`);
+
         // 检查是否已存在（通过 isports_team_id）
         const existing = await pool.query(
           'SELECT id, name_zh_tw, name_en FROM team_aliases WHERE isports_team_id = $1',
@@ -570,6 +591,7 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
             ) VALUES ($1, $2, $3, NOW(), NOW())
           `, [team.id, team.name, team.name]);
           teamInserted++;
+          console.log(`    ✅ 新增球队: ${team.name}`);
         } else {
           // 更新现有记录（如果名称为空）
           const row = existing.rows[0];
@@ -580,14 +602,18 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
               WHERE id = $3
             `, [team.name, team.name, row.id]);
             teamUpdated++;
+            console.log(`    ✅ 更新球队: ${team.name}`);
           } else {
             teamSkipped++;
+            console.log(`    ⏭️  跳过球队: ${team.name} (已存在)`);
           }
         }
       } catch (error: any) {
-        console.error(`❌ 处理球队失败: ${team.name}`, error.message);
+        console.error(`❌ 处理球队失败: ${team.name}`, error);
       }
     }
+
+    console.log(`✅ 球队处理完成: 新增 ${teamInserted}, 更新 ${teamUpdated}, 跳过 ${teamSkipped}`);
 
     console.log(`✅ 导入完成:`);
     console.log(`   联赛: ${leagueInserted} 新增 / ${leagueUpdated} 更新 / ${leagueSkipped} 跳过`);

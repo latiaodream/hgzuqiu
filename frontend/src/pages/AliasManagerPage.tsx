@@ -316,7 +316,7 @@ const AliasManagerPage: React.FC = () => {
   const handleImportFromISports = async () => {
     Modal.confirm({
       title: '从 iSports API 导入',
-      content: '将从 iSports API 获取最近7天的赛事数据，提取所有联赛和球队名称，并添加到别名表中。确认继续？',
+      content: '将从 iSports API 获取今天的赛事数据（仅有皇冠赔率的赛事），提取所有联赛和球队名称，并添加到别名表中。确认继续？',
       onOk: async () => {
         setImporting(true);
         try {
