@@ -1901,9 +1901,27 @@ router.post('/odds/preview', async (req: any, res) => {
                     returned: normalizedReturned,
                     raw_spread: returnedSpread,
                 });
+
+                // 盘口不匹配时，不返回赔率，让前端使用自己的赔率
+                res.json({
+                    success: true,
+                    data: {
+                        odds: null,  // 不返回赔率
+                        closed: false,
+                        market: preview.variant,
+                        raw: preview.oddsResult,
+                        crown_match_id: preview.crownMatchId,
+                        message: '盘口线不匹配，使用前端赔率',
+                        spread_mismatch: true,
+                        requested_line: requestedLine,
+                        returned_spread: returnedSpread,
+                    },
+                });
+                return;
             }
         }
 
+        // 盘口匹配，返回正常赔率
         res.json({
             success: true,
             data: {
@@ -1913,7 +1931,7 @@ router.post('/odds/preview', async (req: any, res) => {
                 raw: preview.oddsResult,
                 crown_match_id: preview.crownMatchId,
                 message: preview.message,
-                spread_mismatch: spreadMismatch,
+                spread_mismatch: false,
                 requested_line: requestedLine,
                 returned_spread: returnedSpread,
             },

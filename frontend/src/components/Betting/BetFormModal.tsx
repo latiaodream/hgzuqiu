@@ -328,20 +328,23 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
             requested: previewData.requested_line,
             returned: previewData.returned_spread,
           });
-          // 不更新赔率，使用前端已有的赔率
+          // 使用前端已有的赔率
           const frontendOdds = deriveOddsFromMarkets();
           if (frontendOdds?.odds) {
             setOddsPreview({
               odds: frontendOdds.odds,
               closed: false,
-              message: '使用前端赔率（盘口不匹配）',
+              message: '使用前端赔率',
             });
             setPreviewError(null);
+            // 更新表单中的赔率
+            form.setFieldValue('odds', frontendOdds.odds);
           } else {
             setOddsPreview(null);
             setPreviewError('盘口线不匹配，无法获取赔率');
           }
-          return { success: false, message: '盘口线不匹配' };
+          // 返回成功，但标记为使用前端赔率
+          return { success: true, data: { ...previewData, odds: frontendOdds?.odds } };
         }
 
         setOddsPreview({
@@ -353,6 +356,10 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
           setPreviewError(previewData.message || '盘口已封盘或暂时不可投注');
         } else {
           setPreviewError(null);
+        }
+        // 更新表单中的赔率
+        if (previewData.odds !== null && previewData.odds !== undefined) {
+          form.setFieldValue('odds', previewData.odds);
         }
         return { success: true, data: previewData };
       }
