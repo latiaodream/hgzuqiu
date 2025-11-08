@@ -3,6 +3,7 @@ import { chromium, Browser, BrowserContext, Page, BrowserContextOptions, Frame, 
 import { CrownAccount } from '../types';
 import { query } from '../models/database';
 import { CrownApiClient } from './crown-api-client';
+import { getRedisClient } from './redis-client';
 
 const PLAYWRIGHT_HEADLESS = (process.env.PLAYWRIGHT_HEADLESS ?? 'true').toLowerCase();
 const isHeadless = ['1', 'true', 'yes', 'y'].includes(PLAYWRIGHT_HEADLESS);
@@ -7553,6 +7554,25 @@ export class CrownAutomationService {
     const ltype = params.ltype || '3';
     const isRB = params.isRB || (showtype === 'live' ? 'Y' : 'N');
 
+    // Redis 缓存键
+    const cacheKey = `crown:more_markets:${params.gid}:${showtype}:${gtype}`;
+    const redis = getRedisClient();
+
+    // 尝试从 Redis 读取缓存
+    if (redis.isAvailable()) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          const data = JSON.parse(cached);
+          console.log(`✅ Redis 缓存命中: ${params.gid}`);
+          return data;
+        }
+      } catch (error) {
+        console.error('❌ Redis 读取失败:', error);
+      }
+    }
+
+    // 缓存未命中，调用 API
     let account: CrownAccount | null = null;
     if (params.accountId) {
       account = await this.loadAccountById(Number(params.accountId));
@@ -7595,7 +7615,21 @@ export class CrownAutomationService {
         return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [], halfMoneyline: undefined };
       }
 
-      return this.parseMoreMarketsFromXml(xml);
+      const result = this.parseMoreMarketsFromXml(xml);
+
+      // 存入 Redis 缓存
+      if (redis.isAvailable()) {
+        try {
+          // 滚球缓存 2 分钟，今日缓存 5 分钟
+          const ttl = showtype === 'live' ? 120 : 300;
+          await redis.setex(cacheKey, ttl, JSON.stringify(result));
+          console.log(`✅ Redis 缓存已保存: ${params.gid} (TTL: ${ttl}s)`);
+        } catch (error) {
+          console.error('❌ Redis 写入失败:', error);
+        }
+      }
+
+      return result;
     } catch (error) {
       console.error('❌ 调用 get_game_more 失败:', error);
       return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };

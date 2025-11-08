@@ -27,8 +27,7 @@
     "cron:install": "bash scripts/install-cron.sh",
     "cron:uninstall": "bash scripts/uninstall-cron.sh",
     "cron:update": "bash scripts/cron-update-mapping.sh",
-    "aliases:import-today": "ts-node scripts/import-crown-today-aliases.ts"
-    ,
+    "aliases:import-today": "ts-node scripts/import-crown-today-aliases.ts",
     "debug:more": "ts-node scripts/debug-more.ts"
   },
   "keywords": [],
@@ -54,6 +53,7 @@
     "express": "^5.1.0",
     "fast-xml-parser": "^5.3.0",
     "https-proxy-agent": "^7.0.6",
+    "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "nodemailer": "^6.10.1",
