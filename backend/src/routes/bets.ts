@@ -645,7 +645,7 @@ router.post('/', async (req: any, res) => {
                     betData.market_line || null,
                     Number.isFinite(betData.market_index) ? Number(betData.market_index) : null,
                     betData.single_limit || null,
-                    intervalRange ? `${intervalRange.min}-${intervalRange.max}` : null,
+                    intervalRange ? Math.round((intervalRange.min + intervalRange.max) / 2) : 3,  // 存储平均值
                     betData.quantity || actualAccountIds.length,
                     initialStatus,
                     betResult.betId || null,
