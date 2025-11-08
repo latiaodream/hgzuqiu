@@ -232,12 +232,12 @@ export interface BetCreateRequest {
     match_id?: number;
     bet_type: string;
     bet_option: string;
-    bet_amount: number;
+    total_amount: number;  // 总金额（实数）
     odds: number;
     min_odds?: number;
-    single_limit?: number;
-    interval_seconds?: number;
-    quantity?: number;
+    single_limit?: string;  // 单笔限额（虚数），格式如 "10000-14000" 或留空
+    interval_range?: string;  // 间隔时间范围（秒），格式如 "3-15"
+    quantity?: number;  // 参与下注的账号数量
     crown_match_id?: string;
     league_name?: string;
     home_team?: string;

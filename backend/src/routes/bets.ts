@@ -4,6 +4,13 @@ import { query } from '../models/database';
 import { BetCreateRequest, ApiResponse, Bet, AccountSelectionEntry, CrownAccount } from '../types';
 import { getCrownAutomation } from '../services/crown-automation';
 import { selectAccounts } from '../services/account-selection';
+import {
+    parseLimitRange,
+    parseIntervalRange,
+    splitBetsForAccounts,
+    generateBetQueue,
+    generateRandomInterval,
+} from '../utils/bet-splitter';
 
 const buildExclusionReason = (entry?: AccountSelectionEntry | null): string => {
     if (!entry) {
@@ -273,16 +280,23 @@ router.post('/', async (req: any, res) => {
             (typeof betData.crown_match_id === 'string' && betData.crown_match_id.trim().length > 0)
         );
 
-        if (!hasMatchIdentifier || !betData.bet_type || !betData.bet_amount) {
+        if (!hasMatchIdentifier || !betData.bet_type || !betData.total_amount) {
             console.log('❌ 验证失败: 缺少必填字段', {
                 match_id: betData.match_id,
                 crown_match_id: betData.crown_match_id,
                 bet_type: betData.bet_type,
-                bet_amount: betData.bet_amount
+                total_amount: betData.total_amount
             });
             return res.status(400).json({
                 success: false,
-                error: '比赛信息、下注类型和金额不能为空'
+                error: '比赛信息、下注类型和总金额不能为空'
+            });
+        }
+
+        if (betData.total_amount <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: '总金额必须大于 0'
             });
         }
         const crownMatchIdRaw = (betData.crown_match_id || '').toString().trim();
@@ -438,16 +452,82 @@ router.post('/', async (req: any, res) => {
             });
         }
 
+        // 根据 quantity 参数确定实际使用的账号数量
+        const quantity = betData.quantity || validatedAccountIds.length;
+        const actualAccountIds = validatedAccountIds.slice(0, Math.min(quantity, validatedAccountIds.length));
+
+        console.log(`📊 下注参数: 总金额=${betData.total_amount}, 账号数=${actualAccountIds.length}, 单笔限额=${betData.single_limit || '自动'}, 间隔=${betData.interval_range || '无'}`);
+
+        // 获取账号信息（折扣、限额）
+        const accountsResult = await query(
+            'SELECT id, discount, football_prematch_limit, football_live_limit FROM crown_accounts WHERE id = ANY($1)',
+            [actualAccountIds]
+        );
+
+        const accountDiscounts = new Map<number, number>();
+        const accountLimits = new Map<number, { min: number; max: number }>();
+
+        for (const row of accountsResult.rows) {
+            const accountId = Number(row.id);
+            const discount = Number(row.discount) || 1.0;
+            accountDiscounts.set(accountId, discount);
+
+            // 使用账号的限额（如果有）
+            const limit = Number(row.football_prematch_limit) || Number(row.football_live_limit) || 0;
+            if (limit > 0) {
+                accountLimits.set(accountId, { min: 50, max: limit });
+            }
+        }
+
+        // 解析单笔限额范围
+        const singleLimitRange = parseLimitRange(betData.single_limit);
+
+        // 拆分金额
+        let betSplits;
+        try {
+            betSplits = splitBetsForAccounts({
+                totalRealAmount: betData.total_amount,
+                accountIds: actualAccountIds,
+                accountDiscounts,
+                singleLimitRange: singleLimitRange || undefined,
+                accountLimits: singleLimitRange ? undefined : accountLimits,
+            });
+        } catch (error: any) {
+            return res.status(400).json({
+                success: false,
+                error: `金额拆分失败: ${error.message}`,
+            });
+        }
+
+        // 生成轮流下注队列
+        const betQueue = generateBetQueue(betSplits);
+
+        console.log(`📋 生成下注队列: 共 ${betQueue.length} 笔`);
+        betQueue.forEach((split, index) => {
+            console.log(`  ${index + 1}. 账号 ${split.accountId}: 虚数 ${split.virtualAmount}, 实数 ${split.realAmount.toFixed(2)}, 折扣 ${split.discount}`);
+        });
+
+        // 解析间隔时间范围
+        const intervalRange = parseIntervalRange(betData.interval_range);
+
         const automation = getCrownAutomation();
         const createdBets: Array<{ record: any; crown_result: any; accountId: number; match: any }> = [];
         const verifiableBets: Array<{ record: any; crown_result: any; accountId: number; match: any }> = [];
         const failedBets: Array<{ accountId: number; error: string }> = [];
         const verificationWarnings: Array<{ accountId: number; warning: string }> = [];
 
-        // 为每个账号创建下注记录并执行真实下注
-        for (const accountId of validatedAccountIds) {
+        // 按队列执行下注
+        for (let i = 0; i < betQueue.length; i++) {
+            const split = betQueue[i];
+            const accountId = split.accountId;
+            const crownAmount = split.virtualAmount;  // 虚数金额
+            const platformAmount = split.realAmount;  // 实数金额
+            const discount = split.discount;
+
+            console.log(`\n🎯 执行第 ${i + 1}/${betQueue.length} 笔下注: 账号 ${accountId}, 虚数 ${crownAmount}, 实数 ${platformAmount.toFixed(2)}`);
+
             try {
-                // 获取账号完整信息（用于自动登录与折扣计算）
+                // 获取账号完整信息（用于自动登录）
                 const accountResult = await query(
                     'SELECT * FROM crown_accounts WHERE id = $1',
                     [accountId]
@@ -465,6 +545,7 @@ router.post('/', async (req: any, res) => {
 
                 // 确保账号会话可用，必要时自动登录
                 if (!automation.isAccountOnline(accountId)) {
+                    console.log(`🔐 账号 ${accountId} 未登录，尝试自动登录...`);
                     const loginAttempt = await automation.loginAccountWithApi(accountRow);
                     if (!loginAttempt.success) {
                         failedBets.push({
@@ -488,13 +569,7 @@ router.post('/', async (req: any, res) => {
                     }
                 }
 
-                const discount = Number(accountRow.discount) || 1;
-                const platformAmount = Number(betData.bet_amount) || 0;
-                const discountSafe = discount > 0 ? discount : 1;
-                const crownAmountRaw = platformAmount / discountSafe;
-                const crownAmount = parseFloat(crownAmountRaw.toFixed(2));
-                const virtualAmount = parseFloat(platformAmount.toFixed(2));
-
+                // 检查最低赔率
                 const minOddsThreshold = Number(betData.min_odds);
                 if (Number.isFinite(minOddsThreshold) && minOddsThreshold > 0) {
                     const compareOdds = Number(betData.odds);
@@ -561,17 +636,17 @@ router.post('/', async (req: any, res) => {
                     betData.match_id,
                     betData.bet_type,
                     betData.bet_option,
-                    crownAmount,
-                    virtualAmount,
+                    crownAmount,  // 虚数金额
+                    platformAmount,  // 实数金额
                     finalOddsValue,
                     betData.market_category || null,
                     betData.market_scope || null,
                     betData.market_side || null,
                     betData.market_line || null,
                     Number.isFinite(betData.market_index) ? Number(betData.market_index) : null,
-                    betData.single_limit || crownAmount,
-                    betData.interval_seconds || 3,
-                    betData.quantity || 1,
+                    betData.single_limit || null,
+                    intervalRange ? `${intervalRange.min}-${intervalRange.max}` : null,
+                    betData.quantity || actualAccountIds.length,
                     initialStatus,
                     betResult.betId || null,
                     finalOddsValue,
@@ -636,6 +711,13 @@ router.post('/', async (req: any, res) => {
                     accountId,
                     error: accountError.message || '下注失败'
                 });
+            }
+
+            // 如果不是最后一笔，等待随机间隔时间
+            if (i < betQueue.length - 1 && intervalRange) {
+                const waitSeconds = generateRandomInterval(intervalRange);
+                console.log(`⏳ 等待 ${waitSeconds.toFixed(1)} 秒后执行下一笔...`);
+                await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
             }
         }
 

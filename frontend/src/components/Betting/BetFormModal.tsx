@@ -14,8 +14,9 @@ import {
   Button,
   Spin,
   Empty,
+  Tooltip,
 } from 'antd';
-import { TrophyOutlined, ReloadOutlined } from '@ant-design/icons';
+import { TrophyOutlined, ReloadOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import type { Match, CrownAccount, BetCreateRequest, AccountSelectionResponse } from '../../types';
 import { betApi, accountApi, crownApi } from '../../services/api';
 import dayjs from 'dayjs';
@@ -457,12 +458,11 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   };
 
   const calculatePayout = (accountCountOverride?: number) => {
-    const betAmount = form.getFieldValue('bet_amount') || 0;
+    const totalAmount = form.getFieldValue('total_amount') || 0;
     const odds = form.getFieldValue('odds') || 1;
-    const quantity = form.getFieldValue('quantity') || 1;
-    const accountCount = accountCountOverride ?? selectedAccounts.length;
 
-    const payout = betAmount * odds * quantity * accountCount;
+    // 预估盈利 = 总金额 × 赔率
+    const payout = totalAmount * odds;
     setEstimatedPayout(payout);
   };
 
@@ -532,11 +532,12 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         match_id: match.id,
         bet_type: betTypeValue,
         bet_option: betOptionValue,
-        bet_amount: values.bet_amount,
+        total_amount: values.total_amount,
         odds: finalOdds,
         single_limit: values.single_limit,
-        interval_seconds: values.interval_seconds,
+        interval_range: values.interval_range,
         quantity: values.quantity,
+        min_odds: values.min_odds,
         crown_match_id: match.crown_gid || match.match_id,
         league_name: match.league_name,
         home_team: match.home_team,
@@ -735,52 +736,83 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
               <Row gutter={8} className="bet-quick-row">
                 <Col span={12}>
-                  <Form.Item name="min_odds" label="最低赔率" className="bet-quick-item">
-                    <InputNumber size="small" min={0} step={0.01} style={{ width: '100%' }} />
+                  <Form.Item
+                    name="total_amount"
+                    label={
+                      <span>
+                        总金额（实数）
+                        <Tooltip title="计划实际投入的金额总和，按账号折扣后的真实出款总额">
+                          <QuestionCircleOutlined style={{ marginLeft: 4, fontSize: 12, color: '#999' }} />
+                        </Tooltip>
+                      </span>
+                    }
+                    className="bet-quick-item"
+                    rules={[{ required: true, message: '请输入总金额' }]}
+                  >
+                    <InputNumber size="small" min={50} style={{ width: '100%' }} placeholder="50000" />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item name="total_amount" label="总金额" className="bet-quick-item">
-                    <InputNumber size="small" min={0} style={{ width: '100%' }} />
+                  <Form.Item
+                    name="single_limit"
+                    label={
+                      <span>
+                        单笔限额（虚数）
+                        <Tooltip title="如填写（如 10000-14000），按该区间随机拆分虚数金额；若留空，将自动读取账号在皇冠后台的单笔限额">
+                          <QuestionCircleOutlined style={{ marginLeft: 4, fontSize: 12, color: '#999' }} />
+                        </Tooltip>
+                      </span>
+                    }
+                    className="bet-quick-item"
+                  >
+                    <Input size="small" placeholder="10000-14000 或留空" />
                   </Form.Item>
                 </Col>
               </Row>
 
               <Row gutter={8} className="bet-quick-row">
                 <Col span={12}>
-                  <Form.Item name="single_limit" label="单笔限额" className="bet-quick-item">
-                    <Input size="small" placeholder="虚数" />
+                  <Form.Item
+                    name="interval_range"
+                    label={
+                      <span>
+                        间隔时间（秒）
+                        <Tooltip title="每笔下注之间的等待时间范围，例如 3-15 表示随机等待 3~15 秒">
+                          <QuestionCircleOutlined style={{ marginLeft: 4, fontSize: 12, color: '#999' }} />
+                        </Tooltip>
+                      </span>
+                    }
+                    className="bet-quick-item"
+                  >
+                    <Input size="small" placeholder="3-15" />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item name="interval_range" label="间隔时间 (S)" className="bet-quick-item">
-                    <Input size="small" placeholder="1-3" />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Row gutter={8} className="bet-quick-row">
-                <Col span={8}>
                   <Form.Item
                     name="quantity"
-                    label="数量"
+                    label={
+                      <span>
+                        数量
+                        <Tooltip title="每轮参与下注的账号数量。若选中账号超过该数量，将按轮次轮换执行">
+                          <QuestionCircleOutlined style={{ marginLeft: 4, fontSize: 12, color: '#999' }} />
+                        </Tooltip>
+                      </span>
+                    }
                     className="bet-quick-item"
                     rules={[{ required: true, message: '请输入数量' }]}
                   >
-                    <InputNumber size="small" min={1} max={10} style={{ width: '100%' }} />
+                    <InputNumber size="small" min={1} max={10} style={{ width: '100%' }} placeholder="1" />
                   </Form.Item>
                 </Col>
-                <Col span={8}>
-                  <Form.Item
-                    name="bet_amount"
-                    label="单注金额"
-                    className="bet-quick-item"
-                    rules={[{ required: true, message: '请输入下注金额' }]}
-                  >
-                    <InputNumber size="small" min={1} style={{ width: '100%' }} />
+              </Row>
+
+              <Row gutter={8} className="bet-quick-row">
+                <Col span={12}>
+                  <Form.Item name="min_odds" label="最低赔率" className="bet-quick-item">
+                    <InputNumber size="small" min={0} step={0.01} style={{ width: '100%' }} placeholder="可选" />
                   </Form.Item>
                 </Col>
-                <Col span={8}>
+                <Col span={12}>
                   <div className="bet-quick-mode">
                     <span className="label">模式</span>
                     <div className="mode-buttons">
