@@ -6425,11 +6425,9 @@ export class CrownAutomationService {
         lastErrorMessage = oddsResult.message || oddsResult.code || '未知错误';
         lastErrorCode = oddsResult.code || oddsResult.errormsg;
 
-        // 处理 doubleLogin 错误：清除会话并返回错误
+        // 处理 doubleLogin 错误：直接返回错误（会话清除在上层处理）
         if (oddsResult.code === 'DOUBLE_LOGIN') {
-          console.log('⚠️ 检测到重复登录，清除账号会话');
-          this.apiLoginSessions.delete(accountId);
-          this.apiUids.delete(accountId);
+          console.log('⚠️ 检测到重复登录，会话已失效');
           return {
             success: false,
             message: '账号在其他地方登录，当前会话已失效。请重新登录账号。',
@@ -6496,6 +6494,13 @@ export class CrownAutomationService {
     try {
       const lookup = await this.lookupLatestOdds(apiClient, betRequest);
       if (!lookup.success) {
+        // 处理 doubleLogin 错误：清除会话
+        if (lookup.reasonCode === 'DOUBLE_LOGIN') {
+          console.log('⚠️ 清除账号会话 (accountId=' + accountId + ')');
+          this.apiLoginSessions.delete(accountId);
+          this.apiUids.delete(accountId);
+        }
+
         return {
           success: false,
           message: lookup.message,
@@ -6533,6 +6538,13 @@ export class CrownAutomationService {
 
       const lookup = await this.lookupLatestOdds(apiClient, betRequest);
       if (!lookup.success || !lookup.oddsResult || !lookup.variant || !lookup.crownMatchId) {
+        // 处理 doubleLogin 错误：清除会话
+        if (lookup.reasonCode === 'DOUBLE_LOGIN') {
+          console.log('⚠️ 清除账号会话 (accountId=' + accountId + ')');
+          this.apiLoginSessions.delete(accountId);
+          this.apiUids.delete(accountId);
+        }
+
         return {
           success: false,
           message: lookup.message,
