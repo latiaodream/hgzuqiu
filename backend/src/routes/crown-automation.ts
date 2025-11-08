@@ -4,7 +4,6 @@ import { query } from '../models/database';
 import { ApiResponse } from '../types';
 import { getCrownAutomation } from '../services/crown-automation';
 import { getMatchFetcher } from '../services/match-fetcher';
-import { mergeTodayMatchesWithISports } from '../services/match-merger';
 import type { Response } from 'express';
 
 const buildAccountAccess = (user: any, options?: { includeDisabled?: boolean }) => {
@@ -1629,17 +1628,6 @@ router.get('/matches-system', async (req: any, res) => {
                         }
 
                         if (allMatches.length > 0) {
-                            if (String(showtype).toLowerCase() === 'today') {
-                                try {
-                                    allMatches = await mergeTodayMatchesWithISports(allMatches, {
-                                        gtype: String(gtype),
-                                        date: new Date().toISOString().slice(0, 10),
-                                    });
-                                } catch (mergeError) {
-                                    console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
-                                }
-                            }
-
                             // 快速模式：跳过盘口补充
                             if (!fastMode) {
                                 await enrichMatchesWithMoreMarkets(allMatches, {
@@ -1688,16 +1676,6 @@ router.get('/matches-system', async (req: any, res) => {
                 }
             }
             if (filteredMatches.length > 0) {
-                if (String(showtype).toLowerCase() === 'today') {
-                    try {
-                        filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
-                            gtype: String(gtype),
-                            date: new Date().toISOString().slice(0, 10),
-                        });
-                    } catch (mergeError) {
-                        console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
-                    }
-                }
                 // 快速模式：跳过盘口补充
                 if (!fastMode) {
                     await enrichMatchesWithMoreMarkets(filteredMatches, {
@@ -1753,16 +1731,6 @@ router.get('/matches-system', async (req: any, res) => {
         }
 
         if (filteredMatches.length > 0) {
-            if (String(showtype).toLowerCase() === 'today') {
-                try {
-                    filteredMatches = await mergeTodayMatchesWithISports(filteredMatches, {
-                        gtype: String(gtype),
-                        date: new Date().toISOString().slice(0, 10),
-                    });
-                } catch (mergeError) {
-                    console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
-                }
-            }
             // 快速模式：跳过盘口补充
             if (!fastMode) {
                 await enrichMatchesWithMoreMarkets(filteredMatches, {
@@ -2370,17 +2338,6 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
         }
 
         if (filtered.length > 0) {
-          if (showtype === 'today') {
-            try {
-              filtered = await mergeTodayMatchesWithISports(filtered, {
-                gtype: String(gtype),
-                date: new Date().toISOString().slice(0, 10),
-              });
-            } catch (mergeError) {
-              console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
-            }
-          }
-
           await enrichMatchesWithMoreMarkets(filtered, { showtype, gtype });
           // 记录最近一份非空数据
           lastNonEmptyMatches = filtered;
