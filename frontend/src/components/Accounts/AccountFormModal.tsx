@@ -302,10 +302,15 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
         // 新增模式不自动获取限额，需要账号登录后才能获取
 
         onSubmit();
+      } else {
+        // 显示后端返回的错误信息
+        message.error(response.error || '保存账号失败');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save account:', error);
-      message.error('保存账号失败');
+      // 显示更详细的错误信息
+      const errorMessage = error?.response?.data?.error || error?.message || '保存账号失败';
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }

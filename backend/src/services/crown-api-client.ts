@@ -723,7 +723,7 @@ export class CrownApiClient {
       specialClick: '',
       mode: 'NORMAL',
       from: 'game_more',
-      filter: 'Main',
+      filter: 'All',
       ts: timestamp,
       ecid: params.gid,
     });

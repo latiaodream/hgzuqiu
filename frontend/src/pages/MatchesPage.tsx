@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Select, Button, Input, message, Empty, Typography, Segmented, Spin, Space } from 'antd';
 import { crownApi, matchApi, accountApi } from '../services/api';
 import { ReloadOutlined } from '@ant-design/icons';
@@ -51,6 +51,246 @@ const buildLiveClock = (period?: string | null, clock?: string | null): string =
   return c || p || '';
 };
 
+const parseCountValue = (value: any): number => {
+  if (value === undefined || value === null) return 0;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const parsed = parseInt(String(value).trim(), 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const buildLineKey = (line: any): string => {
+  if (!line) return '';
+  const parts = [
+    line.line ?? line.ratio ?? '',
+    line.market_rtype ?? '',
+    line.home_rtype ?? '',
+    line.away_rtype ?? '',
+    line.over_rtype ?? '',
+    line.under_rtype ?? '',
+    line.wtype ?? '',
+    line.market_wtype ?? '',
+    line.market_index ?? line.index ?? '',
+    line.market_scope ?? '',
+    line.market_side ?? line.side ?? '',
+    line.market_chose_team ?? '',
+  ];
+  return parts.map((part) => String(part ?? '')).join('|');
+};
+
+const mergeLineEntries = (
+  incomingLines: any[] | undefined,
+  previousLines: any[] | undefined,
+  preserveAdditional: boolean,
+): any[] | undefined => {
+  const incomingList = Array.isArray(incomingLines) ? incomingLines : [];
+  const previousList = Array.isArray(previousLines) ? previousLines : [];
+
+  if (!preserveAdditional && incomingList.length === 0) {
+    return incomingLines === undefined ? undefined : [];
+  }
+
+  const mergedMap = new Map<string, any>();
+
+  for (const item of incomingList) {
+    if (!item) continue;
+    const key = buildLineKey(item);
+    mergedMap.set(key, { ...item });
+  }
+
+  if (preserveAdditional) {
+    for (const item of previousList) {
+      if (!item) continue;
+      const key = buildLineKey(item);
+      if (!mergedMap.has(key)) {
+        mergedMap.set(key, { ...item });
+      }
+    }
+  }
+
+  if (mergedMap.size === 0) {
+    if (preserveAdditional) {
+      return previousList.length ? previousList.map((item) => ({ ...item })) : undefined;
+    }
+    return incomingList.length ? incomingList.map((item) => ({ ...item })) : undefined;
+  }
+
+  return Array.from(mergedMap.values());
+};
+
+const mergeMarketScope = (
+  incomingScope: any,
+  previousScope: any,
+  options: { preserveHandicap: boolean; preserveOverUnder: boolean },
+) => {
+  const scope: any = { ...previousScope, ...incomingScope };
+
+  const mergedHandicapLines = mergeLineEntries(
+    incomingScope?.handicapLines,
+    previousScope?.handicapLines,
+    options.preserveHandicap,
+  );
+  if (mergedHandicapLines && mergedHandicapLines.length > 0) {
+    scope.handicapLines = mergedHandicapLines;
+  } else if (!options.preserveHandicap) {
+    if (scope.handicapLines) delete scope.handicapLines;
+  }
+
+  if (!scope.handicap && Array.isArray(scope.handicapLines) && scope.handicapLines.length > 0) {
+    scope.handicap = { ...scope.handicapLines[0] };
+  }
+
+  const mergedOverUnderLines = mergeLineEntries(
+    incomingScope?.overUnderLines,
+    previousScope?.overUnderLines,
+    options.preserveOverUnder,
+  );
+  if (mergedOverUnderLines && mergedOverUnderLines.length > 0) {
+    scope.overUnderLines = mergedOverUnderLines;
+  } else if (!options.preserveOverUnder) {
+    if (scope.overUnderLines) delete scope.overUnderLines;
+  }
+
+  if (!scope.ou && Array.isArray(scope.overUnderLines) && scope.overUnderLines.length > 0) {
+    scope.ou = { ...scope.overUnderLines[0] };
+  }
+
+  return scope;
+};
+
+const mergeMarketsData = (incoming?: any, previous?: any) => {
+  if (!incoming && !previous) return {};
+  const merged: any = {
+    ...previous,
+    ...incoming,
+  };
+
+  merged.counts = { ...(previous?.counts || {}), ...(incoming?.counts || {}) };
+
+  const handicapCount = parseCountValue(
+    merged.counts?.handicap ??
+      merged.counts?.Handicap ??
+      merged.counts?.HANDICAP ??
+      merged.counts?.R_COUNT ??
+      merged.counts?.r_count ??
+      merged.counts?.rCount,
+  );
+  const overUnderCount = parseCountValue(
+    merged.counts?.overUnder ??
+      merged.counts?.OverUnder ??
+      merged.counts?.OVERUNDER ??
+      merged.counts?.OU_COUNT ??
+      merged.counts?.ou_count ??
+      merged.counts?.ouCount,
+  );
+
+  const prevFull = previous?.full || {};
+  const incomingFull = incoming?.full || {};
+  const prevHalf = previous?.half || {};
+  const incomingHalf = incoming?.half || {};
+
+  const prevFullHandicapLen = Array.isArray(prevFull.handicapLines) ? prevFull.handicapLines.length : 0;
+  const incomingFullHandicapLen = Array.isArray(incomingFull.handicapLines) ? incomingFull.handicapLines.length : 0;
+  const prevFullOuLen = Array.isArray(prevFull.overUnderLines) ? prevFull.overUnderLines.length : 0;
+  const incomingFullOuLen = Array.isArray(incomingFull.overUnderLines) ? incomingFull.overUnderLines.length : 0;
+
+  const preserveFullHandicap =
+    incomingFullHandicapLen < prevFullHandicapLen &&
+    prevFullHandicapLen > 0 &&
+    (handicapCount > incomingFullHandicapLen || handicapCount === 0);
+
+  const preserveFullOverUnder =
+    incomingFullOuLen < prevFullOuLen &&
+    prevFullOuLen > 0 &&
+    (overUnderCount > incomingFullOuLen || overUnderCount === 0);
+
+  const prevHalfHandicapLen = Array.isArray(prevHalf.handicapLines) ? prevHalf.handicapLines.length : 0;
+  const incomingHalfHandicapLen = Array.isArray(incomingHalf.handicapLines) ? incomingHalf.handicapLines.length : 0;
+  const prevHalfOuLen = Array.isArray(prevHalf.overUnderLines) ? prevHalf.overUnderLines.length : 0;
+  const incomingHalfOuLen = Array.isArray(incomingHalf.overUnderLines) ? incomingHalf.overUnderLines.length : 0;
+
+  const preserveHalfHandicap =
+    incomingHalfHandicapLen < prevHalfHandicapLen && prevHalfHandicapLen > 0;
+  const preserveHalfOverUnder =
+    incomingHalfOuLen < prevHalfOuLen && prevHalfOuLen > 0;
+
+  merged.full = mergeMarketScope(incomingFull, prevFull, {
+    preserveHandicap: preserveFullHandicap,
+    preserveOverUnder: preserveFullOverUnder,
+  });
+
+  merged.half = mergeMarketScope(incomingHalf, prevHalf, {
+    preserveHandicap: preserveHalfHandicap,
+    preserveOverUnder: preserveHalfOverUnder,
+  });
+
+  merged.moneyline = {
+    ...(previous?.moneyline || previous?.moneyLine || {}),
+    ...(incoming?.moneyline || incoming?.moneyLine || {}),
+  };
+  merged.moneyLine = merged.moneyline;
+
+  if (!merged.handicap && Array.isArray(merged.full?.handicapLines) && merged.full.handicapLines.length > 0) {
+    merged.handicap = { ...merged.full.handicapLines[0] };
+  }
+
+  if (!merged.ou && Array.isArray(merged.full?.overUnderLines) && merged.full.overUnderLines.length > 0) {
+    merged.ou = { ...merged.full.overUnderLines[0] };
+  }
+
+  return merged;
+};
+
+const buildMatchKey = (match: any): string => {
+  const candidates = [
+    match?.gid,
+    match?.match_id,
+    match?.matchId,
+    match?.gidm,
+    match?.id,
+    match?.raw?.GID,
+    match?.raw?.gid,
+  ];
+  for (const candidate of candidates) {
+    if (candidate !== undefined && candidate !== null) {
+      const value = String(candidate).trim();
+      if (value) return value;
+    }
+  }
+  const composite = [
+    match?.league ?? '',
+    match?.home ?? '',
+    match?.away ?? '',
+    match?.time ?? match?.match_time ?? '',
+  ].join('|');
+  return composite;
+};
+
+const mergeSingleMatchRecord = (incoming: any, previous: any) => {
+  const merged = { ...previous, ...incoming };
+  merged.markets = mergeMarketsData(incoming?.markets, previous?.markets);
+  merged.raw = incoming?.raw ?? previous?.raw;
+  return merged;
+};
+
+const mergeMatchRecords = (previousList: any[], incomingList: any[]): any[] => {
+  if (!Array.isArray(incomingList)) return Array.isArray(previousList) ? previousList : [];
+  if (incomingList.length === 0) return [];
+  if (!Array.isArray(previousList) || previousList.length === 0) {
+    return incomingList.map((match) => ({ ...match }));
+  }
+  const prevMap = new Map<string, any>();
+  for (const match of previousList) {
+    prevMap.set(buildMatchKey(match), match);
+  }
+  return incomingList.map((match) => {
+    const prev = prevMap.get(buildMatchKey(match));
+    if (!prev) {
+      return { ...match };
+    }
+    return mergeSingleMatchRecord(match, prev);
+  });
+};
+
 const MatchesPage: React.FC = () => {
   const [showtype, setShowtype] = useState<'live' | 'today' | 'early'>('live');
   const [gtype, setGtype] = useState<'ft' | 'bk'>('ft');
@@ -68,6 +308,23 @@ const MatchesPage: React.FC = () => {
   const [accounts, setAccounts] = useState<CrownAccount[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  const applyMatchUpdate = useCallback((
+    incomingList: any[],
+    options?: { preserveLiveOnEmpty?: boolean },
+  ) => {
+    const normalized = Array.isArray(incomingList) ? incomingList : [];
+    setMatches((prev) => {
+      if (
+        options?.preserveLiveOnEmpty &&
+        normalized.length === 0 &&
+        prev.length > 0
+      ) {
+        return prev;
+      }
+      return mergeMatchRecords(prev, normalized);
+    });
+  }, []);
 
   React.useEffect(() => {
     const handleResize = () => {
@@ -161,7 +418,8 @@ const MatchesPage: React.FC = () => {
           sorttype: 'L',
         });
         if (res.success && res.data) {
-          setMatches(filterFinishedMatches(res.data.matches || []));
+          // 防止偶发空集导致列表清零（非 live 也保持）
+          applyMatchUpdate(filterFinishedMatches(res.data.matches || []), { preserveLiveOnEmpty: true });
           setLastUpdatedAt(Date.now());
         }
         else message.error((res as any).error || '抓取赛事失败');
@@ -235,15 +493,17 @@ const MatchesPage: React.FC = () => {
                 });
                 if (res.success && res.data) {
                   const fbFiltered = filterFinishedMatches(res.data.matches || []);
-                  setMatches(fbFiltered);
+                  //  SSE      
+                  applyMatchUpdate(fbFiltered, { preserveLiveOnEmpty: true });
                 } else {
-                  setMatches(filtered);
+                  applyMatchUpdate(filtered, { preserveLiveOnEmpty: true });
                 }
               } catch {
-                setMatches(filtered);
+                applyMatchUpdate(filtered, { preserveLiveOnEmpty: showtype === 'live' });
               }
             } else {
-              setMatches(filtered);
+              //     :    
+              applyMatchUpdate(filtered, { preserveLiveOnEmpty: true });
             }
             setLastUpdatedAt(Date.now());
           }
@@ -262,7 +522,7 @@ const MatchesPage: React.FC = () => {
     return () => {
       if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
     };
-  }, [mode, useSSE, showtype, gtype]);
+  }, [mode, useSSE, showtype, gtype, applyMatchUpdate]);
 
   const filtered = useMemo(() => {
     const isValidOdds = (value: any) => {
@@ -358,45 +618,104 @@ const MatchesPage: React.FC = () => {
     });
   }, [matches, search]);
 
-  const parseOdds = (value?: string): number | null => {
-    if (value === undefined || value === null) return null;
-    const sanitized = String(value).replace(/[^0-9.\-]/g, '');
-    if (!sanitized) return null;
-    const parsed = parseFloat(sanitized);
+const parseOdds = (value?: string): number | null => {
+  if (value === undefined || value === null) return null;
+  const sanitized = String(value).replace(/[^0-9.\-]/g, '');
+  if (!sanitized) return null;
+  const parsed = parseFloat(sanitized);
     return Number.isFinite(parsed) ? parsed : null;
   };
 
-  // 格式化盘口数字，添加 + 或 - 符号
-  const formatHandicapLine = (line?: string): string => {
-    if (!line) return '';
+  // 将斜杠盘口转换为小数写法（例如 0/0.5 -> 0.25, -0.5/1 -> -0.75）
+  const parseHandicapDecimal = (line?: string): number | null => {
+    if (!line) return null;
+    const cleaned = String(line).replace(/[^\d./+\-\s]/g, '').replace(/\s+/g, '');
+    if (!cleaned) return null;
 
-    const cleanLine = String(line).trim();
-
-    // 如果已经有 + 或 - 符号，直接返回
-    if (cleanLine.startsWith('+') || cleanLine.startsWith('-')) {
-      return cleanLine;
+    let working = cleaned;
+    let globalSign = 1;
+    if (working.startsWith('-')) {
+      globalSign = -1;
+      working = working.slice(1);
+    } else if (working.startsWith('+')) {
+      working = working.slice(1);
     }
 
-    // 处理带斜杠的盘口 (例如: "0 / 0.5", "2.5 / 3")
-    if (cleanLine.includes('/')) {
-      const parts = cleanLine.split('/').map(p => p.trim());
-      const formattedParts = parts.map(part => {
-        const num = parseFloat(part);
-        if (isNaN(num)) return part;
-        if (num === 0) return '+0';
-        if (num > 0) return `+${part}`;
-        return part;
-      });
-      return formattedParts.join(' / ');
+    const parts = working.split('/');
+    const values: number[] = [];
+
+    for (const partRaw of parts) {
+      if (!partRaw) continue;
+      let part = partRaw;
+      let localSign = globalSign;
+      if (part.startsWith('-')) {
+        localSign = -1;
+        part = part.slice(1);
+      } else if (part.startsWith('+')) {
+        localSign = 1;
+        part = part.slice(1);
+      }
+      const num = parseFloat(part);
+      if (Number.isFinite(num)) {
+        values.push(num * localSign);
+      }
     }
 
-    // 处理单个数字
-    const num = parseFloat(cleanLine);
-    if (isNaN(num)) return cleanLine;
-    if (num === 0) return '+0';
-    if (num > 0) return `+${cleanLine}`;
-    return cleanLine; // 负数已经有 - 符号
+    if (values.length === 0) return null;
+    if (values.length === 1) return values[0];
+    const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+    return Number.isFinite(avg) ? avg : null;
   };
+
+  const formatHandicapValue = (value: number | null): string => {
+    if (value === null || Number.isNaN(value)) return '';
+  if (Math.abs(value) < 1e-4) return '0';
+  const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+  const absValue = Math.abs(value);
+  const str = Number.isInteger(absValue)
+    ? absValue.toString()
+    : absValue.toFixed(2).replace(/\.?0+$/, '');
+  return `${sign}${str}`;
+};
+
+const normalizeTeamFlag = (value?: string | null): 'H' | 'C' | null => {
+  if (!value) return null;
+  const normalized = String(value).trim().toUpperCase();
+  if (normalized === 'H' || normalized === 'C') return normalized;
+  return null;
+};
+
+const getCaseInsensitive = (source: any, key: string) => {
+  if (!source) return undefined;
+  if (source[key] !== undefined) return source[key];
+  const upper = key.toUpperCase();
+  if (source[upper] !== undefined) return source[upper];
+  const lower = key.toLowerCase();
+  if (source[lower] !== undefined) return source[lower];
+  return undefined;
+};
+
+const resolveStrongFlag = (match: any, scope: MarketScope, lineMeta?: any): 'H' | 'C' | null => {
+  const primaryKeys = scope === 'half'
+    ? ['hstrong', 'HSTRONG', 'half_strong']
+    : ['strong', 'STRONG'];
+  for (const key of primaryKeys) {
+    const fromMatch = getCaseInsensitive(match, key);
+    const normalizedMatch = normalizeTeamFlag(fromMatch);
+    if (normalizedMatch) return normalizedMatch;
+    const fromRaw = getCaseInsensitive(match?.raw, key);
+    const normalizedRaw = normalizeTeamFlag(fromRaw);
+    if (normalizedRaw) return normalizedRaw;
+  }
+
+  const lineStrong = normalizeTeamFlag(lineMeta?.strong ?? lineMeta?.STRONG);
+  if (lineStrong) return lineStrong;
+
+  const choseTeam = normalizeTeamFlag(lineMeta?.home_chose_team);
+  if (choseTeam) return choseTeam;
+
+  return null;
+};
 
   const getScoreParts = (score: string) => {
     if (!score) return { home: '-', away: '-' };
@@ -472,68 +791,64 @@ const MatchesPage: React.FC = () => {
     const homeRtype = scope === 'half' ? 'HRMH' : 'RMH';
     const drawRtype = scope === 'half' ? 'HRMN' : 'RMN';
     const awayRtype = scope === 'half' ? 'HRMC' : 'RMC';
+    const options = [
+      {
+        key: 'home' as const,
+        label: '主胜',
+        betOption: '主队',
+        odds: ml.home,
+        description: `${scopeLabel} ${(match.home || '主队')} 胜`,
+        marketSide: 'home' as const,
+        marketRtype: homeRtype,
+        marketChose: 'H' as const,
+      },
+      {
+        key: 'away' as const,
+        label: '客胜',
+        betOption: '客队',
+        odds: ml.away,
+        description: `${scopeLabel} ${(match.away || '客队')} 胜`,
+        marketSide: 'away' as const,
+        marketRtype: awayRtype,
+        marketChose: 'C' as const,
+      },
+      {
+        key: 'draw' as const,
+        label: '和局',
+        betOption: '和局',
+        odds: ml.draw,
+        description: `${scopeLabel} 和局`,
+        marketSide: 'draw' as const,
+        marketRtype: drawRtype,
+        marketChose: 'N' as const,
+      },
+    ];
+
     return (
       <div className="odds-stack">
-        {ml.home && (
-          <div
-            className="odds-item"
-            onClick={() => openBetModal(match, {
-              bet_type: betType,
-              bet_option: '主队',
-              odds: ml.home as string,
-              label: `${scopeLabel} ${(match.home || '主队')} 胜 @${ml.home}`,
-              market_category: 'moneyline',
-              market_scope: scope,
-              market_side: 'home',
-              market_wtype: baseWtype,
-              market_rtype: homeRtype,
-              market_chose_team: 'H',
-            })}
-          >
-            <span className="odds-line">主胜</span>
-            <span className="odds-value">{ml.home}</span>
-          </div>
-        )}
-        {ml.draw && (
-          <div
-            className="odds-item"
-            onClick={() => openBetModal(match, {
-              bet_type: betType,
-              bet_option: '和局',
-              odds: ml.draw as string,
-              label: `${scopeLabel} 和局 @${ml.draw}`,
-              market_category: 'moneyline',
-              market_scope: scope,
-              market_side: 'draw',
-              market_wtype: baseWtype,
-              market_rtype: drawRtype,
-              market_chose_team: 'N',
-            })}
-          >
-            <span className="odds-line">和局</span>
-            <span className="odds-value">{ml.draw}</span>
-          </div>
-        )}
-        {ml.away && (
-          <div
-            className="odds-item"
-            onClick={() => openBetModal(match, {
-              bet_type: betType,
-              bet_option: '客队',
-              odds: ml.away as string,
-              label: `${scopeLabel} ${(match.away || '客队')} 胜 @${ml.away}`,
-              market_category: 'moneyline',
-              market_scope: scope,
-              market_side: 'away',
-              market_wtype: baseWtype,
-              market_rtype: awayRtype,
-              market_chose_team: 'C',
-            })}
-          >
-            <span className="odds-line">客胜</span>
-            <span className="odds-value">{ml.away}</span>
-          </div>
-        )}
+        {options
+          .filter((item) => item.odds)
+          .map((item) => (
+            <div
+              key={item.key}
+              className="odds-item"
+              onClick={() => openBetModal(match, {
+                bet_type: betType,
+                bet_option: item.betOption,
+                odds: item.odds as string,
+                label: `${item.description} @${item.odds}`,
+                market_category: 'moneyline',
+                market_scope: scope,
+                market_side: item.marketSide,
+                market_wtype: baseWtype,
+                market_rtype: item.marketRtype,
+                market_chose_team: item.marketChose,
+              })}
+            >
+              <span className="odds-line">{item.label}</span>
+              <span className="odds-value">{item.odds}</span>
+            </div>
+          ))}
       </div>
     );
   };
@@ -562,25 +877,46 @@ const MatchesPage: React.FC = () => {
           // - strong = 'C' 表示 instantHandicap <= 0（客队让球）
 
           const line = data.line || '0';
-          const lineNum = parseFloat(line);
-          const absLine = Math.abs(lineNum);
+          const numericLine = parseFloat(line);
+          const hasValidNumeric = Number.isFinite(numericLine);
           const lineWtype = (data as any).wtype as string | undefined;
           const homeRtype = (data as any).home_rtype as string | undefined;
           const awayRtype = (data as any).away_rtype as string | undefined;
           const homeChoseTeam = (((data as any).home_chose_team as string | undefined) || 'H') as 'H' | 'C' | 'N';
           const awayChoseTeam = (((data as any).away_chose_team as string | undefined) || 'C') as 'H' | 'C' | 'N';
+          const strongFlag = resolveStrongFlag(match, scope, data);
 
-          // 格式化盘口数字（处理 0.5/1 这种格式）
-          let formattedAbsLine = String(absLine);
-          if (line.includes('/')) {
-            // 保留斜杠格式
-            formattedAbsLine = line.replace(/^-/, '');
+          const decimalLine = parseHandicapDecimal(line);
+          const normalizedLine = String(line).trim();
+
+          let orientation = strongFlag ? (strongFlag === 'H' ? -1 : 1) : 0;
+          if (orientation === 0) {
+            if (decimalLine !== null && decimalLine !== 0) {
+              orientation = decimalLine > 0 ? 1 : -1;
+            } else if (hasValidNumeric && numericLine !== 0) {
+              orientation = numericLine > 0 ? 1 : -1;
+            } else {
+              orientation = 1;
+            }
           }
 
-          // 主队盘口：如果是正数（主队让球）显示 +，否则显示 -
-          const homeHandicap = lineNum >= 0 ? `+${formattedAbsLine}` : `-${formattedAbsLine}`;
-          // 客队盘口：与主队相反
-          const awayHandicap = lineNum >= 0 ? `-${formattedAbsLine}` : `+${formattedAbsLine}`;
+          const baseValue = decimalLine !== null ? Math.abs(decimalLine) : null;
+          const homeValue = baseValue !== null ? baseValue * orientation : null;
+          const awayValue = baseValue !== null ? baseValue * -orientation : null;
+
+          let fallbackBase = normalizedLine.replace(/^[-+]/, '').trim();
+          if (!fallbackBase) {
+            fallbackBase = hasValidNumeric ? Math.abs(numericLine).toString() : normalizedLine || '0';
+          }
+
+          const fallbackHomeHandicap = orientation >= 0 ? `+${fallbackBase}` : `-${fallbackBase}`;
+          const fallbackAwayHandicap = orientation >= 0 ? `-${fallbackBase}` : `+${fallbackBase}`;
+
+          const homeHandicap =
+            homeValue !== null ? formatHandicapValue(homeValue) : fallbackHomeHandicap;
+          const awayHandicap =
+            awayValue !== null ? formatHandicapValue(awayValue) : fallbackAwayHandicap;
+
           const betType = scope === 'half' ? '半场让球' : '让球';
           const labelPrefix = scope === 'half' ? '[半场让球]' : '[让球]';
           const marketLine = typeof data.line === 'string' ? data.line : line;
@@ -652,8 +988,12 @@ const MatchesPage: React.FC = () => {
     return (
       <div className="odds-stack-grid">
         {lines.map((data, index) => {
-          // 大小球不需要正负号，直接显示数字
           const line = data.line || '';
+          const decimalLine = parseHandicapDecimal(line);
+          const displayLine =
+            decimalLine !== null
+              ? formatHandicapValue(Math.abs(decimalLine)).replace(/^[-+]/, '')
+              : line;
           // 第一行显示"大/小"，其他行只显示盘口数字
           const showLabel = index === 0;
           const lineMeta = data as any;
@@ -672,13 +1012,13 @@ const MatchesPage: React.FC = () => {
                   className="odds-item-left"
                   onClick={() => openBetModal(match, {
                     bet_type: betType,
-                    bet_option: `大球${line ? `(${line})` : ''}`,
+                    bet_option: `大球${displayLine ? `(${displayLine})` : ''}`,
                     odds: data.over as string,
-                    label: `${labelPrefix} 大球${line ? `(${line})` : ''} @${data.over}`,
+                    label: `${labelPrefix} 大球${displayLine ? `(${displayLine})` : ''} @${data.over}`,
                     market_category: 'overunder',
                     market_scope: scope,
                     market_side: 'over',
-                    market_line: marketLine,
+                    market_line: decimalLine !== null ? displayLine : marketLine,
                     market_index: index,
                     market_wtype: lineWtype,
                     market_rtype: overRtype,
@@ -686,7 +1026,7 @@ const MatchesPage: React.FC = () => {
                   })}
                 >
                   <span className="odds-team">
-                    {showLabel ? '大' : ''} {line}
+                    {showLabel ? '大' : ''} {displayLine}
                   </span>
                   <span className="odds-value">{data.over}</span>
                 </div>
@@ -696,13 +1036,13 @@ const MatchesPage: React.FC = () => {
                   className="odds-item-right"
                   onClick={() => openBetModal(match, {
                     bet_type: betType,
-                    bet_option: `小球${line ? `(${line})` : ''}`,
+                    bet_option: `小球${displayLine ? `(${displayLine})` : ''}`,
                     odds: data.under as string,
-                    label: `${labelPrefix} 小球${line ? `(${line})` : ''} @${data.under}`,
+                    label: `${labelPrefix} 小球${displayLine ? `(${displayLine})` : ''} @${data.under}`,
                     market_category: 'overunder',
                     market_scope: scope,
                     market_side: 'under',
-                    market_line: marketLine,
+                    market_line: decimalLine !== null ? displayLine : marketLine,
                     market_index: index,
                     market_wtype: lineWtype,
                     market_rtype: underRtype,
@@ -710,7 +1050,7 @@ const MatchesPage: React.FC = () => {
                   })}
                 >
                   <span className="odds-team">
-                    {showLabel ? '小' : ''} {line}
+                    {showLabel ? '小' : ''} {displayLine}
                   </span>
                   <span className="odds-value">{data.under}</span>
                 </div>
@@ -811,20 +1151,44 @@ const MatchesPage: React.FC = () => {
       <div className="lines-table-v2">
         {lines.map((data, index) => {
           const line = data.line || '0';
-          const lineNum = parseFloat(line);
-          const absLine = Math.abs(lineNum);
+          const numericLine = parseFloat(line);
+          const hasValidNumeric = Number.isFinite(numericLine);
+
           const lineWtype = (data as any).wtype as string | undefined;
           const homeRtype = (data as any).home_rtype as string | undefined;
           const awayRtype = (data as any).away_rtype as string | undefined;
           const homeChoseTeam = (((data as any).home_chose_team as string | undefined) || 'H') as 'H' | 'C' | 'N';
           const awayChoseTeam = (((data as any).away_chose_team as string | undefined) || 'C') as 'H' | 'C' | 'N';
 
-          let formattedAbsLine = String(absLine);
-          if (line.includes('/')) {
-            formattedAbsLine = line.replace(/^-/, '');
+          const strongFlag = resolveStrongFlag(match, scope, data);
+          const decimalLine = parseHandicapDecimal(line);
+          const normalizedLine = String(line).trim();
+
+          let orientation = strongFlag ? (strongFlag === 'H' ? -1 : 1) : 0;
+          if (orientation === 0) {
+            if (decimalLine !== null && decimalLine !== 0) {
+              orientation = decimalLine > 0 ? 1 : -1;
+            } else if (hasValidNumeric && numericLine !== 0) {
+              orientation = numericLine > 0 ? 1 : -1;
+            } else {
+              orientation = 1;
+            }
           }
 
-          const homeHandicap = lineNum >= 0 ? `+${formattedAbsLine}` : `-${formattedAbsLine}`;
+          const baseValue = decimalLine !== null ? Math.abs(decimalLine) : null;
+
+          let fallbackBase = normalizedLine.replace(/^[-+]/, '').trim();
+          if (!fallbackBase) {
+            fallbackBase = hasValidNumeric ? Math.abs(numericLine).toString() : normalizedLine || '0';
+          }
+          const fallbackHomeHandicap = orientation >= 0 ? `+${fallbackBase}` : `-${fallbackBase}`;
+
+          const homeValue = baseValue !== null ? baseValue * orientation : null;
+          const homeHandicap = homeValue !== null ? formatHandicapValue(homeValue) : fallbackHomeHandicap;
+          const awayValue = homeValue !== null ? -homeValue : null;
+          const invertSign = (s: string) => s.startsWith('+') ? s.replace('+','-') : s.startsWith('-') ? s.replace('-','+') : s;
+          const awayHandicap = awayValue !== null ? formatHandicapValue(awayValue) : invertSign(fallbackHomeHandicap);
+
           const betType = scope === 'half' ? '半场让球' : '让球';
           const labelPrefix = scope === 'half' ? '[半场让球]' : '[让球]';
           const marketLine = typeof data.line === 'string' ? data.line : line;
@@ -855,9 +1219,9 @@ const MatchesPage: React.FC = () => {
                 className={`odds-value ${!data.away ? 'empty' : ''}`}
                 onClick={() => data.away && openBetModal(match, {
                   bet_type: betType,
-                  bet_option: `${match.away || '客队'} ${homeHandicap ? `(${homeHandicap})` : ''}`,
+                  bet_option: `${match.away || '客队'} ${awayHandicap ? `(${awayHandicap})` : ''}`,
                   odds: data.away as string,
-                  label: `${labelPrefix} ${(match.away || '客队')} ${homeHandicap ? `(${homeHandicap})` : ''} @${data.away}`,
+                  label: `${labelPrefix} ${(match.away || '客队')} ${awayHandicap ? `(${awayHandicap})` : ''} @${data.away}`,
                   market_category: 'handicap',
                   market_scope: scope,
                   market_side: 'away',
@@ -891,6 +1255,12 @@ const MatchesPage: React.FC = () => {
       <div className="lines-table-v2">
         {lines.map((data, index) => {
           const line = data.line || '';
+          const decimalLine = parseHandicapDecimal(line);
+          const displayLine =
+            decimalLine !== null
+              ? formatHandicapValue(Math.abs(decimalLine)).replace(/^[-+]/, '')
+              : line;
+
           const lineMeta = data as any;
           const lineWtype = lineMeta.wtype as string | undefined;
           const overRtype = lineMeta.over_rtype as string | undefined;
@@ -903,18 +1273,18 @@ const MatchesPage: React.FC = () => {
 
           return (
             <div key={index} className="line-row-v2">
-              <span className="line-label">{line}</span>
+              <span className="line-label">{displayLine}</span>
               <span
                 className={`odds-value ${!data.over ? 'empty' : ''}`}
                 onClick={() => data.over && openBetModal(match, {
                   bet_type: betType,
-                  bet_option: `大球${line ? `(${line})` : ''}`,
+                  bet_option: `大球${displayLine ? `(${displayLine})` : ''}`,
                   odds: data.over as string,
-                  label: `${labelPrefix} 大球${line ? `(${line})` : ''} @${data.over}`,
+                  label: `${labelPrefix} 大球${displayLine ? `(${displayLine})` : ''} @${data.over}`,
                   market_category: 'overunder',
                   market_scope: scope,
                   market_side: 'over',
-                  market_line: marketLine,
+                  market_line: decimalLine !== null ? displayLine : marketLine,
                   market_index: index,
                   market_wtype: lineWtype,
                   market_rtype: overRtype,
@@ -927,13 +1297,13 @@ const MatchesPage: React.FC = () => {
                 className={`odds-value ${!data.under ? 'empty' : ''}`}
                 onClick={() => data.under && openBetModal(match, {
                   bet_type: betType,
-                  bet_option: `小球${line ? `(${line})` : ''}`,
+                  bet_option: `小球${displayLine ? `(${displayLine})` : ''}`,
                   odds: data.under as string,
-                  label: `${labelPrefix} 小球${line ? `(${line})` : ''} @${data.under}`,
+                  label: `${labelPrefix} 小球${displayLine ? `(${displayLine})` : ''} @${data.under}`,
                   market_category: 'overunder',
                   market_scope: scope,
                   market_side: 'under',
-                  market_line: marketLine,
+                  market_line: decimalLine !== null ? displayLine : marketLine,
                   market_index: index,
                   market_wtype: lineWtype,
                   market_rtype: underRtype,

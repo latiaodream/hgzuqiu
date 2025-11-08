@@ -244,15 +244,133 @@ const mergeMarketLines = (existing: any[] | undefined, incoming: any[] | undefin
     return incoming;
   }
   const map = new Map<string, any>();
-  for (const item of existing) {
-    const key = (item?.line || item?.ratio || `${map.size}`).toString();
-    map.set(key, item);
+  const makeKey = (item: any) => {
+    const w = (item?.wtype || '').toString();
+    const l = (item?.line || item?.ratio || '').toString();
+    return `${w}|${l}`;
+  };
+  for (const item of existing || []) {
+    const key = makeKey(item);
+    if (!map.has(key)) map.set(key, item);
+    else map.set(key, { ...item, ...map.get(key) });
   }
-  for (const item of incoming) {
-    const key = (item?.line || item?.ratio || `${map.size}`).toString();
+  for (const item of incoming || []) {
+    const key = makeKey(item);
     map.set(key, { ...map.get(key), ...item });
   }
   return Array.from(map.values());
+};
+
+// ---- Helpers to keep only target markets and sort/limit them ----
+const __parseDecimalFromLine = (value: any): number | null => {
+  if (value === undefined || value === null) return null;
+  const s = String(value).replace(/[^0-9./+\-\s]/g, '').replace(/\s+/g, '');
+  if (!s) return null;
+  let working = s;
+  let global = 1;
+  if (working.startsWith('-')) { global = -1; working = working.slice(1); }
+  else if (working.startsWith('+')) { working = working.slice(1); }
+  const parts = working.split('/').filter(Boolean);
+  if (parts.length === 0) return null;
+  let sum = 0, cnt = 0;
+  for (let p of parts) {
+    let sign = global;
+    if (p.startsWith('-')) { sign = -1; p = p.slice(1); }
+    else if (p.startsWith('+')) { sign = 1; p = p.slice(1); }
+    const n = parseFloat(p);
+    if (Number.isFinite(n)) { sum += sign * n; cnt++; }
+  }
+  if (cnt === 0) return null;
+  return sum / cnt;
+};
+
+const __isValidOdds = (x: any) => x !== undefined && x !== null && String(x).trim() !== '' && String(x) !== '0' && String(x) !== '0.00';
+
+const __filterWhitelistMarkets = (match: any) => {
+  if (!match?.markets) return;
+  const m = match.markets;
+  const counts = m?.counts || {};
+  const limitHandicap = Number(counts.handicap || counts.R_COUNT || counts.r_count || 0) || undefined;
+  const limitOu = Number(counts.overUnder || counts.OU_COUNT || counts.ou_count || 0) || undefined;
+
+  const sortAscByAbs = (a: any, b: any) => {
+    const da = Math.abs(__parseDecimalFromLine(a?.line) ?? 0);
+    const db = Math.abs(__parseDecimalFromLine(b?.line) ?? 0);
+    return da - db;
+  };
+  const sortAsc = (a: any, b: any) => {
+    const da = __parseDecimalFromLine(a?.line) ?? 0;
+    const db = __parseDecimalFromLine(b?.line) ?? 0;
+    return da - db;
+  };
+
+  const onlyValid = (arr: any[] | undefined, checker: (x: any) => boolean) => {
+    const list = Array.isArray(arr) ? arr : [];
+    return list
+      .filter((x) => {
+        const unknown = !x?.wtype && !x?.home_rtype && !x?.over_rtype && !x?.under_rtype;
+        return unknown || checker(x);
+      })
+      .filter((x) => __isValidOdds(x?.home || x?.over) || __isValidOdds(x?.away || x?.under));
+  };
+
+  // full handicap: RE + RO + RCO（皇冠把多盘口拆在这三类里）
+  const full = m.full || {};
+  let fHandicap = onlyValid(full.handicapLines, (x) => {
+    const w = (x?.wtype || '').toUpperCase();
+    const r = (x?.home_rtype || x?.away_rtype || '').toUpperCase();
+    return ['RE', 'RO', 'RCO'].includes(w) || r.startsWith('RE') || r.startsWith('RO') || r.startsWith('RCO');
+  });
+  fHandicap.sort(sortAscByAbs);
+  if (limitHandicap && limitHandicap > 1) fHandicap = fHandicap.slice(0, limitHandicap);
+  if (fHandicap.length) {
+    m.full.handicapLines = fHandicap.map((x: any) => ({ ...x, scope: 'full' }));
+    m.full.handicap = m.full.handicapLines[0];
+    m.handicap = m.full.handicapLines[0];
+  }
+
+  // full over/under: ROU + ROUHO + ROUCO（皇冠的多盘口补充）
+  let fOu = onlyValid(full.overUnderLines, (x) => {
+    const w = (x?.wtype || '').toUpperCase();
+    const or = (x?.over_rtype || '').toUpperCase();
+    const ur = (x?.under_rtype || '').toUpperCase();
+    return w.startsWith('ROU') || or.startsWith('ROU') || ur.startsWith('ROU');
+  });
+  fOu.sort(sortAsc);
+  if (limitOu && limitOu > 1) fOu = fOu.slice(0, limitOu);
+  if (fOu.length) {
+    m.full.overUnderLines = fOu.map((x: any) => ({ ...x, scope: 'full' }));
+    m.full.ou = m.full.overUnderLines[0];
+    m.ou = m.full.overUnderLines[0];
+  }
+
+  // half handicap: HRE + HRO + HRCO（若返回）
+  const half = m.half || {};
+  let hHandicap = onlyValid(half.handicapLines, (x) => {
+    const w = (x?.wtype || '').toUpperCase();
+    const r = (x?.home_rtype || x?.away_rtype || '').toUpperCase();
+    return ['HRE', 'HRO', 'HRCO'].includes(w) || r.startsWith('HRE') || r.startsWith('HRO') || r.startsWith('HRCO');
+  });
+  hHandicap.sort(sortAscByAbs);
+  if (limitHandicap && limitHandicap > 1) hHandicap = hHandicap.slice(0, limitHandicap);
+  if (hHandicap.length) {
+    m.half.handicapLines = hHandicap.map((x: any) => ({ ...x, scope: 'half' }));
+    m.half.handicap = m.half.handicapLines[0];
+  }
+
+  // half over/under: HROU 及其扩展
+  let hOu = onlyValid(half.overUnderLines, (x) => {
+    const w = (x?.wtype || '').toUpperCase();
+    const or = (x?.over_rtype || '').toUpperCase();
+    const ur = (x?.under_rtype || '').toUpperCase();
+    return w.startsWith('HROU') || or.startsWith('HROU') || ur.startsWith('HROU');
+  });
+  hOu.sort(sortAsc);
+  if (limitOu && limitOu > 1) hOu = hOu.slice(0, limitOu);
+  if (hOu.length) {
+    m.half.overUnderLines = hOu.map((x: any) => ({ ...x, scope: 'half' }));
+    m.half.ou = m.half.overUnderLines[0];
+  }
 };
 
 const enrichMatchesWithMoreMarkets = async (
@@ -266,22 +384,34 @@ const enrichMatchesWithMoreMarkets = async (
     return;
   }
 
+  // 清洗已有盘口，剔除非目标玩法
+  try {
+    for (const m of matches) __filterWhitelistMarkets(m);
+  } catch {}
+
   const automation = getCrownAutomation();
   const candidates = matches
     .filter((match) => {
       const counts = match?.markets?.counts || {};
       const handicapCount = Number(counts.handicap || counts.R_COUNT || counts.r_count || 0);
       const ouCount = Number(counts.overUnder || counts.OU_COUNT || counts.ou_count || 0);
+      const moreFlag = Number(match?.markets?.more || match?.more || 0);
       const existingHandicap = match?.markets?.full?.handicapLines;
       const existingOu = match?.markets?.full?.overUnderLines;
+      const existingHandicapLen = Array.isArray(existingHandicap) ? existingHandicap.length : 0;
+      const existingOuLen = Array.isArray(existingOu) ? existingOu.length : 0;
+      const halfMl = match?.markets?.half?.moneyline;
+      const hasHalfMl = !!(halfMl && (halfMl.home || halfMl.draw || halfMl.away));
+
+      // 触发条件更宽松：任何一类少于2条或少于后台宣称的数量，或 more>0，或半场独赢缺失
       return (
-        handicapCount > 1 &&
-          (!Array.isArray(existingHandicap) || existingHandicap.length < handicapCount) ||
-        ouCount > 1 &&
-          (!Array.isArray(existingOu) || existingOu.length < ouCount)
+        existingHandicapLen < Math.max(2, handicapCount || 0) ||
+        existingOuLen < Math.max(2, ouCount || 0) ||
+        moreFlag > 0 ||
+        !hasHalfMl
       );
     })
-    .slice(0, 10);
+    .slice(0, 50);
 
   if (candidates.length === 0) {
     return;
@@ -291,26 +421,16 @@ const enrichMatchesWithMoreMarkets = async (
     candidates.map(async (match) => {
       try {
         const raw = match.raw || {};
-        const gid =
-          match.ecid ||
-          match.gid ||
-          raw.ECID ||
-          raw.GID ||
-          raw.gid ||
-          raw.ecid;
-        const lid =
-          raw.LID ||
-          raw.lid ||
-          match.league_id ||
-          match.leagueId;
+        const gid = raw.GID || raw.gid || match.gid || match.GID || match.gidm || match.GIDM;
+        const lid = raw.LID || raw.lid || match.league_id || match.leagueId;
 
-        if (!gid || !lid) {
+        if (!gid) {
           return;
         }
 
         const more = await automation.fetchMoreMarkets({
           gid: String(gid),
-          lid: String(lid),
+          lid: lid ? String(lid) : undefined,
           gtype,
           showtype,
           isRB: showtype === 'live' ? 'Y' : 'N',
@@ -351,6 +471,13 @@ const enrichMatchesWithMoreMarkets = async (
           match.markets.half.overUnderLines = merged;
           match.markets.half.ou = merged[0];
         }
+
+        // 半场独赢（若 get_game_more 返回了）
+        if (more.halfMoneyline && (more.halfMoneyline.home || more.halfMoneyline.draw || more.halfMoneyline.away)) {
+          match.markets.half.moneyline = { ...(match.markets.half.moneyline || {}), ...more.halfMoneyline };
+        }
+        // 合并后再次白名单过滤与限量
+        try { __filterWhitelistMarkets(match); } catch {}
       } catch (error) {
         console.error('⚠️ enrich match with more markets failed:', error);
       }
@@ -1428,12 +1555,16 @@ router.get('/matches/:accountId', async (req: any, res) => {
     }
 });
 
+// 短期兜底缓存：避免今日/早盘偶发返回空导致前端列表清零闪烁（30s）
+const lastNonEmptyCache: Record<string, { matches: any[]; ts: number }> = {};
+
 // 抓取赛事列表（系统默认账号）
 router.get('/matches-system', async (req: any, res) => {
     try {
         const userId = req.user.id;
         // 任意已登录用户均可使用系统赛事抓取，无需绑定账号
         const { gtype = 'ft', showtype = 'live', rtype = 'rb', ltype = '3', sorttype = 'L' } = req.query as any;
+        const cacheKey = `${String(gtype).toLowerCase()}:${String(showtype).toLowerCase()}`;
 
         // 优先读取独立抓取服务的数据文件
         try {
@@ -1445,9 +1576,7 @@ router.get('/matches-system', async (req: any, res) => {
             ];
 
             for (const candidate of candidates) {
-                if (!fs.existsSync(candidate.file)) {
-                    continue;
-                }
+                if (!fs.existsSync(candidate.file)) continue;
 
                 try {
                     const fileContent = fs.readFileSync(candidate.file, 'utf-8');
@@ -1469,6 +1598,14 @@ router.get('/matches-system', async (req: any, res) => {
                         let allMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
                         console.log(`   过滤后 (${showtype}): ${allMatches.length} 场`);
 
+                        // 今日/早盘短期兜底：若为空，尝试使用 <=30s 的上一轮非空数据
+                        if (allMatches.length === 0 && String(showtype).toLowerCase() !== 'live') {
+                            const cached = lastNonEmptyCache[cacheKey];
+                            if (cached && Date.now() - cached.ts < 30000) {
+                                allMatches = cached.matches;
+                            }
+                        }
+
                         if (allMatches.length > 0) {
                             if (String(showtype).toLowerCase() === 'today') {
                                 try {
@@ -1480,10 +1617,14 @@ router.get('/matches-system', async (req: any, res) => {
                                     console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
                                 }
                             }
+
                             await enrichMatchesWithMoreMarkets(allMatches, {
                                 showtype: String(showtype),
                                 gtype: String(gtype),
                             });
+
+                            // 记录非空集到缓存
+                            lastNonEmptyCache[cacheKey] = { matches: allMatches, ts: Date.now() };
                         }
 
                         res.json({
@@ -1514,6 +1655,13 @@ router.get('/matches-system', async (req: any, res) => {
         if (fetcher) {
             const data = fetcher.getLatestMatches();
             let filteredMatches = filterMatchesByShowtype(data.matches ?? [], String(showtype));
+            // 今日/早盘短期兜底
+            if (filteredMatches.length === 0 && String(showtype).toLowerCase() !== 'live') {
+                const cached = lastNonEmptyCache[cacheKey];
+                if (cached && Date.now() - cached.ts < 30000) {
+                    filteredMatches = cached.matches;
+                }
+            }
             if (filteredMatches.length > 0) {
                 if (String(showtype).toLowerCase() === 'today') {
                     try {
@@ -1529,6 +1677,19 @@ router.get('/matches-system', async (req: any, res) => {
                     showtype: String(showtype),
                     gtype: String(gtype),
                 });
+            }
+
+            //  1 1 1 1 1 1 1  1 1 1 1 1
+            //  1 1 1 1 1  1 1 1 1 1 1 1 
+            if (filteredMatches.length === 0 && String(showtype).toLowerCase() !== 'live') {
+                const cached = lastNonEmptyCache[cacheKey];
+                if (cached && Date.now() - cached.ts < 30000) {
+                    filteredMatches = cached.matches;
+                }
+            }
+            //  1 1 1 1 1 1
+            if (filteredMatches.length > 0) {
+                lastNonEmptyCache[cacheKey] = { matches: filteredMatches, ts: Date.now() };
             }
 
             res.json({
@@ -1578,6 +1739,17 @@ router.get('/matches-system', async (req: any, res) => {
                 showtype: String(showtype),
                 gtype: String(gtype),
             });
+        }
+
+        // 今日/早盘短期兜底（fallback 分支）
+        if (filteredMatches.length === 0 && String(showtype).toLowerCase() !== 'live') {
+            const cached = lastNonEmptyCache[cacheKey];
+            if (cached && Date.now() - cached.ts < 30000) {
+                filteredMatches = cached.matches;
+            }
+        }
+        if (filteredMatches.length > 0) {
+            lastNonEmptyCache[cacheKey] = { matches: filteredMatches, ts: Date.now() };
         }
 
         res.json({
@@ -2039,6 +2211,10 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
     // 自定义轮询：优先使用独立抓取服务的数据文件
     const interval = showtype === 'live' ? 1000 : 15000;
     let tm: NodeJS.Timeout | undefined;
+    // 避免今日/早盘偶发读到空集导致前端“闪为0”，保留最近一份非空数据做短期兜底
+    let lastNonEmptyMatches: any[] = [];
+    let lastNonEmptyTs = 0;
+
     const tick = async () => {
       try {
         let matches: any[] = [];
@@ -2062,7 +2238,8 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
               const fetcherData = JSON.parse(fs.readFileSync(candidate.file, 'utf-8'));
               const timestamp = fetcherData.timestamp || 0;
               const age = Date.now() - timestamp;
-              if (age < 10000) {
+              // 放宽独立抓取数据的新鲜度阈值到 60s，避免频繁降级导致页面只显示极少赛事
+              if (age < 60000) {
                 matches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
                 xml = fetcherData.xml;
                 break;
@@ -2108,6 +2285,14 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
           }
 
           await enrichMatchesWithMoreMarkets(filtered, { showtype, gtype });
+          // 记录最近一份非空数据
+          lastNonEmptyMatches = filtered;
+          lastNonEmptyTs = Date.now();
+        } else {
+          // 今日/早盘短期兜底：若本轮为空且有<=30s的非空缓存，则复用上一轮，避免前端列表清零闪烁
+          if (showtype !== 'live' && lastNonEmptyMatches.length > 0 && Date.now() - lastNonEmptyTs < 30000) {
+            filtered = lastNonEmptyMatches;
+          }
         }
 
         const payload = JSON.stringify({ matches: filtered, meta: { gtype, showtype, rtype, ltype, sorttype }, ts: Date.now() });

@@ -7005,6 +7005,11 @@ export class CrownAutomationService {
 
   // 辅助方法：解析基础 URL 候选列表
   private resolveBaseUrlCandidates(): string[] {
+    // 优先使用单一 CROWN_BASE_URL（例如 https://hga026.com）
+    if (process.env.CROWN_BASE_URL) {
+      const url = process.env.CROWN_BASE_URL.trim();
+      if (url) return [url];
+    }
     const envUrls = process.env.CROWN_BASE_URL_CANDIDATES;
     if (envUrls) {
       const urls = envUrls.split(',').map(url => url.trim()).filter(Boolean);
@@ -7243,6 +7248,7 @@ export class CrownAutomationService {
     overUnderLines: any[];
     halfHandicapLines: any[];
     halfOverUnderLines: any[];
+    halfMoneyline?: { home?: string; draw?: string; away?: string };
   } {
     try {
       const { XMLParser } = require('fast-xml-parser');
@@ -7258,7 +7264,7 @@ export class CrownAutomationService {
         // 即使盘口关闭，也尝试解析 game 数据（可能还有数据）
         if (!games) {
           console.log('   且没有 game 数据，跳过');
-          return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+          return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [], halfMoneyline: undefined };
         }
         console.log('   但仍尝试解析 game 数据...');
       }
@@ -7266,7 +7272,7 @@ export class CrownAutomationService {
       if (!games) {
         console.log('⚠️ get_game_more XML 中没有 game 数据');
         console.log('📋 完整响应:', JSON.stringify(parsed?.serverresponse, null, 2).substring(0, 500));
-        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [], halfMoneyline: undefined };
       }
 
       const gameArray = Array.isArray(games) ? games : [games];
@@ -7275,11 +7281,27 @@ export class CrownAutomationService {
       const handicapLines: any[] = [];
       const overUnderLines: any[] = [];
       const halfHandicapLines: any[] = [];
+      let halfMoneyline: { home?: string; draw?: string; away?: string } | undefined;
+
       const halfOverUnderLines: any[] = [];
 
       for (let i = 0; i < gameArray.length; i++) {
         const game = gameArray[i];
         console.log(`  🎮 Game ${i + 1}:`, JSON.stringify(game, null, 2).substring(0, 300));
+
+        //   wtype                CN   
+        const wtype = this.pickString(game, ['WTYPE', 'wtype', 'type']).toUpperCase();
+        if (/CN/.test(wtype)) {
+          continue;
+        }
+        // 若字段名中包含 CN（如角球专用字段），也直接跳过
+        const __keys = Object.keys(game || {});
+        if (__keys.some(k => /CN/i.test(String(k)))) {
+          continue;
+        }
+        // 仅保留我们前端已支持的主要玩法；不强制依赖 WTYPE 存在
+        // 理由：部分 more 节点缺少 WTYPE，但可由字段名准确识别（R/RE、OU/ROU、HR/HRE、HOU/HROU、HM/HRM）
+        // 下方抽取逻辑会基于字段来源标注 wtype，仅收集这些标准玩法
 
         // 打印所有 ratio 和 ior 字段用于调试
         const debugFields: any = {};
@@ -7292,103 +7314,129 @@ export class CrownAutomationService {
           console.log(`    📊 所有赔率字段:`, JSON.stringify(debugFields, null, 2));
         }
 
-        // 提取让球盘口
-        // 皇冠 API 只有一组让球数据：RE 系列
-        // ratio_re: 盘口值
-        // ior_REH: 主队赔率
-        // ior_REC: 客队赔率
+        // 提取让球盘口（兼容：滚球 RE；今日/早盘 R）
+        const hasRE = !!this.pickString(game, ['RATIO_RE', 'ratio_re']);
+        const hasR = !!this.pickString(game, ['RATIO_R', 'ratio_r']);
+        const handicapLine = this.pickString(game, ['RATIO_RE', 'ratio_re', 'RATIO_R', 'ratio_r']);
+        const handicapHome = this.pickString(game, ['IOR_REH', 'ior_REH', 'IOR_RH', 'ior_RH', 'ior_rh']);
+        const handicapAway = this.pickString(game, ['IOR_REC', 'ior_REC', 'IOR_RC', 'ior_RC', 'ior_rc']);
 
-        // 提取 RE 系列（主让球盘口）
-        const handicapLine = this.pickString(game, ['RATIO_RE', 'ratio_re']);
-        const handicapHome = this.pickString(game, ['IOR_REH', 'ior_REH']);
-        const handicapAway = this.pickString(game, ['IOR_REC', 'ior_REC']);
-
-        if (handicapLine && (handicapHome || handicapAway)) {
+        if ((hasRE || hasR) && handicapLine && (handicapHome || handicapAway)) {
           const master = this.pickString(game, ['@_master', 'master']);
+          const hwtype = (hasRE ? 'RE' : hasR ? 'R' : 'RE');
+          const homeRtype = hwtype === 'RE' ? 'REH' : 'RH';
+          const awayRtype = hwtype === 'RE' ? 'REC' : 'RC';
           handicapLines.push({
             line: handicapLine,
             home: handicapHome,
             away: handicapAway,
-            wtype: 'RE',
-            home_rtype: 'REH',
-            away_rtype: 'REC',
+            wtype: hwtype,
+            home_rtype: homeRtype,
+            away_rtype: awayRtype,
             home_chose_team: 'H',
             away_chose_team: 'C',
           });
-          console.log(`    ✅ 让球 [Game ${i + 1}, master=${master}]: ${handicapLine} (${handicapHome} / ${handicapAway})`);
+          console.log(`    ✅ 让球 [${hwtype}] [Game ${i + 1}, master=${master}]: ${handicapLine} (${handicapHome} / ${handicapAway})`);
         }
 
-        // 提取大小球盘口
-        // 皇冠 API 只有一组大小球数据：ROU 系列
-        // ratio_rouo/ratio_rouu: 盘口值
-        // ior_ROUH: 小球（Under）赔率
-        // ior_ROUC: 大球（Over）赔率
-        // 注意：ROUH/ROUC 系列不是大小球的额外盘口，可能是半场大小球或其他玩法
+        // 提取大小球盘口（仅主大小球，排除角球/球队进球等）
+        const hasROU = !!this.pickString(game, ['RATIO_ROUO', 'ratio_rouo', 'RATIO_ROUU', 'ratio_rouu']);
+        const hasOU = !!this.pickString(game, ['RATIO_OUO', 'ratio_ouo', 'RATIO_OUU', 'ratio_ouu']);
+        const ouLineMain = this.pickString(game, ['RATIO_ROUO', 'ratio_rouo', 'RATIO_ROUU', 'ratio_rouu', 'RATIO_OUO', 'ratio_ouo', 'RATIO_OUU', 'ratio_ouu']);
+        const ouOverMain = this.pickString(game, ['ior_ROUC', 'IOR_ROUC', 'ior_OUC', 'IOR_OUC']);
+        const ouUnderMain = this.pickString(game, ['ior_ROUH', 'IOR_ROUH', 'ior_OUH', 'IOR_OUH']);
 
-        // 提取 ROU 系列（主大小球盘口）
-        const ouLineMain = this.pickString(game, ['ratio_rouo', 'RATIO_ROUO', 'ratio_rouu', 'RATIO_ROUU']);
-        const ouOverMain = this.pickString(game, ['ior_ROUC', 'IOR_ROUC']); // ROUC = 大球（Over）
-        const ouUnderMain = this.pickString(game, ['ior_ROUH', 'IOR_ROUH']); // ROUH = 小球（Under）
-
-        if (ouLineMain && (ouOverMain || ouUnderMain)) {
-          const master = this.pickString(game, ['@_master', 'master']);
-          overUnderLines.push({
-            line: ouLineMain,
-            over: ouOverMain,
-            under: ouUnderMain,
-            wtype: 'ROU',
-            over_rtype: 'ROUC',
-            under_rtype: 'ROUH',
-            over_chose_team: 'C',
-            under_chose_team: 'H',
-          });
-          console.log(`    ✅ 大小 [Game ${i + 1}, master=${master}]: ${ouLineMain} (大:${ouOverMain} / 小:${ouUnderMain})`);
+        if ((hasROU || hasOU) && ouLineMain && (ouOverMain || ouUnderMain)) {
+          const nums = (ouLineMain || '').match(/[0-9.]+/g) || [];
+          const avg = nums.length ? nums.map(parseFloat).reduce((a,b)=>a+b,0)/nums.length : NaN;
+          if (!(Number.isFinite(avg) && avg > 6)) {
+            const master = this.pickString(game, ['@_master', 'master']);
+            const owtype = (hasROU ? 'ROU' : 'OU');
+            const overRtype = owtype === 'ROU' ? 'ROUC' : 'OUC';
+            const underRtype = owtype === 'ROU' ? 'ROUH' : 'OUH';
+            overUnderLines.push({
+              line: ouLineMain,
+              over: ouOverMain,
+              under: ouUnderMain,
+              wtype: owtype,
+              over_rtype: overRtype,
+              under_rtype: underRtype,
+              over_chose_team: 'C',
+              under_chose_team: 'H',
+            });
+            console.log(`    ✅ 大小 [${owtype}] [Game ${i + 1}, master=${master}]: ${ouLineMain} (大:${ouOverMain} / 小:${ouUnderMain})`);
+          }
         }
 
-        // 提取半场让球盘口（HRE 系列）
-        const halfHandicapLine = this.pickString(game, ['RATIO_HRE', 'ratio_hre']);
-        const halfHandicapHome = this.pickString(game, ['IOR_HREH', 'ior_HREH']);
-        const halfHandicapAway = this.pickString(game, ['IOR_HREC', 'ior_HREC']);
+        // 提取半场让球盘口（兼容：HRE；HR）
+        const hasHRE = !!this.pickString(game, ['RATIO_HRE', 'ratio_hre']);
+        const hasHR = !!this.pickString(game, ['RATIO_HR', 'ratio_hr']);
+        const halfHandicapLine = this.pickString(game, ['RATIO_HRE', 'ratio_hre', 'RATIO_HR', 'ratio_hr']);
+        const halfHandicapHome = this.pickString(game, ['IOR_HREH', 'ior_HREH', 'IOR_HRH', 'ior_HRH', 'ior_hrh']);
+        const halfHandicapAway = this.pickString(game, ['IOR_HREC', 'ior_HREC', 'IOR_HRC', 'ior_HRC', 'ior_hrc']);
 
         if (halfHandicapLine && (halfHandicapHome || halfHandicapAway)) {
           const master = this.pickString(game, ['@_master', 'master']);
+          const hwtype = (hasHRE ? 'HRE' : hasHR ? 'HR' : 'HRE');
+          const homeRtype = hwtype === 'HRE' ? 'HREH' : 'HRH';
+          const awayRtype = hwtype === 'HRE' ? 'HREC' : 'HRC';
           halfHandicapLines.push({
             line: halfHandicapLine,
             home: halfHandicapHome,
             away: halfHandicapAway,
-            wtype: 'HRE',
-            home_rtype: 'HREH',
-            away_rtype: 'HREC',
+            wtype: hwtype,
+            home_rtype: homeRtype,
+            away_rtype: awayRtype,
             home_chose_team: 'H',
             away_chose_team: 'C',
           });
-          console.log(`    ✅ 半场让球 [Game ${i + 1}, master=${master}]: ${halfHandicapLine} (${halfHandicapHome} / ${halfHandicapAway})`);
+          console.log(`    ✅ 半场让球 [${hwtype}] [Game ${i + 1}, master=${master}]: ${halfHandicapLine} (${halfHandicapHome} / ${halfHandicapAway})`);
         }
 
-        // 提取半场大小球盘口（HROU 系列）
-        const halfOuLine = this.pickString(game, ['ratio_hrouo', 'RATIO_HROUO', 'ratio_hrouu', 'RATIO_HROUU']);
-        const halfOuOver = this.pickString(game, ['ior_HROUC', 'IOR_HROUC']); // HROUC = 大球（Over）
-        const halfOuUnder = this.pickString(game, ['ior_HROUH', 'IOR_HROUH']); // HROUH = 小球（Under）
+        // 提取半场大小球盘口（仅主大小球，排除角球/球队进球等）
+        const hasHROU = !!this.pickString(game, ['RATIO_HROUO', 'ratio_hrouo', 'RATIO_HROUU', 'ratio_hrouu']);
+        const hasHOU = !!this.pickString(game, ['RATIO_HOUO', 'ratio_houo', 'RATIO_HOUU', 'ratio_houu']);
+        const halfOuLine = this.pickString(game, ['RATIO_HROUO', 'ratio_hrouo', 'RATIO_HROUU', 'ratio_hrouu', 'RATIO_HOUO', 'ratio_houo', 'RATIO_HOUU', 'ratio_houu']);
+        const halfOuOver = this.pickString(game, ['ior_HROUC', 'IOR_HROUC', 'ior_HOUC', 'IOR_HOUC']); // over
+        const halfOuUnder = this.pickString(game, ['ior_HROUH', 'IOR_HROUH', 'ior_HOUH', 'IOR_HOUH']); // under
 
-        if (halfOuLine && (halfOuOver || halfOuUnder)) {
+        if ((hasHROU || hasHOU) && halfOuLine && (halfOuOver || halfOuUnder)) {
+          const numsH = (halfOuLine || '').match(/[0-9.]+/g) || [];
+          const avgH = numsH.length ? numsH.map(parseFloat).reduce((a,b)=>a+b,0)/numsH.length : NaN;
+          if (!(Number.isFinite(avgH) && avgH > 3.5)) {
+            const master = this.pickString(game, ['@_master', 'master']);
+            const howtype = (hasHROU ? 'HROU' : 'HOU');
+            const overRtype = howtype === 'HROU' ? 'HROUC' : 'HOUC';
+            const underRtype = howtype === 'HROU' ? 'HROUH' : 'HOUH';
+            halfOverUnderLines.push({
+              line: halfOuLine,
+              over: halfOuOver,
+              under: halfOuUnder,
+              wtype: howtype,
+              over_rtype: overRtype,
+              under_rtype: underRtype,
+              over_chose_team: 'C',
+              under_chose_team: 'H',
+            });
+            console.log(`    ✅ 半场大小 [${howtype}] [Game ${i + 1}, master=${master}]: ${halfOuLine} (大:${halfOuOver} / 小:${halfOuUnder})`);
+          }
+        }
+
+        // 半场独赢（兼容 HRM/HM）
+        const halfMlHome = this.pickString(game, ['IOR_HRMH', 'ior_HRMH', 'IOR_HMH', 'ior_HMH']);
+        const halfMlDraw = this.pickString(game, ['IOR_HRMN', 'ior_HRMN', 'IOR_HMN', 'ior_HMN']);
+        const halfMlAway = this.pickString(game, ['IOR_HRMC', 'ior_HRMC', 'IOR_HMC', 'ior_HMC']);
+        if (halfMlHome || halfMlDraw || halfMlAway) {
           const master = this.pickString(game, ['@_master', 'master']);
-          halfOverUnderLines.push({
-            line: halfOuLine,
-            over: halfOuOver,
-            under: halfOuUnder,
-            wtype: 'HROU',
-            over_rtype: 'HROUC',
-            under_rtype: 'HROUH',
-            over_chose_team: 'C',
-            under_chose_team: 'H',
-          });
-          console.log(`    ✅ 半场大小 [Game ${i + 1}, master=${master}]: ${halfOuLine} (大:${halfOuOver} / 小:${halfOuUnder})`);
+          if (!halfMoneyline || master === 'Y') {
+            halfMoneyline = { home: halfMlHome, draw: halfMlDraw, away: halfMlAway };
+          }
         }
       }
 
       console.log(`📊 解析到 ${handicapLines.length} 个让球盘口, ${overUnderLines.length} 个大小球盘口`);
       console.log(`📊 解析到 ${halfHandicapLines.length} 个半场让球盘口, ${halfOverUnderLines.length} 个半场大小球盘口`);
-      return { handicapLines, overUnderLines, halfHandicapLines, halfOverUnderLines };
+      return { handicapLines, overUnderLines, halfHandicapLines, halfOverUnderLines, halfMoneyline };
 
     } catch (error) {
       console.error('❌ 解析 get_game_more XML 失败:', error);
@@ -7420,11 +7468,29 @@ export class CrownAutomationService {
            LIMIT 1`
         );
       }
-      if (result.rows.length === 0) {
-        console.warn('⚠️ 没有可用于抓取的账号');
-        return null;
+      if (result.rows.length > 0) {
+        return result.rows[0] as CrownAccount;
       }
-      return result.rows[0] as CrownAccount;
+
+      // Fallback: 使用环境变量中的抓取账号（无需数据库）
+      const envUser = process.env.CROWN_FETCH_USERNAME || process.env.CROWN_SYSTEM_USERNAME;
+      const envPass = process.env.CROWN_FETCH_PASSWORD || process.env.CROWN_SYSTEM_PASSWORD;
+      const envBase = (process.env.CROWN_BASE_URL || '').trim();
+      if (envUser && envPass) {
+        console.warn('⚠️ 没有数据库账号，使用环境变量抓取账号');
+        const synthetic: any = {
+          id: -1,
+          username: envUser,
+          password: envPass,
+          base_url: envBase || undefined,
+          proxy_enabled: false,
+          device_type: 'iPhone 14',
+          user_agent: undefined,
+        };
+        return synthetic as CrownAccount;
+      }
+      console.warn('⚠️ 没有可用于抓取的账号（数据库为空且未配置 CROWN_FETCH_USERNAME）');
+      return null;
     } catch (error) {
       console.error('⚠️ 查找抓取账号失败:', error);
       return null;
@@ -7433,7 +7499,7 @@ export class CrownAutomationService {
 
   async fetchMoreMarkets(params: {
     gid: string;
-    lid: string;
+    lid?: string;
     gtype?: string;
     showtype?: string;
     ltype?: string;
@@ -7444,6 +7510,7 @@ export class CrownAutomationService {
     overUnderLines: any[];
     halfHandicapLines: any[];
     halfOverUnderLines: any[];
+    halfMoneyline?: { home?: string; draw?: string; away?: string };
   }> {
     const showtype = (params.showtype || 'live').toLowerCase();
     const gtype = params.gtype || 'ft';
@@ -7467,28 +7534,29 @@ export class CrownAutomationService {
       const loginResult = await this.loginAccountWithApi(account);
       if (!loginResult.success) {
         console.error(`❌ 账号 ${account.username} API 登录失败:`, loginResult.message);
-        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [], halfMoneyline: undefined };
       }
       prepared = await this.prepareApiClient(account.id);
       if (!prepared.success || !prepared.client) {
         console.error(`❌ 无法获取账号 ${account.username} 的 API 客户端:`, prepared.message);
-        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [], halfMoneyline: undefined };
       }
     }
 
     const client = prepared.client!;
     try {
-      const xml = await client.getGameMore({
+      const req: any = {
         gid: String(params.gid),
-        lid: String(params.lid),
         gtype,
         showtype,
         ltype,
         isRB,
-      });
+      };
+      if (params.lid) req.lid = String(params.lid);
+      const xml = await client.getGameMore(req);
 
       if (typeof xml !== 'string' || xml.trim() === '') {
-        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+        return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [], halfMoneyline: undefined };
       }
 
       return this.parseMoreMarketsFromXml(xml);
@@ -7620,32 +7688,6 @@ export class CrownAutomationService {
           awayChoseTeam: 'C',
         },
       );
-      addHandicapLine(
-        handicapLines,
-        ['RATIO_RO'],
-        ['IOR_ROH'],
-        ['IOR_ROC'],
-        {
-          wtype: 'RO',
-          homeRtype: 'ROH',
-          awayRtype: 'ROC',
-          homeChoseTeam: 'H',
-          awayChoseTeam: 'C',
-        },
-      );
-      addHandicapLine(
-        handicapLines,
-        ['RATIO_RCO'],
-        ['IOR_RCOH'],
-        ['IOR_RCOC'],
-        {
-          wtype: 'RCO',
-          homeRtype: 'RCOH',
-          awayRtype: 'RCOC',
-          homeChoseTeam: 'H',
-          awayChoseTeam: 'C',
-        },
-      );
       if (handicapLines.length > 0) {
         markets.handicap = { ...handicapLines[0] };
         markets.full.handicap = { ...handicapLines[0] };
@@ -7668,36 +7710,6 @@ export class CrownAutomationService {
           underChoseTeam: 'H',
         },
       );
-      // 第2个盘口
-      addOverUnderLine(
-        ouLines,
-        ['RATIO_ROUHO'],
-        ['RATIO_ROUHU'],
-        ['IOR_ROUHOC'],
-        ['IOR_ROUHOH'],
-        {
-          wtype: 'ROUHO',
-          overRtype: 'ROUHOC',
-          underRtype: 'ROUHOH',
-          overChoseTeam: 'C',
-          underChoseTeam: 'H',
-        },
-      );
-      // 第3个盘口
-      addOverUnderLine(
-        ouLines,
-        ['RATIO_ROUCO'],
-        ['RATIO_ROUCU'],
-        ['IOR_ROUCOC'],
-        ['IOR_ROUCOH'],
-        {
-          wtype: 'ROUCO',
-          overRtype: 'ROUCOC',
-          underRtype: 'ROUCOH',
-          overChoseTeam: 'C',
-          underChoseTeam: 'H',
-        },
-      );
       if (ouLines.length > 0) {
         markets.ou = { ...ouLines[0] };
         markets.full.ou = { ...ouLines[0] };
@@ -7713,9 +7725,9 @@ export class CrownAutomationService {
       }
 
       const halfMoneyline = {
-        home: pick(['IOR_HRMH']),
-        draw: pick(['IOR_HRMN']),
-        away: pick(['IOR_HRMC']),
+        home: pick(['IOR_HRMH', 'IOR_HMH']),
+        draw: pick(['IOR_HRMN', 'IOR_HMN']),
+        away: pick(['IOR_HRMC', 'IOR_HMC']),
       };
       if (halfMoneyline.home || halfMoneyline.draw || halfMoneyline.away) {
         markets.half.moneyline = { ...halfMoneyline };
