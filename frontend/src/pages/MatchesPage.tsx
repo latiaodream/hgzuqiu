@@ -83,9 +83,18 @@ const sortLines = (lines: any[]): any[] => {
     const lineA = parseFloat(String(a.line || '0'));
     const lineB = parseFloat(String(b.line || '0'));
 
-    // 如果都是有效数字，按数值排序
+    // 如果都是有效数字，按绝对值排序（让球可能有负数，大小球都是正数）
     if (Number.isFinite(lineA) && Number.isFinite(lineB)) {
-      return Math.abs(lineA) - Math.abs(lineB);
+      const absA = Math.abs(lineA);
+      const absB = Math.abs(lineB);
+
+      // 先按绝对值排序
+      if (absA !== absB) {
+        return absA - absB;
+      }
+
+      // 如果绝对值相同，正数排在前面（例如 0.5 排在 -0.5 前面）
+      return lineB - lineA;
     }
 
     // 否则保持原顺序
