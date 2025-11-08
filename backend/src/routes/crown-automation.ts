@@ -1876,6 +1876,34 @@ router.post('/odds/preview', async (req: any, res) => {
             }
         }
 
+        // 检查返回的盘口线是否匹配用户选择的盘口线
+        const returnedSpread = preview.oddsResult?.spread;
+        const requestedLine = marketLine;
+        let spreadMismatch = false;
+
+        if (requestedLine !== undefined && returnedSpread !== undefined) {
+            // 标准化盘口线格式（去除空格、统一格式）
+            const normalizeSpread = (value: any): string => {
+                if (value === null || value === undefined) return '';
+                const str = String(value).trim();
+                // 处理格式如 "0+4450" -> "0"
+                const match = str.match(/^([+-]?[\d.]+)/);
+                return match ? match[1] : str;
+            };
+
+            const normalizedReturned = normalizeSpread(returnedSpread);
+            const normalizedRequested = normalizeSpread(requestedLine);
+
+            if (normalizedReturned && normalizedRequested && normalizedReturned !== normalizedRequested) {
+                spreadMismatch = true;
+                console.log('⚠️ 盘口线不匹配:', {
+                    requested: normalizedRequested,
+                    returned: normalizedReturned,
+                    raw_spread: returnedSpread,
+                });
+            }
+        }
+
         res.json({
             success: true,
             data: {
@@ -1885,6 +1913,9 @@ router.post('/odds/preview', async (req: any, res) => {
                 raw: preview.oddsResult,
                 crown_match_id: preview.crownMatchId,
                 message: preview.message,
+                spread_mismatch: spreadMismatch,
+                requested_line: requestedLine,
+                returned_spread: returnedSpread,
             },
         });
     } catch (error) {

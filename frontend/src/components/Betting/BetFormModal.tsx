@@ -321,6 +321,29 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       const response = await crownApi.previewOdds(payload);
       if (response.success && response.data) {
         const previewData = response.data;
+
+        // 检查盘口线是否匹配
+        if (previewData.spread_mismatch) {
+          console.warn('⚠️ Crown API 返回的盘口线与用户选择不匹配:', {
+            requested: previewData.requested_line,
+            returned: previewData.returned_spread,
+          });
+          // 不更新赔率，使用前端已有的赔率
+          const frontendOdds = deriveOddsFromMarkets();
+          if (frontendOdds?.odds) {
+            setOddsPreview({
+              odds: frontendOdds.odds,
+              closed: false,
+              message: '使用前端赔率（盘口不匹配）',
+            });
+            setPreviewError(null);
+          } else {
+            setOddsPreview(null);
+            setPreviewError('盘口线不匹配，无法获取赔率');
+          }
+          return { success: false, message: '盘口线不匹配' };
+        }
+
         setOddsPreview({
           odds: previewData.odds ?? null,
           closed: !!previewData.closed,
