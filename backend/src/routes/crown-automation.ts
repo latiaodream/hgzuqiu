@@ -389,6 +389,10 @@ const enrichMatchesWithMoreMarkets = async (
   } catch {}
 
   const automation = getCrownAutomation();
+
+  // 滚球时更严格的筛选条件，减少不必要的请求
+  const isLive = showtype === 'live';
+
   const candidates = matches
     .filter((match) => {
       const counts = match?.markets?.counts || {};
@@ -402,24 +406,33 @@ const enrichMatchesWithMoreMarkets = async (
       const halfMl = match?.markets?.half?.moneyline;
       const hasHalfMl = !!(halfMl && (halfMl.home || halfMl.draw || halfMl.away));
 
-      // 触发条件更宽松：任何一类少于2条或少于后台宣称的数量，或 more>0，或半场独赢缺失
-      return (
-        existingHandicapLen < Math.max(2, handicapCount || 0) ||
-        existingOuLen < Math.max(2, ouCount || 0) ||
-        moreFlag > 0 ||
-        !hasHalfMl
-      );
+      if (isLive) {
+        // 滚球：只在真正缺失时才补充（更严格）
+        return (
+          (existingHandicapLen === 0 && handicapCount > 0) ||  // 完全没有让球盘
+          (existingOuLen === 0 && ouCount > 0) ||              // 完全没有大小球
+          (moreFlag > 0 && existingHandicapLen < 2)            // 有更多盘口且现有少于2条
+        );
+      } else {
+        // 今日：触发条件更宽松
+        return (
+          existingHandicapLen < Math.max(2, handicapCount || 0) ||
+          existingOuLen < Math.max(2, ouCount || 0) ||
+          moreFlag > 0 ||
+          !hasHalfMl
+        );
+      }
     })
-    .slice(0, 30);  // 减少到 30 场，提升速度
+    .slice(0, isLive ? 15 : 30);  // 滚球只补充 15 场，今日补充 30 场
 
   if (candidates.length === 0) {
     return;
   }
 
-  console.log(`🔄 补充盘口: ${candidates.length} 场比赛需要补充`);
+  console.log(`🔄 补充盘口 (${showtype}): ${candidates.length} 场比赛需要补充`);
 
-  // 限制并发数：每次最多 10 个请求
-  const BATCH_SIZE = 10;
+  // 滚球时增加批次大小，减少批次数
+  const BATCH_SIZE = isLive ? 15 : 10;
   for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
     const batch = candidates.slice(i, i + BATCH_SIZE);
     await Promise.allSettled(
