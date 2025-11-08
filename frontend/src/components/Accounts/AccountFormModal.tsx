@@ -120,14 +120,14 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
               const ftContent = ftMatch[1];
 
               // 提取限额值的辅助函数
-              const extractLimits = (tag: string): { max: number; min: number } => {
+              const extractLimits = (tag: string): { max: number | null; min: number | null } => {
                 const maxRegex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
                 const minRegex = new RegExp(`<${tag}><min>([^<]+)<\\/min>`);
                 const maxMatch = ftContent.match(maxRegex);
                 const minMatch = ftContent.match(minRegex);
                 return {
-                  max: maxMatch ? parseInt(maxMatch[1].replace(/,/g, ''), 10) : 0,
-                  min: minMatch ? parseInt(minMatch[1].replace(/,/g, ''), 10) : 0,
+                  max: maxMatch ? parseInt(maxMatch[1].replace(/,/g, ''), 10) : null,
+                  min: minMatch ? parseInt(minMatch[1].replace(/,/g, ''), 10) : null,
                 };
               };
 
@@ -156,14 +156,14 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
               if (bkMatch) {
                 const bkContent = bkMatch[1];
 
-                const extractLimits = (tag: string): { max: number; min: number } => {
+                const extractLimits = (tag: string): { max: number | null; min: number | null } => {
                   const maxRegex = new RegExp(`<${tag}><max>([^<]+)<\\/max>`);
                   const minRegex = new RegExp(`<${tag}><min>([^<]+)<\\/min>`);
                   const maxMatch = bkContent.match(maxRegex);
                   const minMatch = bkContent.match(minRegex);
                   return {
-                    max: maxMatch ? parseInt(maxMatch[1].replace(/,/g, ''), 10) : 0,
-                    min: minMatch ? parseInt(minMatch[1].replace(/,/g, ''), 10) : 0,
+                    max: maxMatch ? parseInt(maxMatch[1].replace(/,/g, ''), 10) : null,
+                    min: minMatch ? parseInt(minMatch[1].replace(/,/g, ''), 10) : null,
                   };
                 };
 
