@@ -280,7 +280,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     }
 
     if (!accountId) {
-      if (!derived) {
+      if (!derived && !silent) {
         setOddsPreview(null);
         setPreviewError('没有可用的在线账号');
       }
@@ -334,7 +334,9 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       }
 
       const msg = response.error || response.message || '获取赔率失败';
-      setPreviewError(msg);
+      if (!silent) {
+        setPreviewError(msg);
+      }
       setOddsPreview(response.data?.closed ? {
         odds: response.data.odds ?? null,
         closed: true,
@@ -343,7 +345,9 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       return { success: false, message: msg, data: response.data };
     } catch (error: any) {
       const msg = error?.response?.data?.error || error?.message || '获取赔率失败';
-      setPreviewError(msg);
+      if (!silent) {
+        setPreviewError(msg);
+      }
       setOddsPreview(null);
       return { success: false, message: msg };
     } finally {
