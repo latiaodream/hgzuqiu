@@ -70,6 +70,18 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const [fetchingLimits, setFetchingLimits] = useState(false);
   const [limitsData, setLimitsData] = useState<any>(null); // 存储完整的限额数据
 
+  // 格式化金额，处理 null/undefined
+  const formatLimit = useCallback((value: any): string => {
+    if (value === null || value === undefined || value === '') {
+      return '-';
+    }
+    const num = Number(value);
+    if (Number.isNaN(num)) {
+      return '-';
+    }
+    return num.toLocaleString();
+  }, []);
+
   const regenerateCredential = useCallback((field: 'username' | 'password') => {
     const value = field === 'username' ? generateAccountUsername() : generateAccountPassword();
     form.setFieldsValue({ [field]: value });
@@ -824,22 +836,22 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                           {limitsData.football.M && (
                             <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                               <td style={{ padding: '12px 8px' }}>独赢, 滚球独赢</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.M.max.toLocaleString()}</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.M.min.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.football.M.max)}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.football.M.min)}</td>
                             </tr>
                           )}
                           {limitsData.football.DT && (
                             <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                               <td style={{ padding: '12px 8px' }}>其他</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.DT.max.toLocaleString()}</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.DT.min.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.football.DT.max)}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.football.DT.min)}</td>
                             </tr>
                           )}
                           {limitsData.football.RDT && (
                             <tr>
                               <td style={{ padding: '12px 8px' }}>滚球其他</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.RDT.max.toLocaleString()}</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.RDT.min.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.football.RDT.max)}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.football.RDT.min)}</td>
                             </tr>
                           )}
                         </tbody>
@@ -904,15 +916,15 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                           {limitsData.basketball.M && (
                             <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                               <td style={{ padding: '12px 8px' }}>独赢, 滚球独赢</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.M.max.toLocaleString()}</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.M.min.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.basketball.M.max)}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.basketball.M.min)}</td>
                             </tr>
                           )}
                           {limitsData.basketball.DT && (
                             <tr>
                               <td style={{ padding: '12px 8px' }}>其他</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.DT.max.toLocaleString()}</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.DT.min.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.basketball.DT.max)}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.basketball.DT.min)}</td>
                             </tr>
                           )}
                         </tbody>
