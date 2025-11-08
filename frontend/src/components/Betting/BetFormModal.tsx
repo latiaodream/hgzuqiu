@@ -122,7 +122,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         bet_option: defaults.bet_option,
         bet_amount: 100,
         odds: defaults.odds,
-        single_limit: 100,
+        single_limit: undefined,  // 默认为空，使用账号限额
         interval_seconds: 3,
         quantity: 1,
         min_odds: defaults.odds,
