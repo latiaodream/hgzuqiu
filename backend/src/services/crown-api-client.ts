@@ -434,10 +434,23 @@ export class CrownApiClient {
     newPassword: string
   ): Promise<{ success: boolean; message: string; updatedCredentials: { username: string; password: string } }> {
     try {
+      console.log(`🔐 开始初始化账号流程...`);
+      console.log(`📋 原始账号: ${originalUsername}`);
+      console.log(`📋 新账号: ${newUsername}`);
+
       // 1. 登录
+      console.log(`🔄 步骤1: 尝试登录原始账号...`);
       const loginResp = await this.login(originalUsername, originalPassword);
 
+      console.log(`📥 登录响应:`, {
+        status: loginResp.status,
+        msg: loginResp.msg,
+        code_message: loginResp.code_message,
+        uid: loginResp.uid
+      });
+
       if (loginResp.status === 'error' || loginResp.msg === '105') {
+        console.error(`❌ 登录失败: ${loginResp.code_message || '账号或密码错误'}`);
         return {
           success: false,
           message: loginResp.code_message || '登录失败，账号或密码错误',
@@ -541,7 +554,11 @@ export class CrownApiClient {
       };
 
     } catch (error) {
-      console.error('❌ 初始化失败:', error);
+      console.error('❌ 初始化失败 - 捕获异常:', error);
+      console.error('❌ 错误详情:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       return {
         success: false,
         message: error instanceof Error ? error.message : '初始化过程中发生错误',

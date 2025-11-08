@@ -648,6 +648,7 @@ router.post('/login/:accountId', async (req: any, res) => {
 
         if (needsInitialization) {
             console.log(`🔄 账号需要初始化 (init_type=${account.init_type})，先执行初始化...`);
+            console.log(`📋 账号信息: id=${account.id}, username=${account.username}, original_username=${account.original_username}, initialized_username=${account.initialized_username}`);
 
             // 生成新的账号和密码
             const generateUsername = () => {
@@ -669,12 +670,20 @@ router.post('/login/:accountId', async (req: any, res) => {
             const newPassword = generatePassword();
 
             console.log(`📝 生成新凭证: username=${newUsername}, password=${newPassword}`);
+            console.log(`🔐 原始凭证: username=${account.username}, password=${account.password ? '***' : 'null'}`);
 
             // 执行初始化
             const automation = getCrownAutomation();
+            console.log(`🚀 开始调用 initializeAccountWithApi...`);
             const initResult = await automation.initializeAccountWithApi(account, {
                 username: newUsername,
                 password: newPassword,
+            });
+
+            console.log(`📥 初始化结果:`, {
+                success: initResult.success,
+                message: initResult.message,
+                updatedUsername: initResult.updatedCredentials?.username
             });
 
             if (!initResult.success) {
