@@ -1406,7 +1406,7 @@ const resolveStrongFlag = (match: any, scope: MarketScope, lineMeta?: any): 'H' 
               onChange={(e) => setSearch(e.target.value)}
               style={{ width: isMobile ? '60%' : undefined }}
             />
-            <Button size="small" icon={<ReloadOutlined />} onClick={() => loadMatches({ fast: showtype === 'live' })}>
+            <Button size="small" icon={<ReloadOutlined />} onClick={() => loadMatches()}>
               {isMobile ? '' : '刷新'}
             </Button>
             {!isMobile && (
