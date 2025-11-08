@@ -272,7 +272,10 @@ export class CrownApiClient {
           loginResponse.status = 'success';
         }
 
-        if (loginResponse.status === 'success' || loginResponse.msg === '100') {
+        // msg='100' 或 '109' 都表示登录成功
+        // msg='105' 表示账号密码错误
+        // msg='106' 表示需要初始化（强制改密）
+        if (loginResponse.status === 'success' || loginResponse.msg === '100' || loginResponse.msg === '109') {
           if (loginResponse.uid) {
             this.uid = loginResponse.uid;
             console.log('✅ UID 已保存:', this.uid);
