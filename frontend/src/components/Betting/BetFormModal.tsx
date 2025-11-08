@@ -584,8 +584,28 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         message.success(`成功为 ${selectedAccounts.length} 个账号创建下注`);
         onSubmit();
       } else {
-        const errMsg = response.error || response.message || '创建下注失败';
-        message.error(errMsg);
+        // 显示详细的错误信息
+        const data = response.data as any;
+        if (data?.failed && data.failed.length > 0) {
+          // 显示每个失败账号的错误原因
+          const errorMessages = data.failed.map((f: any) => {
+            const accountName = accounts.find(a => a.id === f.accountId)?.username || `账号${f.accountId}`;
+            return `${accountName}: ${f.error}`;
+          }).join('\n');
+
+          message.error({
+            content: (
+              <div>
+                <div style={{ fontWeight: 'bold', marginBottom: 8 }}>下注失败</div>
+                <div style={{ whiteSpace: 'pre-line', fontSize: '13px' }}>{errorMessages}</div>
+              </div>
+            ),
+            duration: 8,
+          });
+        } else {
+          const errMsg = response.error || response.message || '创建下注失败';
+          message.error(errMsg);
+        }
       }
     } catch (error) {
       console.error('Failed to create bet:', error);

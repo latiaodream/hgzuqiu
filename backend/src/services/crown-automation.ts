@@ -71,6 +71,7 @@ interface CrownBetResult {
   platformAmount?: number;
   crownAmount?: number;
   rawSelectionId?: string;
+  errorCode?: string;  // 皇冠错误代码
 }
 
 interface CrownWagerItem {
@@ -6592,13 +6593,23 @@ export class CrownAutomationService {
         };
       }
 
+      // 处理错误消息
       let errorMessage = betResult.msg || '下注失败';
-      if (betResult.code === '555' && betResult.errormsg === '1X006') {
+      const errorCode = betResult.errormsg || betResult.code;
+
+      // 导入错误代码映射
+      const { formatCrownError } = require('../utils/crown-error-codes');
+
+      if (errorCode) {
+        errorMessage = formatCrownError(errorCode, betResult.msg);
+      } else if (betResult.code === '555' && betResult.errormsg === '1X006') {
         errorMessage = `赔率已变化 (原: ${betRequest.odds}, 新: ${latestOdds})，请重新下注`;
       }
+
       return {
         success: false,
         message: errorMessage,
+        errorCode: errorCode,
       };
     } catch (error: any) {
       console.error('❌ 纯 API 下注失败:', error);
