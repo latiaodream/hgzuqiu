@@ -822,15 +822,15 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                           {limitsData.football.R && (
                             <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                               <td style={{ padding: '12px 8px' }}>让球, 大小, 单双</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.R.max.toLocaleString()}</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.R.min.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.football.R.max)}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.football.R.min)}</td>
                             </tr>
                           )}
                           {limitsData.football.RE && (
                             <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                               <td style={{ padding: '12px 8px' }}>滚球让球, 滚球大小, 滚球单双</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.RE.max.toLocaleString()}</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.football.RE.min.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.football.RE.max)}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.football.RE.min)}</td>
                             </tr>
                           )}
                           {limitsData.football.M && (
@@ -902,15 +902,15 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                           {limitsData.basketball.R && (
                             <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                               <td style={{ padding: '12px 8px' }}>让球, 大小, 单双</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.R.max.toLocaleString()}</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.R.min.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.basketball.R.max)}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.basketball.R.min)}</td>
                             </tr>
                           )}
                           {limitsData.basketball.RE && (
                             <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                               <td style={{ padding: '12px 8px' }}>滚球让球, 滚球大小, 滚球单双</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.RE.max.toLocaleString()}</td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{limitsData.basketball.RE.min.toLocaleString()}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.basketball.RE.max)}</td>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>{formatLimit(limitsData.basketball.RE.min)}</td>
                             </tr>
                           )}
                           {limitsData.basketball.M && (
