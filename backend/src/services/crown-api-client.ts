@@ -879,6 +879,17 @@ export class CrownApiClient {
       // 打印原始响应以调试
       console.log('📥 原始赔率响应（前 500 字符）:', typeof response.data === 'string' ? response.data.substring(0, 500) : JSON.stringify(response.data).substring(0, 500));
 
+      // 检查是否包含 doubleLogin 错误
+      if (typeof response.data === 'string' && response.data.includes('doubleLogin')) {
+        console.log('⚠️ 检测到重复登录，会话已失效');
+        this.uid = null; // 清除 UID
+        return {
+          success: false,
+          code: 'DOUBLE_LOGIN',
+          message: '账号在其他地方登录，当前会话已失效。请重新登录。',
+        };
+      }
+
       // 检查是否是纯文本错误响应
       if (typeof response.data === 'string' && !response.data.trim().startsWith('<')) {
         const errorText = response.data.trim();

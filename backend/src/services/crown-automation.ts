@@ -6425,6 +6425,19 @@ export class CrownAutomationService {
         lastErrorMessage = oddsResult.message || oddsResult.code || '未知错误';
         lastErrorCode = oddsResult.code || oddsResult.errormsg;
 
+        // 处理 doubleLogin 错误：清除会话并返回错误
+        if (oddsResult.code === 'DOUBLE_LOGIN') {
+          console.log('⚠️ 检测到重复登录，清除账号会话');
+          this.apiLoginSessions.delete(accountId);
+          this.apiUids.delete(accountId);
+          return {
+            success: false,
+            message: '账号在其他地方登录，当前会话已失效。请重新登录账号。',
+            crownMatchId,
+            reasonCode: 'DOUBLE_LOGIN',
+          };
+        }
+
         if (oddsResult.code === 'MARKET_CLOSED' && attempt < maxRetries) {
           console.log(`⏳ 盘口暂时封盘，等待 ${retryDelay / 1000} 秒后重试...`);
           await new Promise((resolve) => setTimeout(resolve, retryDelay));
