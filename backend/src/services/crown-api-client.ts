@@ -1335,7 +1335,23 @@ export class CrownApiClient {
           try {
             const parsed = await this.parseXmlResponse(payload);
             console.log('✅ XML 解析成功，完整结构:', JSON.stringify(parsed, null, 2));
-            return parsed;
+
+            // 处理 "-" 值（表示没有数据）
+            const normalizeValue = (val: any): string => {
+              if (val === '-' || val === '' || val === null || val === undefined) {
+                return '0';
+              }
+              return String(val);
+            };
+
+            return {
+              ...parsed,
+              total_gold: normalizeValue(parsed.total_gold),
+              total_vgold: normalizeValue(parsed.total_vgold),
+              total_winloss: normalizeValue(parsed.total_winloss),
+              total_winloss_calss: parsed.total_winloss_calss || 'winloss_black',
+              history: parsed.history || []
+            };
           } catch (xmlError: any) {
             console.error('❌ XML 解析失败:', xmlError?.message || xmlError);
             throw new Error('历史记录响应格式错误');
