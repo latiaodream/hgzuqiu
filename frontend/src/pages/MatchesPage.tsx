@@ -465,16 +465,16 @@ const MatchesPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showtype, gtype, mode]);
 
-  // 自动刷新：live 模式下默认开启，滚球每 3s，其它每 15s（SSE 开启时不使用轮询）
+  // 自动刷新：live 模式下默认开启，滚球每 1s，其它每 15s（SSE 开启时不使用轮询）
   useEffect(() => {
     if (useSSE) return;
     if (mode !== 'live' || !autoRefresh) return;
-    const interval = showtype === 'live' ? 3000 : 15000;  // 滚球从 1s 改为 3s
+    const interval = showtype === 'live' ? 1000 : 15000;  // 滚球保持 1s 快速更新
     let timer: number | null = null;
     let stopped = false;
     const tick = async () => {
       if (stopped) return;
-      // 自动刷新使用快速模式，减少服务器压力
+      // 自动刷新使用快速模式，跳过盘口补充，只更新赔率
       await loadMatches({ silent: true, fast: true });
       if (!stopped) timer = window.setTimeout(tick, interval);
     };
