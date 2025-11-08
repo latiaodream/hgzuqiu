@@ -482,6 +482,15 @@ router.post('/', async (req: any, res) => {
         // 解析单笔限额范围
         const singleLimitRange = parseLimitRange(betData.single_limit);
 
+        console.log('🔍 拆分参数:', {
+            total_amount: betData.total_amount,
+            single_limit: betData.single_limit,
+            parsed_limit_range: singleLimitRange,
+            account_count: actualAccountIds.length,
+            account_discounts: Array.from(accountDiscounts.entries()),
+            account_limits: Array.from(accountLimits.entries()),
+        });
+
         // 拆分金额
         let betSplits;
         try {

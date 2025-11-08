@@ -24,7 +24,7 @@ export interface SplitOptions {
 
 /**
  * 解析单笔限额字符串
- * @param limitStr 限额字符串，如 "10000-14000"
+ * @param limitStr 限额字符串，如 "10000-14000" 或 "10000"
  * @returns { min, max } 或 null
  */
 export function parseLimitRange(limitStr?: string): { min: number; max: number } | null {
@@ -38,19 +38,32 @@ export function parseLimitRange(limitStr?: string): { min: number; max: number }
   }
 
   // 匹配格式：10000-14000
-  const match = trimmed.match(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$/);
-  if (!match) {
-    return null;
+  const rangeMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$/);
+  if (rangeMatch) {
+    const min = parseFloat(rangeMatch[1]);
+    const max = parseFloat(rangeMatch[2]);
+
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0 || min > max) {
+      return null;
+    }
+
+    return { min, max };
   }
 
-  const min = parseFloat(match[1]);
-  const max = parseFloat(match[2]);
+  // 匹配单个数字格式：10000（表示固定金额）
+  const singleMatch = trimmed.match(/^(\d+(?:\.\d+)?)$/);
+  if (singleMatch) {
+    const value = parseFloat(singleMatch[1]);
 
-  if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0 || min > max) {
-    return null;
+    if (!Number.isFinite(value) || value <= 0) {
+      return null;
+    }
+
+    // 单个数字表示固定金额，min 和 max 都设为该值
+    return { min: value, max: value };
   }
 
-  return { min, max };
+  return null;
 }
 
 /**
