@@ -419,7 +419,7 @@ const MatchesPage: React.FC = () => {
     return filtered;
   };
 
-  const loadMatches = async (opts?: { silent?: boolean }) => {
+  const loadMatches = async (opts?: { silent?: boolean; fast?: boolean }) => {
     try {
       if (!opts?.silent) setLoading(true);
       if (mode === 'local') {
@@ -442,6 +442,7 @@ const MatchesPage: React.FC = () => {
           rtype: showtype === 'live' ? 'rb' : 'r',
           ltype: '3',
           sorttype: 'L',
+          fast: opts?.fast ? 'true' : 'false',  // 快速模式
         });
         if (res.success && res.data) {
           // 防止偶发空集导致列表清零（非 live 也保持）
@@ -459,7 +460,8 @@ const MatchesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadMatches();
+    // 首次加载使用快速模式
+    loadMatches({ fast: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showtype, gtype, mode]);
 

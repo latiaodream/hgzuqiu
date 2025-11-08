@@ -403,7 +403,7 @@ export const crownApi = {
 
   // 抓取赛事（系统默认账号）
   getMatchesSystem: (
-    params?: { gtype?: string; showtype?: string; rtype?: string; ltype?: string; sorttype?: string }
+    params?: { gtype?: string; showtype?: string; rtype?: string; ltype?: string; sorttype?: string; fast?: string }
   ): Promise<ApiResponse<{ matches: any[]; meta: any; raw?: string }>> =>
     apiClient.get(`/crown-automation/matches-system`, { params, timeout: 120000 }).then(res => res.data),
 

@@ -375,7 +375,7 @@ const __filterWhitelistMarkets = (match: any) => {
 
 const enrichMatchesWithMoreMarkets = async (
   matches: any[],
-  options: { showtype: string; gtype: string }
+  options: { showtype: string; gtype: string; skipCache?: boolean }
 ) => {
   if (!Array.isArray(matches) || matches.length === 0) return;
   const showtype = (options.showtype || '').toLowerCase();
@@ -411,14 +411,20 @@ const enrichMatchesWithMoreMarkets = async (
         !hasHalfMl
       );
     })
-    .slice(0, 50);
+    .slice(0, 30);  // 减少到 30 场，提升速度
 
   if (candidates.length === 0) {
     return;
   }
 
-  await Promise.allSettled(
-    candidates.map(async (match) => {
+  console.log(`🔄 补充盘口: ${candidates.length} 场比赛需要补充`);
+
+  // 限制并发数：每次最多 10 个请求
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+    const batch = candidates.slice(i, i + BATCH_SIZE);
+    await Promise.allSettled(
+      batch.map(async (match) => {
       try {
         const raw = match.raw || {};
         const gid = raw.GID || raw.gid || match.gid || match.GID || match.gidm || match.GIDM;
@@ -482,7 +488,10 @@ const enrichMatchesWithMoreMarkets = async (
         console.error('⚠️ enrich match with more markets failed:', error);
       }
     })
-  );
+    );
+  }
+
+  console.log(`✅ 盘口补充完成`);
 };
 
 // 辅助函数：自动获取并保存账号限额
@@ -1567,13 +1576,17 @@ router.get('/matches/:accountId', async (req: any, res) => {
 // 短期兜底缓存：避免今日/早盘偶发返回空导致前端列表清零闪烁（30s）
 const lastNonEmptyCache: Record<string, { matches: any[]; ts: number }> = {};
 
+// 盘口补充缓存：避免每次请求都调用 enrichMatchesWithMoreMarkets（60s）
+const enrichedCache: Record<string, { matches: any[]; ts: number }> = {};
+
 // 抓取赛事列表（系统默认账号）
 router.get('/matches-system', async (req: any, res) => {
     try {
         const userId = req.user.id;
         // 任意已登录用户均可使用系统赛事抓取，无需绑定账号
-        const { gtype = 'ft', showtype = 'live', rtype = 'rb', ltype = '3', sorttype = 'L' } = req.query as any;
+        const { gtype = 'ft', showtype = 'live', rtype = 'rb', ltype = '3', sorttype = 'L', fast = 'false' } = req.query as any;
         const cacheKey = `${String(gtype).toLowerCase()}:${String(showtype).toLowerCase()}`;
+        const fastMode = String(fast).toLowerCase() === 'true';  // 快速模式：跳过盘口补充
 
         // 优先读取独立抓取服务的数据文件
         try {
@@ -1627,10 +1640,13 @@ router.get('/matches-system', async (req: any, res) => {
                                 }
                             }
 
-                            await enrichMatchesWithMoreMarkets(allMatches, {
-                                showtype: String(showtype),
-                                gtype: String(gtype),
-                            });
+                            // 快速模式：跳过盘口补充
+                            if (!fastMode) {
+                                await enrichMatchesWithMoreMarkets(allMatches, {
+                                    showtype: String(showtype),
+                                    gtype: String(gtype),
+                                });
+                            }
 
                             // 记录非空集到缓存
                             lastNonEmptyCache[cacheKey] = { matches: allMatches, ts: Date.now() };
@@ -1682,10 +1698,13 @@ router.get('/matches-system', async (req: any, res) => {
                         console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
                     }
                 }
-                await enrichMatchesWithMoreMarkets(filteredMatches, {
-                    showtype: String(showtype),
-                    gtype: String(gtype),
-                });
+                // 快速模式：跳过盘口补充
+                if (!fastMode) {
+                    await enrichMatchesWithMoreMarkets(filteredMatches, {
+                        showtype: String(showtype),
+                        gtype: String(gtype),
+                    });
+                }
             }
 
             //  1 1 1 1 1 1 1  1 1 1 1 1
@@ -1744,10 +1763,13 @@ router.get('/matches-system', async (req: any, res) => {
                     console.error('⚠️ 合并 iSports 赔率失败:', mergeError);
                 }
             }
-            await enrichMatchesWithMoreMarkets(filteredMatches, {
-                showtype: String(showtype),
-                gtype: String(gtype),
-            });
+            // 快速模式：跳过盘口补充
+            if (!fastMode) {
+                await enrichMatchesWithMoreMarkets(filteredMatches, {
+                    showtype: String(showtype),
+                    gtype: String(gtype),
+                });
+            }
         }
 
         // 今日/早盘短期兜底（fallback 分支）
