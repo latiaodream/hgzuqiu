@@ -446,27 +446,10 @@ const AccountsPage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div>
-                  <Empty description="最近7天暂无下注记录" />
-                  {data && data.code && (
-                    <div style={{
-                      marginTop: '16px',
-                      padding: '12px',
-                      border: '1px solid #f0f0f0',
-                      borderRadius: '4px',
-                      background: '#fafafa',
-                      maxHeight: '260px',
-                      overflow: 'auto'
-                    }}>
-                      <Text type="secondary">原始响应：</Text>
-                      <pre style={{ fontSize: '12px', margin: 0 }}>
-                        {typeof data === 'string'
-                          ? data
-                          : JSON.stringify(data, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
+                <Empty
+                  description="最近7天暂无下注记录"
+                  style={{ padding: '40px 0' }}
+                />
               )}
             </div>
           ),
