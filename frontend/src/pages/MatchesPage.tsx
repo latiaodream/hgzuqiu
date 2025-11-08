@@ -460,8 +460,8 @@ const MatchesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // 首次加载使用快速模式
-    loadMatches({ fast: true });
+    // 首次加载不使用快速模式，需要补充盘口
+    loadMatches();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showtype, gtype, mode]);
 
