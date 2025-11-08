@@ -1854,15 +1854,32 @@ router.post('/odds/preview', async (req: any, res) => {
             return;
         }
 
-        const oddsValueRaw = preview.oddsResult?.ioratio ?? preview.oddsResult?.ioratio_now ?? null;
-        const oddsNumeric = oddsValueRaw !== null && oddsValueRaw !== undefined
-            ? parseFloat(String(oddsValueRaw))
-            : null;
+        // 优先使用 ioratio，如果不存在或无效，则从 ratio 计算
+        let oddsNumeric: number | null = null;
+
+        const ioratioRaw = preview.oddsResult?.ioratio ?? preview.oddsResult?.ioratio_now;
+        if (ioratioRaw !== null && ioratioRaw !== undefined) {
+            const parsed = parseFloat(String(ioratioRaw));
+            if (Number.isFinite(parsed) && parsed > 0) {
+                oddsNumeric = parsed;
+            }
+        }
+
+        // 如果 ioratio 无效，尝试从 ratio 计算（ratio 通常是赔率 * 1000）
+        if (oddsNumeric === null) {
+            const ratioRaw = preview.oddsResult?.ratio;
+            if (ratioRaw !== null && ratioRaw !== undefined) {
+                const parsed = parseFloat(String(ratioRaw));
+                if (Number.isFinite(parsed) && parsed > 0) {
+                    oddsNumeric = parsed / 1000;
+                }
+            }
+        }
 
         res.json({
             success: true,
             data: {
-                odds: Number.isFinite(oddsNumeric) ? oddsNumeric : null,
+                odds: oddsNumeric,
                 closed: false,
                 market: preview.variant,
                 raw: preview.oddsResult,
