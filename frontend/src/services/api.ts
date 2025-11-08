@@ -430,7 +430,15 @@ export const crownApi = {
     league_name?: string;
     home_team?: string;
     away_team?: string;
-  }): Promise<ApiResponse<{ odds: number | null; closed?: boolean; message?: string; raw?: any }>> =>
+  }): Promise<ApiResponse<{
+    odds: number | null;
+    closed?: boolean;
+    message?: string;
+    raw?: any;
+    spread_mismatch?: boolean;
+    requested_line?: string;
+    returned_spread?: string;
+  }>> =>
     apiClient.post('/crown-automation/odds/preview', data, { timeout: 15000 }).then(res => res.data),
 
   // 获取账号额度设置
