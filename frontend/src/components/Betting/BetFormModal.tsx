@@ -711,7 +711,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
               <div style={{ marginBottom: 12 }}>
                 <Space size={8} align="center" wrap>
                   <Tag color={oddsPreview?.closed ? 'red' : 'blue'} style={{ fontSize: 14, padding: '4px 8px' }}>
-                    最新赔率：{oddsPreview ? (oddsPreview.odds ?? '-') : '--'}
+                    {oddsPreview ? (oddsPreview.odds ?? '-') : '--'}
                   </Tag>
                   {previewLoading && <Spin size="small" />}
                   <Button
@@ -730,9 +730,6 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
                 </Space>
                 {previewError && (
                   <div style={{ marginTop: 4, color: '#ff4d4f', fontSize: 12 }}>{previewError}</div>
-                )}
-                {oddsPreview?.message && (
-                  <div style={{ marginTop: 4, color: '#8c8c8c', fontSize: 12 }}>{oddsPreview.message}</div>
                 )}
               </div>
 

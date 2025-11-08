@@ -77,6 +77,22 @@ const buildLineKey = (line: any): string => {
   return parts.map((part) => String(part ?? '')).join('|');
 };
 
+// 排序盘口：按盘口数值从小到大排序
+const sortLines = (lines: any[]): any[] => {
+  return lines.sort((a, b) => {
+    const lineA = parseFloat(String(a.line || '0'));
+    const lineB = parseFloat(String(b.line || '0'));
+
+    // 如果都是有效数字，按数值排序
+    if (Number.isFinite(lineA) && Number.isFinite(lineB)) {
+      return Math.abs(lineA) - Math.abs(lineB);
+    }
+
+    // 否则保持原顺序
+    return 0;
+  });
+};
+
 const mergeLineEntries = (
   incomingLines: any[] | undefined,
   previousLines: any[] | undefined,
@@ -114,7 +130,8 @@ const mergeLineEntries = (
     return incomingList.length ? incomingList.map((item) => ({ ...item })) : undefined;
   }
 
-  return Array.from(mergedMap.values());
+  // 排序后返回
+  return sortLines(Array.from(mergedMap.values()));
 };
 
 const mergeMarketScope = (
