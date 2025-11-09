@@ -91,7 +91,12 @@ async function main() {
 
     // 根据比赛状态判断 showtype
     let showtype = 'early';
-    if (match.state === 1 || match.state === '1' || match.period || match.clock) {
+
+    // 判断是否为滚球：state === 1 表示进行中
+    const state = match.state ?? match.status;
+    const isLive = state === 1 || state === '1';
+
+    if (isLive) {
       showtype = 'live';
       liveCount++;
     } else {

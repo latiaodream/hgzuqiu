@@ -61,9 +61,12 @@ const isLiveState = (value: any): boolean => {
     if (state === undefined) {
         return false;
     }
-    // 仅将 >0 的状态视为进行中，同时排除 3（某些厂商用 3 表示已结束）和 -1
-    // 这样可兼容 iSports 的多种进行中/暂停编码（1、2、4、5...）
-    return (state as number) > 0 && state !== 3 && state !== -1;
+    // iSportsAPI 状态码定义：
+    // 1 = 进行中（滚球）
+    // 0 = 未开赛
+    // -1 或 3 = 已结束
+    // 2 = 半场休息或其他中间状态（不算滚球）
+    return state === 1;
 };
 
 // 更稳健的滚球判定：同时考虑 state/status 的字符串编码以及 period/clock
@@ -72,9 +75,9 @@ const isLiveMatch = (match: any): boolean => {
     const rawState = (match.state ?? match.status);
     const stateNum = normalizeStateValue(rawState);
 
-    // 数字状态优先：>0 且不等于 3、-1 视为进行中
+    // 数字状态优先：只有 state === 1 才是滚球
     if (stateNum !== undefined) {
-        return stateNum > 0 && stateNum !== 3 && stateNum !== -1;
+        return stateNum === 1;
     }
 
     // 字符串状态回退：如 'RB'、'RE'、'LIVE'、'滚球' 等
@@ -84,16 +87,21 @@ const isLiveMatch = (match: any): boolean => {
         if (tokens.some((t) => stateStr.includes(t))) return true;
     }
 
-    // period/clock 信号：常见滚球节次/半场/加时
+    // period/clock 信号：常见滚球节次/半场/加时（但排除"未开赛"、"已结束"等）
     const period = String(match.period ?? match.match_period ?? '').trim().toLowerCase();
     if (period) {
+        // 排除非滚球状态
+        const nonLivePeriods = ['未开赛', '已结束', '結束', 'finished', 'full time', 'ft', 'postponed', 'cancelled'];
+        if (nonLivePeriods.some((p) => period.includes(p))) return false;
+
+        // 检查是否为滚球节次
         const livePeriods = ['滚球','滾球','1h','2h','ht','q1','q2','q3','q4','1q','2q','3q','4q','ot','et','上半','下半','上半场','下半场','第一节','第二节','第三节','第四节'];
         if (livePeriods.some((p) => period.includes(p.toLowerCase()))) return true;
     }
 
-    // clock 有值也高度可能是滚球
+    // clock 有值且不为空字符串，可能是滚球
     const clock = String(match.clock ?? match.match_clock ?? '').trim();
-    if (clock) return true;
+    if (clock && clock !== '' && clock !== '0' && clock !== '00:00') return true;
 
     return false;
 };
