@@ -313,12 +313,13 @@ const __filterWhitelistMarkets = (match: any) => {
       .filter((x) => __isValidOdds(x?.home || x?.over) || __isValidOdds(x?.away || x?.under));
   };
 
-  // full handicap: RE + RO + RCO（皇冠把多盘口拆在这三类里）
+  // full handicap: R + RE + RO + RCO（皇冠把多盘口拆在这几类里，fetcher 使用 R）
   const full = m.full || {};
   let fHandicap = onlyValid(full.handicapLines, (x) => {
     const w = (x?.wtype || '').toUpperCase();
     const r = (x?.home_rtype || x?.away_rtype || '').toUpperCase();
-    return ['RE', 'RO', 'RCO'].includes(w) || r.startsWith('RE') || r.startsWith('RO') || r.startsWith('RCO');
+    // 接受 R（fetcher 补充的）和 RE/RO/RCO（后端补充的）
+    return ['R', 'RE', 'RO', 'RCO'].includes(w) || r.startsWith('R') || r.startsWith('RE') || r.startsWith('RO') || r.startsWith('RCO');
   });
   fHandicap.sort(sortAscByAbs);
   if (limitHandicap && limitHandicap > 1) fHandicap = fHandicap.slice(0, limitHandicap);
@@ -328,12 +329,13 @@ const __filterWhitelistMarkets = (match: any) => {
     m.handicap = m.full.handicapLines[0];
   }
 
-  // full over/under: ROU + ROUHO + ROUCO（皇冠的多盘口补充）
+  // full over/under: OU + ROU + ROUHO + ROUCO（fetcher 使用 OU，后端使用 ROU 系列）
   let fOu = onlyValid(full.overUnderLines, (x) => {
     const w = (x?.wtype || '').toUpperCase();
     const or = (x?.over_rtype || '').toUpperCase();
     const ur = (x?.under_rtype || '').toUpperCase();
-    return w.startsWith('ROU') || or.startsWith('ROU') || ur.startsWith('ROU');
+    // 接受 OU（fetcher 补充的）和 ROU 系列（后端补充的）
+    return w === 'OU' || w.startsWith('ROU') || or.startsWith('ROU') || ur.startsWith('ROU');
   });
   fOu.sort(sortAsc);
   if (limitOu && limitOu > 1) fOu = fOu.slice(0, limitOu);
@@ -343,12 +345,13 @@ const __filterWhitelistMarkets = (match: any) => {
     m.ou = m.full.overUnderLines[0];
   }
 
-  // half handicap: HRE + HRO + HRCO（若返回）
+  // half handicap: HR + HRE + HRO + HRCO（fetcher 使用 HR，后端使用 HRE 系列）
   const half = m.half || {};
   let hHandicap = onlyValid(half.handicapLines, (x) => {
     const w = (x?.wtype || '').toUpperCase();
     const r = (x?.home_rtype || x?.away_rtype || '').toUpperCase();
-    return ['HRE', 'HRO', 'HRCO'].includes(w) || r.startsWith('HRE') || r.startsWith('HRO') || r.startsWith('HRCO');
+    // 接受 HR（fetcher 补充的）和 HRE/HRO/HRCO（后端补充的）
+    return ['HR', 'HRE', 'HRO', 'HRCO'].includes(w) || r.startsWith('HR') || r.startsWith('HRE') || r.startsWith('HRO') || r.startsWith('HRCO');
   });
   hHandicap.sort(sortAscByAbs);
   if (limitHandicap && limitHandicap > 1) hHandicap = hHandicap.slice(0, limitHandicap);
@@ -357,12 +360,13 @@ const __filterWhitelistMarkets = (match: any) => {
     m.half.handicap = m.half.handicapLines[0];
   }
 
-  // half over/under: HROU 及其扩展
+  // half over/under: HOU + HROU 及其扩展（fetcher 使用 HOU，后端使用 HROU 系列）
   let hOu = onlyValid(half.overUnderLines, (x) => {
     const w = (x?.wtype || '').toUpperCase();
     const or = (x?.over_rtype || '').toUpperCase();
     const ur = (x?.under_rtype || '').toUpperCase();
-    return w.startsWith('HROU') || or.startsWith('HROU') || ur.startsWith('HROU');
+    // 接受 HOU（fetcher 补充的）和 HROU 系列（后端补充的）
+    return w === 'HOU' || w.startsWith('HROU') || or.startsWith('HROU') || ur.startsWith('HROU');
   });
   hOu.sort(sortAsc);
   if (limitOu && limitOu > 1) hOu = hOu.slice(0, limitOu);
