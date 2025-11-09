@@ -94,13 +94,16 @@ export function splitAmountForAccount(
       // 最后一笔
       if (remaining >= effectiveMin) {
         bets.push(Math.round(remaining));
+      } else if (remaining >= MIN_BET) {
+        // 允许最后一笔小于用户设置的最小限额，只要满足皇冠最低下注金额
+        bets.push(Math.round(remaining));
       } else if (bets.length > 0) {
-        // 如果剩余金额太小，合并到上一笔
+        // 如果剩余金额太小（低于 50），合并到上一笔
         bets[bets.length - 1] += remaining;
         bets[bets.length - 1] = Math.round(bets[bets.length - 1]);
       } else {
-        // 如果是第一笔且金额太小，强制使用最小金额
-        bets.push(effectiveMin);
+        // 如果是第一笔且金额太小，强制使用最低下注金额
+        bets.push(MIN_BET);
       }
       break;
     }
@@ -136,17 +139,30 @@ export function splitBetsForAccounts(options: SplitOptions): BetSplit[] {
     throw new Error('总金额必须大于 0');
   }
 
-  // 每个账号的目标实数金额（平分）
-  const targetPerAccount = totalRealAmount / accountIds.length;
+  // 先计算所有账号折扣的总和，用于按折扣占比分配金额
+  const totalDiscount = accountIds.reduce((sum, accountId) => {
+    const discount = accountDiscounts.get(accountId) || 1.0;
+    if (discount <= 0 || discount > 1) {
+      throw new Error(`账号 ${accountId} 的折扣设置不正确: ${discount}`);
+    }
+    return sum + discount;
+  }, 0);
+
+  if (totalDiscount <= 0) {
+    throw new Error('所有账号的折扣设置无效');
+  }
 
   const results: BetSplit[] = [];
 
   for (const accountId of accountIds) {
     const discount = accountDiscounts.get(accountId) || 1.0;
-    
+
     if (discount <= 0 || discount > 1) {
       throw new Error(`账号 ${accountId} 的折扣设置不正确: ${discount}`);
     }
+
+    // 按折扣占比计算该账号的目标实数金额，确保高折扣账号承担更多额度
+    const targetPerAccount = (totalRealAmount * discount) / totalDiscount;
 
     // 确定该账号的限额范围
     let limitRange: { min: number; max: number };
@@ -263,4 +279,3 @@ export function generateRandomInterval(intervalRange?: { min: number; max: numbe
   const { min, max } = intervalRange;
   return Math.random() * (max - min) + min;
 }
-
