@@ -4,6 +4,7 @@ import { query } from '../models/database';
 import { ApiResponse } from '../types';
 import { getCrownAutomation } from '../services/crown-automation';
 import { getMatchFetcher } from '../services/match-fetcher';
+import { nameAliasService } from '../services/name-alias-service';
 import type { Response } from 'express';
 
 const buildAccountAccess = (user: any, options?: { includeDisabled?: boolean }) => {
@@ -37,6 +38,7 @@ const pickValue = (...values: any[]) => {
     }
     return undefined;
 };
+
 
 const buildScoreFromParts = (home: any, away: any) => {
     if (home === undefined || home === null || away === undefined || away === null) {
@@ -201,73 +203,91 @@ const filterMatchesByShowtype = (matches: any[], showtype: string) => {
 /**
  * 批量映射赛事名称（英文/繁体 → 简体中文）
  */
+const leagueDisplayCache = new Map<string, string>();
+const teamDisplayCache = new Map<string, string>();
+
+const resolveLeagueDisplay = async (value?: string) => {
+    if (!value) return value;
+    if (leagueDisplayCache.has(value)) {
+        return leagueDisplayCache.get(value);
+    }
+    try {
+        const resolved = await nameAliasService.resolveLeague(value);
+        const display = resolved?.displayName || value;
+        leagueDisplayCache.set(value, display);
+        return display;
+    } catch (error) {
+        console.error('resolveLeagueDisplay error:', error);
+        return value;
+    }
+};
+
+const resolveTeamDisplay = async (value?: string) => {
+    if (!value) return value;
+    if (teamDisplayCache.has(value)) {
+        return teamDisplayCache.get(value);
+    }
+    try {
+        const resolved = await nameAliasService.resolveTeam(value);
+        const display = resolved?.displayName || value;
+        teamDisplayCache.set(value, display);
+        return display;
+    } catch (error) {
+        console.error('resolveTeamDisplay error:', error);
+        return value;
+    }
+};
+
 const mapMatchNamesInRoute = async (matches: any[]): Promise<any[]> => {
     try {
-        // 收集所有需要映射的名称
-        const leagueNames = new Set<string>();
-        const teamNames = new Set<string>();
+        return await Promise.all(matches.map(async (match) => {
+            if (!match) return match;
+            const clone = { ...match };
 
-        for (const match of matches) {
-            if (match.league) leagueNames.add(match.league);
-            if (match.home) teamNames.add(match.home);
-            if (match.away) teamNames.add(match.away);
-        }
-
-        // 批量查询映射
-        const leagueMap = new Map<string, string>();
-        const teamMap = new Map<string, string>();
-
-        if (leagueNames.size > 0) {
-            const leagueResult = await query(
-                `SELECT name_zh_tw, name_en, name_zh_cn FROM league_aliases
-                 WHERE name_zh_tw = ANY($1) OR name_en = ANY($1)`,
-                [Array.from(leagueNames)]
-            );
-            for (const row of leagueResult.rows) {
-                const displayName = row.name_zh_cn || row.name_zh_tw || row.name_en;
-                if (row.name_zh_tw) leagueMap.set(row.name_zh_tw, displayName);
-                if (row.name_en) leagueMap.set(row.name_en, displayName);
+            const leagueRaw = pickValue(match.league, match.league_name, match.leagueName);
+            if (leagueRaw) {
+                const display = await resolveLeagueDisplay(leagueRaw);
+                clone.league = display;
+                clone.league_name = display;
+                clone.leagueName = display;
             }
-        }
 
-        if (teamNames.size > 0) {
-            const teamResult = await query(
-                `SELECT name_zh_tw, name_en, name_zh_cn FROM team_aliases
-                 WHERE name_zh_tw = ANY($1) OR name_en = ANY($1)`,
-                [Array.from(teamNames)]
-            );
-            for (const row of teamResult.rows) {
-                const displayName = row.name_zh_cn || row.name_zh_tw || row.name_en;
-                if (row.name_zh_tw) teamMap.set(row.name_zh_tw, displayName);
-                if (row.name_en) teamMap.set(row.name_en, displayName);
+            const homeRaw = pickValue(match.home, match.team_h, match.teamH, match.homeName, match.home_team);
+            if (homeRaw) {
+                const display = await resolveTeamDisplay(homeRaw);
+                clone.home = display;
+                clone.home_team = display;
+                clone.team_h = display;
             }
-        }
 
-        // 应用映射
-        return matches.map(match => ({
-            ...match,
-            league: leagueMap.get(match.league) || match.league,
-            home: teamMap.get(match.home) || match.home,
-            away: teamMap.get(match.away) || match.away,
+            const awayRaw = pickValue(match.away, match.team_c, match.teamC, match.awayName, match.away_team);
+            if (awayRaw) {
+                const display = await resolveTeamDisplay(awayRaw);
+                clone.away = display;
+                clone.away_team = display;
+                clone.team_c = display;
+            }
+
+            return clone;
         }));
     } catch (error) {
         console.error('❌ 映射赛事名称失败:', error);
-        return matches; // 失败时返回原始数据
+        return matches;
     }
 };
 
 const normalizeMatchForFrontend = (match: any) => {
-    if (!match) return match;
-    const normalized = { ...match };
+  if (!match) return match;
+  const normalized = { ...match };
 
-    const home = pickValue(match.home, match.team_h, match.teamH, match.homeName, match.home_team);
-    if (home !== undefined) normalized.home = home;
+  const home = pickValue(match.home, match.team_h, match.teamH, match.homeName, match.home_team);
+  if (home !== undefined) normalized.home = home;
 
-    const away = pickValue(match.away, match.team_c, match.teamC, match.awayName, match.away_team);
-    if (away !== undefined) normalized.away = away;
+  const away = pickValue(match.away, match.team_c, match.teamC, match.awayName, match.away_team);
+  if (away !== undefined) normalized.away = away;
 
-    const league = pickValue(match.league, match.league_name, match.leagueName);
-    if (league !== undefined) normalized.league = league;
+  const league = pickValue(match.league, match.league_name, match.leagueName);
+  if (league !== undefined) normalized.league = league;
 
     const scoreFromParts = buildScoreFromParts(
         pickValue(match.score_h, match.homeScore, match.HomeScore, match.hscore, match.home_half_score),
@@ -1634,10 +1654,11 @@ router.get('/matches/:accountId', async (req: any, res) => {
             ltype: String(ltype),
             sorttype: String(sorttype),
         });
+        const matchesWithAlias = await mapMatchNamesInRoute(matches || []);
 
         res.json({
             success: true,
-            data: { matches, meta: { gtype, showtype, rtype: effectiveRtype, ltype, sorttype }, raw: xml }
+            data: { matches: matchesWithAlias, meta: { gtype, showtype, rtype: effectiveRtype, ltype, sorttype }, raw: xml }
         });
 
     } catch (error) {
@@ -1686,12 +1707,11 @@ router.get('/matches-system', async (req: any, res) => {
                     // 放宽时间限制：5分钟内的数据都可以使用
                     if (age < 300000) {
                         console.log(`✅ 使用独立抓取服务数据 (${matchCount} 场比赛, ${Math.max(0, Math.floor(age / 1000))}秒前)`);
-                        const normalizedMatches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
-                        console.log(`   归一化后: ${normalizedMatches.length} 场比赛`);
+        const normalizedMatches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
+        console.log(`   归一化后: ${normalizedMatches.length} 场比赛`);
 
-                        // 映射名称（英文/繁体 → 简体中文）
-                        const mappedMatches = await mapMatchNamesInRoute(normalizedMatches);
-                        console.log(`   名称映射后: ${mappedMatches.length} 场比赛`);
+        const mappedMatches = await mapMatchNamesInRoute(normalizedMatches);
+        console.log(`   名称映射后: ${mappedMatches.length} 场比赛`);
 
                         // 根据 showtype 过滤比赛
                         let allMatches = filterMatchesByShowtype(mappedMatches, String(showtype));
@@ -1745,7 +1765,11 @@ router.get('/matches-system', async (req: any, res) => {
         const fetcher = getMatchFetcher();
         if (fetcher) {
             const data = fetcher.getLatestMatches();
-            let filteredMatches = filterMatchesByShowtype(data.matches ?? [], String(showtype));
+            const normalizedMatches = (data.matches ?? []).map((m: any) => normalizeMatchForFrontend(m));
+            let filteredMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
+            if (filteredMatches.length > 0) {
+                filteredMatches = await mapMatchNamesInRoute(filteredMatches);
+            }
             // 今日/早盘短期兜底
             if (filteredMatches.length === 0 && String(showtype).toLowerCase() !== 'live') {
                 const cached = lastNonEmptyCache[cacheKey];
@@ -1800,6 +1824,9 @@ router.get('/matches-system', async (req: any, res) => {
 
         const normalizedMatches = (matches || []).map((m: any) => normalizeMatchForFrontend(m));
         let filteredMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
+        if (filteredMatches.length > 0) {
+            filteredMatches = await mapMatchNamesInRoute(filteredMatches);
+        }
 
         // 再保险：如果是滚球且还是空，尝试再抓一次皇冠实时数据
         if (String(showtype) === 'live' && filteredMatches.length === 0) {
@@ -2403,16 +2430,22 @@ router.get('/matches/system/stream', async (req: any, res: Response) => {
         }
 
         let filtered = filterMatchesByShowtype(matches, showtype);
+        if (filtered.length > 0) {
+            filtered = await mapMatchNamesInRoute(filtered);
+        }
 
         // 如果是滚球且过滤后为空，回退到直接抓皇冠
         if (showtype === 'live' && filtered.length === 0) {
-          try {
-            const result = await getCrownAutomation().fetchMatchesSystem({ gtype, showtype, rtype, ltype, sorttype });
-            const normalized = (result.matches || []).map((m: any) => normalizeMatchForFrontend(m));
-            filtered = filterMatchesByShowtype(normalized, showtype);
-          } catch (fbErr) {
-            console.error('滚球回退抓取失败:', fbErr);
-          }
+            try {
+                const result = await getCrownAutomation().fetchMatchesSystem({ gtype, showtype, rtype, ltype, sorttype });
+                const normalized = (result.matches || []).map((m: any) => normalizeMatchForFrontend(m));
+                filtered = filterMatchesByShowtype(normalized, showtype);
+                if (filtered.length > 0) {
+                    filtered = await mapMatchNamesInRoute(filtered);
+                }
+            } catch (fbErr) {
+                console.error('滚球回退抓取失败:', fbErr);
+            }
         }
 
         if (filtered.length > 0) {
