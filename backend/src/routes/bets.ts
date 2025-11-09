@@ -346,14 +346,12 @@ router.post('/', async (req: any, res) => {
 
                 const whereClause = conditions.join(' AND ');
                 const sql = `
-                    SELECT crown_gid, crown_league, crown_home, crown_away, match_time,
-                           similarity(crown_home, $${paramIndex}) + similarity(crown_away, $${paramIndex + 1}) as score
+                    SELECT crown_gid, crown_league, crown_home, crown_away, match_time
                     FROM crown_matches
                     WHERE ${whereClause}
-                    ORDER BY score DESC, created_at DESC
-                    LIMIT 5
+                    ORDER BY created_at DESC
+                    LIMIT 10
                 `;
-                params.push(betData.home_team, betData.away_team);
 
                 console.log('🔍 执行模糊匹配查询:', sql);
                 console.log('   参数:', params);
@@ -361,7 +359,47 @@ router.post('/', async (req: any, res) => {
                 const crownMatchResult = await query(sql, params);
 
                 if (crownMatchResult.rows.length > 0) {
-                    const bestMatch = crownMatchResult.rows[0];
+                    // 使用简单的字符串相似度算法（Levenshtein 距离）进行排序
+                    const calculateSimilarity = (str1: string, str2: string): number => {
+                        const len1 = str1.length;
+                        const len2 = str2.length;
+                        const matrix: number[][] = [];
+
+                        for (let i = 0; i <= len1; i++) {
+                            matrix[i] = [i];
+                        }
+                        for (let j = 0; j <= len2; j++) {
+                            matrix[0][j] = j;
+                        }
+
+                        for (let i = 1; i <= len1; i++) {
+                            for (let j = 1; j <= len2; j++) {
+                                const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+                                matrix[i][j] = Math.min(
+                                    matrix[i - 1][j] + 1,
+                                    matrix[i][j - 1] + 1,
+                                    matrix[i - 1][j - 1] + cost
+                                );
+                            }
+                        }
+
+                        const distance = matrix[len1][len2];
+                        const maxLen = Math.max(len1, len2);
+                        return maxLen === 0 ? 1 : 1 - distance / maxLen;
+                    };
+
+                    // 计算每个结果的相似度评分
+                    const scoredResults = crownMatchResult.rows.map((row: any) => {
+                        const homeScore = calculateSimilarity(betData.home_team.toLowerCase(), row.crown_home.toLowerCase());
+                        const awayScore = calculateSimilarity(betData.away_team.toLowerCase(), row.crown_away.toLowerCase());
+                        const totalScore = homeScore + awayScore;
+                        return { ...row, score: totalScore };
+                    });
+
+                    // 按相似度排序
+                    scoredResults.sort((a, b) => b.score - a.score);
+
+                    const bestMatch = scoredResults[0];
                     crownMatchId = bestMatch.crown_gid;
                     console.log('✅ 通过模糊匹配找到皇冠 GID:', crownMatchId);
                     console.log('   匹配结果:', {
@@ -370,14 +408,14 @@ router.post('/', async (req: any, res) => {
                         crown_home: bestMatch.crown_home,
                         crown_away: bestMatch.crown_away,
                         match_time: bestMatch.match_time,
-                        score: bestMatch.score,
+                        score: bestMatch.score.toFixed(3),
                     });
 
                     // 如果有多个结果，显示其他候选
-                    if (crownMatchResult.rows.length > 1) {
+                    if (scoredResults.length > 1) {
                         console.log('   其他候选:');
-                        crownMatchResult.rows.slice(1).forEach((row: any, idx: number) => {
-                            console.log(`   ${idx + 2}. ${row.crown_home} vs ${row.crown_away} (${row.crown_gid}, score: ${row.score})`);
+                        scoredResults.slice(1, 5).forEach((row: any, idx: number) => {
+                            console.log(`   ${idx + 2}. ${row.crown_home} vs ${row.crown_away} (${row.crown_gid}, score: ${row.score.toFixed(3)})`);
                         });
                     }
                 } else {
