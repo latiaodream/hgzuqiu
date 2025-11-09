@@ -6761,15 +6761,17 @@ export class CrownAutomationService {
       }
     })();
 
-    if (!resolvedByMeta && (typeNormalized.includes('让球') || typeNormalized.includes('handicap') || typeNormalized.includes('讓球'))) {
-      parseHandicap();
-    } else if (!resolvedByMeta && (typeNormalized.includes('独赢') || typeNormalized.includes('moneyline') || typeNormalized.includes('獨贏'))) {
-      parseMoneyline();
-    } else if (!resolvedByMeta && (typeNormalized.includes('大小') || typeNormalized.includes('大/小') || typeNormalized.includes('over') || typeNormalized.includes('under'))) {
-      parseOverUnder();
-    } else {
-      // 无法明确识别时默认独赢主队
-      parseMoneyline();
+    if (!resolvedByMeta) {
+      if (typeNormalized.includes('让球') || typeNormalized.includes('handicap') || typeNormalized.includes('讓球')) {
+        parseHandicap();
+      } else if (typeNormalized.includes('独赢') || typeNormalized.includes('moneyline') || typeNormalized.includes('獨贏')) {
+        parseMoneyline();
+      } else if (typeNormalized.includes('大小') || typeNormalized.includes('大/小') || typeNormalized.includes('over') || typeNormalized.includes('under')) {
+        parseOverUnder();
+      } else {
+        // 无法明确识别时默认独赢主队
+        parseMoneyline();
+      }
     }
 
     console.log(`✅ 转换结果: wtype="${wtype}", rtype="${rtype}", chose_team="${chose_team}" (half=${isHalfMarket}, metaCategory=${metaCategoryNormalized || 'n/a'}, metaSide=${metaSideNormalized || 'n/a'})`);

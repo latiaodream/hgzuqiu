@@ -528,10 +528,10 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
       try {
         console.log(`  处理联赛: ${league.name} (ID: ${league.id})`);
 
-        // 检查是否已存在（通过 isports_league_id）
+        // 检查是否已存在（通过 isports_league_id 或 name_en）
         const existing = await pool.query(
-          'SELECT id, name_zh_tw, name_en FROM league_aliases WHERE isports_league_id = $1',
-          [league.id]
+          'SELECT id, name_zh_tw, name_en, name_zh_cn FROM league_aliases WHERE isports_league_id = $1 OR name_en = $2',
+          [league.id, league.name]
         );
 
         console.log(`    查询结果: ${existing.rows.length} 条记录`);
@@ -553,10 +553,10 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
           `, [canonicalKey, league.id, league.name, league.name]);
           leagueInserted++;
           console.log(`    ✅ 新增联赛: ${league.name} (新ID: ${insertResult.rows[0].id})`);
-        } else {
+        } else if (existing.rows.length === 1) {
           // 更新现有记录（如果名称为空）
           const row = existing.rows[0];
-          console.log(`    已存在记录: id=${row.id}, name_zh_tw=${row.name_zh_tw}, name_en=${row.name_en}`);
+          console.log(`    已存在记录: id=${row.id}, name_zh_tw=${row.name_zh_tw}, name_en=${row.name_en}, name_zh_cn=${row.name_zh_cn}`);
           if (!row.name_zh_tw && !row.name_en) {
             await pool.query(`
               UPDATE league_aliases
@@ -569,6 +569,10 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
             leagueSkipped++;
             console.log(`    ⏭️  跳过联赛: ${league.name} (已存在)`);
           }
+        } else {
+          // 发现多条记录，说明有重复数据
+          leagueSkipped++;
+          console.log(`    ⚠️  跳过联赛: ${league.name} (发现 ${existing.rows.length} 条重复记录，请先运行清理脚本)`);
         }
       } catch (error: any) {
         console.error(`❌ 处理联赛失败: ${league.name}`, error);
@@ -588,10 +592,10 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
       try {
         console.log(`  处理球队: ${team.name} (ID: ${team.id})`);
 
-        // 检查是否已存在（通过 isports_team_id）
+        // 检查是否已存在（通过 isports_team_id 或 name_en）
         const existing = await pool.query(
-          'SELECT id, name_zh_tw, name_en FROM team_aliases WHERE isports_team_id = $1',
-          [team.id]
+          'SELECT id, name_zh_tw, name_en, name_zh_cn FROM team_aliases WHERE isports_team_id = $1 OR name_en = $2',
+          [team.id, team.name]
         );
 
         console.log(`    查询结果: ${existing.rows.length} 条记录`);
@@ -613,10 +617,10 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
           `, [canonicalKey, team.id, team.name, team.name]);
           teamInserted++;
           console.log(`    ✅ 新增球队: ${team.name} (新ID: ${insertResult.rows[0].id})`);
-        } else {
+        } else if (existing.rows.length === 1) {
           // 更新现有记录（如果名称为空）
           const row = existing.rows[0];
-          console.log(`    已存在记录: id=${row.id}, name_zh_tw=${row.name_zh_tw}, name_en=${row.name_en}`);
+          console.log(`    已存在记录: id=${row.id}, name_zh_tw=${row.name_zh_tw}, name_en=${row.name_en}, name_zh_cn=${row.name_zh_cn}`);
           if (!row.name_zh_tw && !row.name_en) {
             await pool.query(`
               UPDATE team_aliases
@@ -629,6 +633,10 @@ router.post('/import-from-isports', ensureAdmin, async (req, res) => {
             teamSkipped++;
             console.log(`    ⏭️  跳过球队: ${team.name} (已存在)`);
           }
+        } else {
+          // 发现多条记录，说明有重复数据
+          teamSkipped++;
+          console.log(`    ⚠️  跳过球队: ${team.name} (发现 ${existing.rows.length} 条重复记录，请先运行清理脚本)`);
         }
       } catch (error: any) {
         console.error(`❌ 处理球队失败: ${team.name}`, error);
