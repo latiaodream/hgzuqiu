@@ -198,6 +198,64 @@ const filterMatchesByShowtype = (matches: any[], showtype: string) => {
     return matches.filter((m) => !isFinished(m));
 };
 
+/**
+ * 批量映射赛事名称（英文/繁体 → 简体中文）
+ */
+const mapMatchNamesInRoute = async (matches: any[]): Promise<any[]> => {
+    try {
+        // 收集所有需要映射的名称
+        const leagueNames = new Set<string>();
+        const teamNames = new Set<string>();
+
+        for (const match of matches) {
+            if (match.league) leagueNames.add(match.league);
+            if (match.home) teamNames.add(match.home);
+            if (match.away) teamNames.add(match.away);
+        }
+
+        // 批量查询映射
+        const leagueMap = new Map<string, string>();
+        const teamMap = new Map<string, string>();
+
+        if (leagueNames.size > 0) {
+            const leagueResult = await query(
+                `SELECT name_zh_tw, name_en, name_zh_cn FROM league_aliases
+                 WHERE name_zh_tw = ANY($1) OR name_en = ANY($1)`,
+                [Array.from(leagueNames)]
+            );
+            for (const row of leagueResult.rows) {
+                const displayName = row.name_zh_cn || row.name_zh_tw || row.name_en;
+                if (row.name_zh_tw) leagueMap.set(row.name_zh_tw, displayName);
+                if (row.name_en) leagueMap.set(row.name_en, displayName);
+            }
+        }
+
+        if (teamNames.size > 0) {
+            const teamResult = await query(
+                `SELECT name_zh_tw, name_en, name_zh_cn FROM team_aliases
+                 WHERE name_zh_tw = ANY($1) OR name_en = ANY($1)`,
+                [Array.from(teamNames)]
+            );
+            for (const row of teamResult.rows) {
+                const displayName = row.name_zh_cn || row.name_zh_tw || row.name_en;
+                if (row.name_zh_tw) teamMap.set(row.name_zh_tw, displayName);
+                if (row.name_en) teamMap.set(row.name_en, displayName);
+            }
+        }
+
+        // 应用映射
+        return matches.map(match => ({
+            ...match,
+            league: leagueMap.get(match.league) || match.league,
+            home: teamMap.get(match.home) || match.home,
+            away: teamMap.get(match.away) || match.away,
+        }));
+    } catch (error) {
+        console.error('❌ 映射赛事名称失败:', error);
+        return matches; // 失败时返回原始数据
+    }
+};
+
 const normalizeMatchForFrontend = (match: any) => {
     if (!match) return match;
     const normalized = { ...match };
@@ -1631,8 +1689,12 @@ router.get('/matches-system', async (req: any, res) => {
                         const normalizedMatches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
                         console.log(`   归一化后: ${normalizedMatches.length} 场比赛`);
 
+                        // 映射名称（英文/繁体 → 简体中文）
+                        const mappedMatches = await mapMatchNamesInRoute(normalizedMatches);
+                        console.log(`   名称映射后: ${mappedMatches.length} 场比赛`);
+
                         // 根据 showtype 过滤比赛
-                        let allMatches = filterMatchesByShowtype(normalizedMatches, String(showtype));
+                        let allMatches = filterMatchesByShowtype(mappedMatches, String(showtype));
                         console.log(`   过滤后 (${showtype}): ${allMatches.length} 场`);
 
                         // 今日/早盘短期兜底：若为空，尝试使用 <=30s 的上一轮非空数据
