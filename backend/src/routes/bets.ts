@@ -306,25 +306,80 @@ router.post('/', async (req: any, res) => {
                 : undefined
         );
 
-        // 如果没有 crown_match_id，尝试通过球队名称从 crown_matches 表查询
+        // 如果没有 crown_match_id，尝试通过联赛、球队名称和时间模糊匹配
         if (!crownMatchId && betData.home_team && betData.away_team) {
-            console.log('⚠️ 缺少 crown_match_id，尝试通过球队名称查询...');
+            console.log('⚠️ 缺少 crown_match_id，尝试通过模糊匹配查询...');
+            console.log('   联赛:', betData.league_name);
             console.log('   主队:', betData.home_team);
             console.log('   客队:', betData.away_team);
+            console.log('   时间:', betData.match_time);
 
             try {
-                const crownMatchResult = await query(
-                    `SELECT crown_gid
-                     FROM crown_matches
-                     WHERE crown_home = $1 AND crown_away = $2
-                     ORDER BY created_at DESC
-                     LIMIT 1`,
-                    [betData.home_team, betData.away_team]
-                );
+                // 构建查询条件
+                const conditions: string[] = [];
+                const params: any[] = [];
+                let paramIndex = 1;
+
+                // 球队名称模糊匹配（必须）
+                conditions.push(`crown_home ILIKE $${paramIndex++}`);
+                params.push(`%${betData.home_team}%`);
+
+                conditions.push(`crown_away ILIKE $${paramIndex++}`);
+                params.push(`%${betData.away_team}%`);
+
+                // 联赛名称模糊匹配（如果有）
+                if (betData.league_name) {
+                    conditions.push(`crown_league ILIKE $${paramIndex++}`);
+                    params.push(`%${betData.league_name}%`);
+                }
+
+                // 时间范围匹配（如果有）：前后 6 小时
+                if (betData.match_time) {
+                    const matchTime = new Date(betData.match_time);
+                    if (Number.isFinite(matchTime.getTime())) {
+                        const timeBefore = new Date(matchTime.getTime() - 6 * 60 * 60 * 1000);
+                        const timeAfter = new Date(matchTime.getTime() + 6 * 60 * 60 * 1000);
+                        conditions.push(`match_time BETWEEN $${paramIndex++} AND $${paramIndex++}`);
+                        params.push(timeBefore, timeAfter);
+                    }
+                }
+
+                const whereClause = conditions.join(' AND ');
+                const sql = `
+                    SELECT crown_gid, crown_league, crown_home, crown_away, match_time,
+                           similarity(crown_home, $${paramIndex}) + similarity(crown_away, $${paramIndex + 1}) as score
+                    FROM crown_matches
+                    WHERE ${whereClause}
+                    ORDER BY score DESC, created_at DESC
+                    LIMIT 5
+                `;
+                params.push(betData.home_team, betData.away_team);
+
+                console.log('🔍 执行模糊匹配查询:', sql);
+                console.log('   参数:', params);
+
+                const crownMatchResult = await query(sql, params);
 
                 if (crownMatchResult.rows.length > 0) {
-                    crownMatchId = crownMatchResult.rows[0].crown_gid;
-                    console.log('✅ 通过球队名称匹配找到皇冠 GID:', crownMatchId);
+                    const bestMatch = crownMatchResult.rows[0];
+                    crownMatchId = bestMatch.crown_gid;
+                    console.log('✅ 通过模糊匹配找到皇冠 GID:', crownMatchId);
+                    console.log('   匹配结果:', {
+                        crown_gid: bestMatch.crown_gid,
+                        crown_league: bestMatch.crown_league,
+                        crown_home: bestMatch.crown_home,
+                        crown_away: bestMatch.crown_away,
+                        match_time: bestMatch.match_time,
+                        score: bestMatch.score,
+                    });
+
+                    // 如果有多个结果，显示其他候选
+                    if (crownMatchResult.rows.length > 1) {
+                        console.log('   其他候选:');
+                        crownMatchResult.rows.slice(1).forEach((row: any, idx: number) => {
+                            console.log(`   ${idx + 2}. ${row.crown_home} vs ${row.crown_away} (${row.crown_gid}, score: ${row.score})`);
+                        });
+                    }
                 } else {
                     console.log('⚠️ 未找到匹配的皇冠比赛');
                 }
