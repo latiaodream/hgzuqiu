@@ -299,12 +299,39 @@ router.post('/', async (req: any, res) => {
                 error: '总金额必须大于 0'
             });
         }
-        const crownMatchIdRaw = (betData.crown_match_id || '').toString().trim();
-        const crownMatchId = crownMatchIdRaw || (
+        let crownMatchIdRaw = (betData.crown_match_id || '').toString().trim();
+        let crownMatchId = crownMatchIdRaw || (
             typeof betData.match_id === 'number' && Number.isFinite(betData.match_id)
                 ? String(betData.match_id)
                 : undefined
         );
+
+        // 如果没有 crown_match_id，尝试通过球队名称从 crown_matches 表查询
+        if (!crownMatchId && betData.home_team && betData.away_team) {
+            console.log('⚠️ 缺少 crown_match_id，尝试通过球队名称查询...');
+            console.log('   主队:', betData.home_team);
+            console.log('   客队:', betData.away_team);
+
+            try {
+                const crownMatchResult = await query(
+                    `SELECT crown_gid
+                     FROM crown_matches
+                     WHERE crown_home = $1 AND crown_away = $2
+                     ORDER BY created_at DESC
+                     LIMIT 1`,
+                    [betData.home_team, betData.away_team]
+                );
+
+                if (crownMatchResult.rows.length > 0) {
+                    crownMatchId = crownMatchResult.rows[0].crown_gid;
+                    console.log('✅ 通过球队名称匹配找到皇冠 GID:', crownMatchId);
+                } else {
+                    console.log('⚠️ 未找到匹配的皇冠比赛');
+                }
+            } catch (error) {
+                console.error('❌ 查询皇冠比赛失败:', error);
+            }
+        }
 
         let matchRecord: any | undefined;
         let matchDbId: number | undefined = undefined;

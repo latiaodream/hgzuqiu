@@ -6362,9 +6362,12 @@ export class CrownAutomationService {
   }> {
     const crownMatchId = (betRequest.crown_match_id ?? betRequest.crownMatchId ?? '').toString().trim();
     if (!crownMatchId) {
+      console.error('❌ 缺少皇冠比赛 ID (crown_match_id)');
+      console.error('   betRequest:', JSON.stringify(betRequest, null, 2));
       return {
         success: false,
-        message: '缺少比赛 ID',
+        message: '缺少皇冠比赛 ID，无法下注。请确保比赛已在皇冠映射表中。',
+        reasonCode: 'MISSING_CROWN_GID',
       };
     }
 
