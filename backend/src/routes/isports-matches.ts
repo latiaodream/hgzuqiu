@@ -30,22 +30,28 @@ async function findMappedName(
 
     // 1. 尝试精确匹配 name_zh_tw (iSports 使用繁体中文)
     let result = await pool.query(
-      `SELECT name_zh_cn FROM ${tableName} WHERE name_zh_tw = $1 LIMIT 1`,
+      `SELECT name_zh_cn, name_zh_tw, name_en FROM ${tableName} WHERE name_zh_tw = $1 LIMIT 1`,
       [isportsName]
     );
 
     if (result.rows.length > 0) {
-      return { mapped: true, name: result.rows[0].name_zh_cn };
+      const row = result.rows[0];
+      // 优先返回简体中文，如果没有则返回繁体中文，最后才是英文
+      const displayName = row.name_zh_cn || row.name_zh_tw || row.name_en || isportsName;
+      return { mapped: true, name: displayName };
     }
 
     // 2. 尝试精确匹配 name_en (iSports 也可能返回英文)
     result = await pool.query(
-      `SELECT name_zh_cn FROM ${tableName} WHERE name_en = $1 LIMIT 1`,
+      `SELECT name_zh_cn, name_zh_tw, name_en FROM ${tableName} WHERE name_en = $1 LIMIT 1`,
       [isportsName]
     );
 
     if (result.rows.length > 0) {
-      return { mapped: true, name: result.rows[0].name_zh_cn };
+      const row = result.rows[0];
+      // 优先返回简体中文，如果没有则返回繁体中文，最后才是英文
+      const displayName = row.name_zh_cn || row.name_zh_tw || row.name_en || isportsName;
+      return { mapped: true, name: displayName };
     }
 
     // 3. 未找到映射，返回原名
