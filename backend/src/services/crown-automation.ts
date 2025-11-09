@@ -7319,7 +7319,8 @@ export class CrownAutomationService {
 
       if (!games) {
         console.log('⚠️ get_game_more XML 中没有 game 数据');
-        console.log('📋 完整响应:', JSON.stringify(parsed?.serverresponse, null, 2).substring(0, 500));
+        const responseStr = JSON.stringify(parsed?.serverresponse, null, 2) || 'undefined';
+        console.log('📋 完整响应:', responseStr.substring(0, Math.min(500, responseStr.length)));
         return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [], halfMoneyline: undefined };
       }
 
