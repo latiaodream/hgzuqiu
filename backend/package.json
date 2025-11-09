@@ -27,6 +27,7 @@
     "cleanup:aliases": "ts-node scripts/cleanup-duplicate-aliases.ts",
     "cleanup:aliases:execute": "ts-node scripts/cleanup-duplicate-aliases.ts --execute",
     "diagnose:name-display": "ts-node scripts/diagnose-name-display.ts",
+    "diagnose:bet-failure": "ts-node scripts/diagnose-bet-failure.ts",
     "test:name-mapping": "ts-node scripts/test-name-mapping.ts",
     "aliases:generate-sample": "ts-node scripts/generate-sample-xlsx.ts",
     "analyze:unmatched": "ts-node scripts/analyze-unmatched-details.ts",
