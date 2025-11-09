@@ -26,12 +26,12 @@ log "============================================================"
 # 1. 进入 backend 目录
 cd "$BACKEND_DIR"
 
-# 2. 抓取最新的皇冠比赛列表
-log "📥 抓取皇冠比赛列表..."
+# 2. 从 fetcher-isports 提取皇冠比赛列表（不再直接调用皇冠API）
+log "📥 从 fetcher-isports 提取比赛列表..."
 if npm run crown:fetch-gids >> "$LOG_FILE" 2>&1; then
-    log "✅ 皇冠比赛列表抓取成功"
+    log "✅ 比赛列表提取成功"
 else
-    log "❌ 皇冠比赛列表抓取失败"
+    log "❌ 比赛列表提取失败"
     exit 1
 fi
 
