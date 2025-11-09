@@ -6386,6 +6386,15 @@ export class CrownAutomationService {
     const overrideRtypeRaw = betRequest.market_rtype ?? betRequest.marketRtype;
     const overrideChoseTeamRaw = betRequest.market_chose_team ?? betRequest.marketChoseTeam;
 
+    console.log(`🔍 下注参数覆盖值:`, {
+      market_wtype: overrideWtypeRaw,
+      market_rtype: overrideRtypeRaw,
+      market_chose_team: overrideChoseTeamRaw,
+      base_wtype: baseWtype,
+      base_rtype: baseRtype,
+      base_chose_team: baseChoseTeam,
+    });
+
     const sanitize = (value?: string | null) => {
       const trimmed = (value ?? '').toString().trim();
       return trimmed ? trimmed.toUpperCase() : undefined;
@@ -6396,6 +6405,8 @@ export class CrownAutomationService {
       rtype: sanitize(overrideRtypeRaw) ?? baseRtype,
       chose_team: (sanitize(overrideChoseTeamRaw) as 'H' | 'C' | 'N' | undefined) ?? baseChoseTeam,
     };
+
+    console.log(`✅ 最终使用的参数:`, effectiveParams);
 
     const variants = this.buildBetVariants(effectiveParams);
 
