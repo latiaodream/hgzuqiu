@@ -116,6 +116,10 @@ const MainLayout: React.FC = () => {
           label: '赛事记录',
           children: [
             {
+              key: '/oddsapi-matches',
+              label: 'Odds-API 赛事中心',
+            },
+            {
               key: '/crown-matches',
               label: '皇冠足球赛事',
             },

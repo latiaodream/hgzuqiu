@@ -18,6 +18,7 @@ import SettingsPage from './pages/SettingsPage';
 import AliasManagerPage from './pages/AliasManagerPage';
 import CrownMatchesPage from './pages/CrownMatchesPage';
 import ISportsMatchesPage from './pages/ISportsMatchesPage';
+import OddsApiMatchesPage from './pages/OddsApiMatchesPage';
 import './App.css';
 
 const App: React.FC = () => {
@@ -67,6 +68,7 @@ const App: React.FC = () => {
         <Route path="matches" element={<MatchesPage />} />
         <Route path="crown-matches" element={<CrownMatchesPage />} />
         <Route path="isports-matches" element={<ISportsMatchesPage />} />
+        <Route path="oddsapi-matches" element={<OddsApiMatchesPage />} />
         <Route path="aliases" element={<AliasManagerPage />} />
         <Route path="coins" element={<CoinsPage />} />
         <Route path="settings" element={<SettingsPage />} />
