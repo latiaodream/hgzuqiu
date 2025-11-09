@@ -184,7 +184,7 @@ export class MatchFetcher {
       }
 
       // 解析赛事
-      const matches = this.parseMatchesFromXml(xml);
+      const matches = await this.parseMatchesFromXml(xml);
       console.log(`✅ 抓取到 ${matches.length} 场比赛`);
 
       // 为前10场比赛获取更多盘口
@@ -283,11 +283,11 @@ export class MatchFetcher {
   /**
    * 解析赛事 XML（使用 CrownAutomation 的解析方法）
    */
-  private parseMatchesFromXml(xml: string): any[] {
+  private async parseMatchesFromXml(xml: string): Promise<any[]> {
     try {
       // 直接使用 CrownAutomation 的解析方法，确保解析逻辑一致
       const automation = getCrownAutomation();
-      return (automation as any).parseMatchesFromXml(xml);
+      return await (automation as any).parseMatchesFromXml(xml);
     } catch (error) {
       console.error('❌ 解析赛事 XML 失败:', error);
       return [];

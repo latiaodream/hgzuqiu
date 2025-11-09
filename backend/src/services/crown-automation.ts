@@ -7180,8 +7180,66 @@ export class CrownAutomationService {
     }
   }
 
+  /**
+   * 批量映射赛事名称（英文/繁体 → 简体中文）
+   */
+  private async mapMatchNames(matches: any[]): Promise<any[]> {
+    try {
+      // 收集所有需要映射的名称
+      const leagueNames = new Set<string>();
+      const teamNames = new Set<string>();
+
+      for (const match of matches) {
+        if (match.league) leagueNames.add(match.league);
+        if (match.home) teamNames.add(match.home);
+        if (match.away) teamNames.add(match.away);
+      }
+
+      // 批量查询映射
+      const leagueMap = new Map<string, string>();
+      const teamMap = new Map<string, string>();
+
+      if (leagueNames.size > 0) {
+        const leagueResult = await query(
+          `SELECT name_zh_tw, name_en, name_zh_cn FROM league_aliases
+           WHERE name_zh_tw = ANY($1) OR name_en = ANY($1)`,
+          [Array.from(leagueNames)]
+        );
+        for (const row of leagueResult.rows) {
+          const displayName = row.name_zh_cn || row.name_zh_tw || row.name_en;
+          if (row.name_zh_tw) leagueMap.set(row.name_zh_tw, displayName);
+          if (row.name_en) leagueMap.set(row.name_en, displayName);
+        }
+      }
+
+      if (teamNames.size > 0) {
+        const teamResult = await query(
+          `SELECT name_zh_tw, name_en, name_zh_cn FROM team_aliases
+           WHERE name_zh_tw = ANY($1) OR name_en = ANY($1)`,
+          [Array.from(teamNames)]
+        );
+        for (const row of teamResult.rows) {
+          const displayName = row.name_zh_cn || row.name_zh_tw || row.name_en;
+          if (row.name_zh_tw) teamMap.set(row.name_zh_tw, displayName);
+          if (row.name_en) teamMap.set(row.name_en, displayName);
+        }
+      }
+
+      // 应用映射
+      return matches.map(match => ({
+        ...match,
+        league: leagueMap.get(match.league) || match.league,
+        home: teamMap.get(match.home) || match.home,
+        away: teamMap.get(match.away) || match.away,
+      }));
+    } catch (error) {
+      console.error('❌ 映射赛事名称失败:', error);
+      return matches; // 失败时返回原始数据
+    }
+  }
+
   // 解析 XML 赛事数据
-  private parseMatchesFromXml(xml: string): any[] {
+  private async parseMatchesFromXml(xml: string): Promise<any[]> {
     try {
       const { XMLParser } = require('fast-xml-parser');
       const parser = new XMLParser({ ignoreAttributes: false });
@@ -7232,10 +7290,11 @@ export class CrownAutomationService {
 
       console.log(`📊 解析到 ${allGames.length} 场赛事`);
 
-      const matches = allGames.map((game: any) => {
+      // 先提取原始数据
+      const rawMatches = allGames.map((game: any) => {
         const gid = pickString(game, ['GID']);
         const gidm = pickString(game, ['GIDM']);
-        const ecid = pickString(game, ['ECID']);  // 添加 ecid 解析
+        const ecid = pickString(game, ['ECID']);
         const league = pickString(game, ['LEAGUE']);
         const home = pickString(game, ['TEAM_H', 'TEAM_H_E', 'TEAM_H_TW']);
         const away = pickString(game, ['TEAM_C', 'TEAM_C_E', 'TEAM_C_TW']);
@@ -7261,7 +7320,7 @@ export class CrownAutomationService {
         return {
           gid,
           gidm,
-          ecid,  // 添加 ecid 字段
+          ecid,
           league,
           home,
           away,
@@ -7283,9 +7342,12 @@ export class CrownAutomationService {
           },
           raw: game,
         };
-      });
+      }).filter(m => m.gid);
 
-      return matches.filter(m => m.gid);
+      // 批量映射名称（英文/繁体 → 简体中文）
+      const matches = await this.mapMatchNames(rawMatches);
+
+      return matches;
     } catch (error) {
       console.error('❌ 解析 XML 赛事数据失败:', error);
       return [];
