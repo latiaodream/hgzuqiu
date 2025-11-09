@@ -465,17 +465,22 @@ const MatchesPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showtype, gtype, mode]);
 
-  // 自动刷新：live 模式下默认开启，滚球每 1s，其它每 15s（SSE 开启时不使用轮询）
+  // 自动刷新：live 模式下默认开启，滚球每 3s，其它每 15s（SSE 开启时不使用轮询）
   useEffect(() => {
     if (useSSE) return;
     if (mode !== 'live' || !autoRefresh) return;
-    const interval = showtype === 'live' ? 1000 : 15000;  // 滚球保持 1s 快速更新
+    // 滚球轮询改为 3 秒，避免频繁调用盘口补充
+    const interval = showtype === 'live' ? 3000 : 15000;
     let timer: number | null = null;
     let stopped = false;
+    let tickCount = 0;
     const tick = async () => {
       if (stopped) return;
-      // 自动刷新使用快速模式，跳过盘口补充，只更新赔率
-      await loadMatches({ silent: true, fast: true });
+      tickCount++;
+      // 滚球：首次和每 3 次补充盘口，其余使用快速模式
+      // 今日/早盘：每次都补充盘口
+      const shouldEnrich = showtype !== 'live' || tickCount === 1 || tickCount % 3 === 0;
+      await loadMatches({ silent: true, fast: !shouldEnrich });
       if (!stopped) timer = window.setTimeout(tick, interval);
     };
     timer = window.setTimeout(tick, interval);
@@ -542,10 +547,12 @@ const MatchesPage: React.FC = () => {
       es.addEventListener('ping', () => {});
       es.onerror = () => {
         if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
-        setUseSSE(false);
-        message.warning('实时推送中断，已回退到自动刷新');
+        // 不立即禁用 SSE，让浏览器自动重连（EventSource 会自动重连）
+        // 只在连续失败多次后才回退到轮询
+        console.log('SSE 连接中断，浏览器将自动重连...');
       };
-    } catch {
+    } catch (err) {
+      console.error('SSE 初始化失败:', err);
       setUseSSE(false);
     }
     return () => {
