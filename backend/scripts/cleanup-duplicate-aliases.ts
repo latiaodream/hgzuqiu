@@ -19,10 +19,17 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'bclogin',
+  database: process.env.DB_NAME || 'bclogin_system',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '',
 });
+
+console.log(`📊 数据库连接信息:`);
+console.log(`   Host: ${process.env.DB_HOST || 'localhost'}`);
+console.log(`   Port: ${process.env.DB_PORT || '5432'}`);
+console.log(`   Database: ${process.env.DB_NAME || 'bclogin_system'}`);
+console.log(`   User: ${process.env.DB_USER || 'postgres'}`);
+console.log(``);
 
 interface DuplicateGroup {
   name_en: string;
