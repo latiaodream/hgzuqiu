@@ -21,7 +21,8 @@ import {
   CheckCircleOutlined,
   SyncOutlined
 } from '@ant-design/icons';
-import oddsApiService, { OddsApiEvent, OddsApiLeague, OddsApiStats } from '../services/oddsapi.service';
+import oddsApiService from '../services/oddsapi.service';
+import type { OddsApiEvent, OddsApiLeague, OddsApiStats } from '../types/oddsapi.types';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -148,7 +149,9 @@ const OddsApiMatchesPage: React.FC = () => {
       dataIndex: 'league_name',
       key: 'league_name',
       width: 200,
-      render: (text: string) => <Text strong>{text}</Text>
+      render: (_: any, record: OddsApiEvent) => (
+        <Text strong>{(record as any).league_name_zh || record.league_name}</Text>
+      )
     },
     {
       title: '比赛',
@@ -156,7 +159,7 @@ const OddsApiMatchesPage: React.FC = () => {
       width: 300,
       render: (_: any, record: OddsApiEvent) => (
         <Space direction="vertical" size="small">
-          <Text>{record.home} vs {record.away}</Text>
+          <Text>{(record as any).home_zh || record.home} vs {(record as any).away_zh || record.away}</Text>
           {record.status === 'live' && (
             <Text type="danger">
               比分: {record.home_score} - {record.away_score}

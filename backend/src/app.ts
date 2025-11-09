@@ -33,6 +33,8 @@ app.use(cors({
             'http://localhost:5173',
             'http://localhost:10086',
             'http://localhost:10087',
+            'http://localhost:10088',
+            'http://localhost:10089',
             'http://127.0.0.1:10087'
         ],
     credentials: true

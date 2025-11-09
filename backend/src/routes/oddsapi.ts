@@ -5,6 +5,55 @@ import { OddsApiService } from '../services/oddsapi.service';
 const router = express.Router();
 
 /**
+ * 映射赛事名称（英文 -> 简体中文）
+ */
+async function mapEventNames(events: any[]): Promise<any[]> {
+    if (!events || events.length === 0) return events;
+
+    // 收集所有需要映射的名称
+    const leagueNames = [...new Set(events.map(e => e.league_name))];
+    const teamNames = [...new Set(events.flatMap(e => [e.home, e.away]))];
+
+    // 批量查询联赛映射
+    const leagueMap = new Map<string, string>();
+    if (leagueNames.length > 0) {
+        const leagueResult = await query(`
+            SELECT name_en,
+                   COALESCE(name_zh_cn, name_zh_tw, name_en) as display_name
+            FROM league_aliases
+            WHERE name_en = ANY($1)
+        `, [leagueNames]);
+
+        leagueResult.rows.forEach((row: any) => {
+            leagueMap.set(row.name_en, row.display_name);
+        });
+    }
+
+    // 批量查询球队映射
+    const teamMap = new Map<string, string>();
+    if (teamNames.length > 0) {
+        const teamResult = await query(`
+            SELECT name_en,
+                   COALESCE(name_zh_cn, name_zh_tw, name_en) as display_name
+            FROM team_aliases
+            WHERE name_en = ANY($1)
+        `, [teamNames]);
+
+        teamResult.rows.forEach((row: any) => {
+            teamMap.set(row.name_en, row.display_name);
+        });
+    }
+
+    // 映射名称
+    return events.map(event => ({
+        ...event,
+        league_name_zh: leagueMap.get(event.league_name) || event.league_name,
+        home_zh: teamMap.get(event.home) || event.home,
+        away_zh: teamMap.get(event.away) || event.away
+    }));
+}
+
+/**
  * 获取赛事列表
  * GET /api/oddsapi/events
  */
@@ -61,10 +110,13 @@ router.get('/events', async (req, res) => {
 
         const result = await query(sql, params);
 
+        // 映射名称为中文
+        const mappedEvents = await mapEventNames(result.rows);
+
         res.json({
             success: true,
-            data: result.rows,
-            total: result.rows.length
+            data: mappedEvents,
+            total: mappedEvents.length
         });
     } catch (error: any) {
         console.error('❌ 获取赛事列表失败:', error);
