@@ -132,8 +132,18 @@ p {
   font-weight: 400;
 }
 
-.ant-input::placeholder {
+.ant-input::placeholder,
+.ant-input-affix-wrapper input::placeholder {
   color: #94A3B8 !important;
+}
+
+/* Input prefix icon spacing */
+.ant-input-prefix {
+  margin-right: 8px !important;
+}
+
+.ant-input-affix-wrapper > input.ant-input {
+  padding-left: 0 !important;
 }
 
 .ant-input:hover,

@@ -61,9 +61,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
             ]}
           >
             <Input
-              prefix={<UserOutlined />}
+              prefix={<UserOutlined style={{ color: '#94A3B8', marginRight: '8px' }} />}
               placeholder="请输入用户名"
               size="large"
+              style={{ paddingLeft: '12px' }}
             />
           </Form.Item>
 
@@ -76,9 +77,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
             ]}
           >
             <Input
-              prefix={<MailOutlined />}
+              prefix={<MailOutlined style={{ color: '#94A3B8', marginRight: '8px' }} />}
               placeholder="请输入邮箱"
               size="large"
+              style={{ paddingLeft: '12px' }}
             />
           </Form.Item>
 
@@ -92,9 +94,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
             ]}
           >
             <Input.Password
-              prefix={<LockOutlined />}
+              prefix={<LockOutlined style={{ color: '#94A3B8', marginRight: '8px' }} />}
               placeholder="请输入密码"
               size="large"
+              style={{ paddingLeft: '12px' }}
             />
           </Form.Item>
 
@@ -115,9 +118,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
             ]}
           >
             <Input.Password
-              prefix={<LockOutlined />}
+              prefix={<LockOutlined style={{ color: '#94A3B8', marginRight: '8px' }} />}
               placeholder="请再次输入密码"
               size="large"
+              style={{ paddingLeft: '12px' }}
             />
           </Form.Item>
 

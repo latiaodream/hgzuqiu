@@ -139,9 +139,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
               ]}
             >
               <Input
-                prefix={<UserOutlined />}
+                prefix={<UserOutlined style={{ color: '#94A3B8', marginRight: '8px' }} />}
                 placeholder="请输入用户名"
                 size="large"
+                style={{ paddingLeft: '12px' }}
               />
             </Form.Item>
 
@@ -154,9 +155,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
               ]}
             >
               <Input.Password
-                prefix={<LockOutlined />}
+                prefix={<LockOutlined style={{ color: '#94A3B8', marginRight: '8px' }} />}
                 placeholder="请输入密码"
                 size="large"
+                style={{ paddingLeft: '12px' }}
               />
             </Form.Item>
 
