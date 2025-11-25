@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Avatar, Dropdown, Space, Button, theme, Tag } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Space, Button, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   UserOutlined,
@@ -13,29 +13,24 @@ import {
   CalendarOutlined,
   FileTextOutlined,
   GlobalOutlined,
-  TagsOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { coinApi } from '../../services/api';
 
 const { Header, Sider, Content } = Layout;
+const { Text } = Typography;
 
 type MenuItem = Required<MenuProps>['items'][number];
 
 const MainLayout: React.FC = () => {
-  // 移动端默认收起侧边栏
   const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [coinBalance, setCoinBalance] = useState(0);
-  const { user, logout, isAdmin, isAgent, isStaff } = useAuth();
+  const { user, logout, isAdmin, isAgent } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const {
-    token: { colorBgContainer, borderRadiusLG },
-  } = theme.useToken();
 
-  // 监听窗口大小变化
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
@@ -48,10 +43,8 @@ const MainLayout: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 加载金币余额
   useEffect(() => {
     loadCoinBalance();
-    // 每30秒刷新一次余额
     const interval = setInterval(loadCoinBalance, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -67,7 +60,6 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  // 根据角色配置菜单项
   const getMenuItems = (): MenuItem[] => {
     const baseItems: MenuItem[] = [
       {
@@ -77,7 +69,6 @@ const MainLayout: React.FC = () => {
       },
     ];
 
-    // 超级管理员菜单（显示所有功能）
     if (isAdmin) {
       baseItems.push(
         {
@@ -90,11 +81,6 @@ const MainLayout: React.FC = () => {
           icon: <TeamOutlined />,
           label: '员工管理',
         },
-        // {
-        //   key: '/fetch-accounts',
-        //   icon: <TeamOutlined />,
-        //   label: '抓取账号',
-        // },
         {
           key: '/accounts',
           icon: <UserOutlined />,
@@ -111,30 +97,6 @@ const MainLayout: React.FC = () => {
           label: '赛事管理',
         },
         {
-          key: 'match-records',
-          icon: <CalendarOutlined />,
-          label: '赛事记录',
-          children: [
-            {
-              key: '/oddsapi-matches',
-              label: 'Odds-API 赛事中心',
-            },
-            {
-              key: '/crown-matches',
-              label: '皇冠足球赛事',
-            },
-            {
-              key: '/isports-matches',
-              label: 'iSports足球赛事',
-            },
-          ],
-        },
-        {
-          key: '/aliases',
-          icon: <TagsOutlined />,
-          label: '名称映射',
-        },
-        {
           key: '/coins',
           icon: <DollarOutlined />,
           label: '金币流水',
@@ -147,7 +109,6 @@ const MainLayout: React.FC = () => {
       );
     }
 
-    // 代理菜单（不包括管理员）
     if (isAgent && !isAdmin) {
       baseItems.push(
         {
@@ -173,7 +134,6 @@ const MainLayout: React.FC = () => {
       );
     }
 
-    // 员工业务功能菜单（只有角色为staff的员工才能看到）
     if (user?.role === 'staff') {
       baseItems.push(
         {
@@ -192,21 +152,6 @@ const MainLayout: React.FC = () => {
           label: '赛事管理',
         },
         {
-          key: 'match-records-staff',
-          icon: <CalendarOutlined />,
-          label: '赛事记录',
-          children: [
-            {
-              key: '/crown-matches',
-              label: '皇冠足球赛事',
-            },
-            {
-              key: '/isports-matches',
-              label: 'iSports足球赛事',
-            },
-          ],
-        },
-        {
           key: '/coins',
           icon: <DollarOutlined />,
           label: '金币流水',
@@ -214,7 +159,6 @@ const MainLayout: React.FC = () => {
       );
     }
 
-    // 设置菜单（所有人都有）
     baseItems.push({
       key: '/settings',
       icon: <SettingOutlined />,
@@ -226,18 +170,11 @@ const MainLayout: React.FC = () => {
 
   const menuItems = getMenuItems();
 
-  // 用户下拉菜单
   const userMenuItems = [
     {
       key: 'profile',
       icon: <UserOutlined />,
       label: '个人信息',
-      onClick: () => navigate('/profile'),
-    },
-    {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: '账户设置',
       onClick: () => navigate('/settings'),
     },
     {
@@ -256,17 +193,14 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      {/* 移动端遮罩层 */}
-      {!collapsed && window.innerWidth <= 768 && (
+    <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
+      {!collapsed && isMobile && (
         <div
           style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.45)',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.2)',
+            backdropFilter: 'blur(2px)',
             zIndex: 1000,
           }}
           onClick={() => setCollapsed(true)}
@@ -276,43 +210,81 @@ const MainLayout: React.FC = () => {
         trigger={null}
         collapsible
         collapsed={collapsed}
-        className="fixed-sider"
+        width={240}
+        style={{
+          background: '#FFFFFF',
+          borderRight: '1px solid #E5E7EB',
+          position: isMobile ? 'fixed' : 'relative',
+          height: '100vh',
+          zIndex: 1001,
+          boxShadow: '4px 0 24px 0 rgba(0,0,0,0.02)'
+        }}
       >
         <div style={{
-          height: 64,
-          margin: 16,
-          background: 'rgba(255, 255, 255, 0.15)',
-          borderRadius: 8,
+          height: 80,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'white',
-          fontSize: collapsed ? 16 : 18,
-          fontWeight: 'bold',
+          borderBottom: '1px solid #F3F4F6',
         }}>
-          {collapsed ? '智投' : '智投系统'}
+          {collapsed ? (
+            <div style={{
+              width: 40,
+              height: 40,
+              background: 'linear-gradient(135deg, #4F46E5 0%, #4338CA 100%)',
+              borderRadius: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              color: '#fff'
+            }}>Z</div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 32,
+                height: 32,
+                background: 'linear-gradient(135deg, #4F46E5 0%, #4338CA 100%)',
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                color: '#fff'
+              }}>Z</div>
+              <span style={{
+                fontSize: 18,
+                fontWeight: 700,
+                color: '#111827',
+                letterSpacing: '0.5px'
+              }}>智投系统</span>
+            </div>
+          )}
         </div>
         <Menu
-          theme="dark"
+          theme="light"
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
           onClick={handleMenuClick}
           style={{
             background: 'transparent',
-            border: 'none'
+            border: 'none',
+            padding: '16px 8px'
           }}
         />
       </Sider>
-      <Layout>
+      <Layout style={{ background: 'transparent' }}>
         <Header
           style={{
-            padding: '0 16px',
-            background: colorBgContainer,
+            padding: '0 24px',
+            background: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(12px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '1px solid #f0f0f0',
+            borderBottom: '1px solid #E5E7EB',
+            height: 80,
           }}
         >
           <Button
@@ -320,39 +292,52 @@ const MainLayout: React.FC = () => {
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             onClick={() => setCollapsed(!collapsed)}
             style={{
-              fontSize: '16px',
-              width: 64,
-              height: 64,
+              fontSize: '18px',
+              width: 40,
+              height: 40,
+              color: '#4B5563',
             }}
           />
 
-          <Space size="large" className="header-right-section">
-            <Tag
-              icon={<DollarOutlined />}
-              color="gold"
-              style={{ fontSize: 14, padding: '4px 12px', cursor: 'pointer' }}
-              onClick={() => navigate('/coins')}
-              className="coin-balance-tag"
-            >
-              <span className="coin-label">金币：</span>¥{coinBalance.toFixed(2)}
-            </Tag>
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <Space style={{ cursor: 'pointer' }} className="user-info-space">
-                <Avatar icon={<UserOutlined />} />
-                <span className="username-text">{user?.username}</span>
+          <Space size="large">
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#FFFBEB', /* Amber 50 */
+              border: '1px solid #FCD34D', /* Amber 300 */
+              padding: '6px 16px',
+              borderRadius: '20px',
+              cursor: 'pointer'
+            }} onClick={() => navigate('/coins')}>
+              <DollarOutlined style={{ color: '#D97706' }} />
+              <Text style={{ color: '#D97706', fontWeight: 600 }}>¥{coinBalance.toFixed(2)}</Text>
+            </div>
+
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
+              <Space style={{ cursor: 'pointer', padding: '4px 8px', borderRadius: '8px', transition: 'background 0.2s' }} className="user-dropdown">
+                <Avatar
+                  style={{
+                    backgroundColor: '#4F46E5',
+                    verticalAlign: 'middle',
+                    border: '2px solid #E0E7FF'
+                  }}
+                  icon={<UserOutlined />}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                  <Text style={{ color: '#111827', fontWeight: 500 }}>{user?.username}</Text>
+                  <Text style={{ color: '#6B7280', fontSize: 11 }}>{user?.role?.toUpperCase()}</Text>
+                </div>
               </Space>
             </Dropdown>
           </Space>
         </Header>
         <Content
           style={{
-            margin: isMobile ? '0' : '16px',
-            padding: isMobile ? 0 : 24,
+            margin: '24px',
             minHeight: 280,
-            background: colorBgContainer,
-            borderRadius: isMobile ? 0 : borderRadiusLG,
+            background: 'transparent',
           }}
-          className={isMobile ? 'main-content mobile-content' : 'main-content'}
         >
           <Outlet />
         </Content>

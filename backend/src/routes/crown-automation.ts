@@ -449,7 +449,8 @@ const enrichMatchesWithMoreMarkets = async (
   if (!Array.isArray(matches) || matches.length === 0) return;
   const showtype = (options.showtype || '').toLowerCase();
   const gtype = options.gtype || 'ft';
-  if (!['live', 'today'].includes(showtype)) {
+  // 2025-11-25: 早盘(early) 也需要补盘口，否则像 欧洲冠军联赛 阿贾克斯 这种早盘比赛拿不到角球盘口
+  if (!['live', 'today', 'early'].includes(showtype)) {
     return;
   }
 
@@ -507,17 +508,21 @@ const enrichMatchesWithMoreMarkets = async (
           return;
         }
 
-        const more = await automation.fetchMoreMarkets({
+        const commonParams = {
           gid: String(gid),
           lid: lid ? String(lid) : undefined,
           gtype,
           showtype,
           isRB: showtype === 'live' ? 'Y' : 'N',
-        });
+        };
+
+        const more = await automation.fetchMoreMarkets(commonParams);
+        const cornerMore = await automation.fetchCornerMarkets(commonParams);
 
         if (!match.markets) match.markets = {};
         if (!match.markets.full) match.markets.full = {};
         if (!match.markets.half) match.markets.half = {};
+        if (!match.markets.corners) match.markets.corners = {};
 
         if (more.handicapLines?.length) {
           const merged = mergeMarketLines(match.markets.full.handicapLines, more.handicapLines);
@@ -549,6 +554,25 @@ const enrichMatchesWithMoreMarkets = async (
           );
           match.markets.half.overUnderLines = merged;
           match.markets.half.ou = merged[0];
+        }
+
+        // 角球盘口：并入 match.markets.corners
+        if (cornerMore.cornerHandicapLines?.length) {
+          const merged = mergeMarketLines(
+            match.markets.corners.handicapLines,
+            cornerMore.cornerHandicapLines,
+          );
+          match.markets.corners.handicapLines = merged;
+          match.markets.corners.handicap = merged[0];
+        }
+
+        if (cornerMore.cornerOverUnderLines?.length) {
+          const merged = mergeMarketLines(
+            match.markets.corners.overUnderLines,
+            cornerMore.cornerOverUnderLines,
+          );
+          match.markets.corners.overUnderLines = merged;
+          match.markets.corners.ou = merged[0];
         }
 
         // 半场独赢（若 get_game_more 返回了）

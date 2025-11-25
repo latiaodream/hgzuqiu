@@ -99,97 +99,86 @@ const DashboardPage: React.FC = () => {
       }
 
       if (selectedAccountId) {
-        params.account_id = selectedAccountId;
+        params.crown_account_id = selectedAccountId;
       }
 
-      // 获取下注统计数据
+      // 获取投注统计数据
       const response = await betApi.getStats(params);
 
       if (response.success && response.data) {
-        const data = response.data;
         setStats({
-          totalBetAmount: data.total_bet_amount || 0,
-          actualAmount: data.actual_amount || 0,
-          actualWinLoss: data.actual_win_loss || 0,
-          totalTickets: data.total_tickets || 0,
-          totalBets: data.total_bets || 0,
-          canceledBets: data.canceled_bets || 0,
+          totalBetAmount: response.data.total_bet_amount || 0,
+          actualAmount: response.data.actual_amount || 0,
+          actualWinLoss: response.data.actual_win_loss || 0,
+          totalTickets: response.data.total_tickets || 0,
+          totalBets: response.data.total_bets || 0,
+          canceledBets: response.data.canceled_bets || 0,
         });
+      } else {
+        message.error(response.error || '获取统计数据失败');
       }
     } catch (error: any) {
       console.error('加载数据失败:', error);
-      message.error(error.response?.data?.error || '加载数据失败');
+      message.error(error.message || '获取统计数据失败');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = () => {
-    loadDashboardData();
-  };
-
   return (
     <div style={{ margin: 0, padding: 0 }}>
-      {/* 筛选条件 */}
-      <Card style={{ marginBottom: isMobile ? 8 : 16 }}>
-        <Space wrap direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: '100%' }}>
-          <Space style={{ width: isMobile ? '100%' : 'auto' }}>
-            <span>开始</span>
-            <DatePicker
-              value={dateRange[0]}
-              onChange={(date) => date && setDateRange([date, dateRange[1]])}
-              format="YYYY-MM-DD"
-              style={{ flex: isMobile ? 1 : undefined }}
-            />
-          </Space>
-
-          <Space style={{ width: isMobile ? '100%' : 'auto' }}>
-            <span>结束</span>
-            <DatePicker
-              value={dateRange[1]}
-              onChange={(date) => date && setDateRange([dateRange[0], date])}
-              format="YYYY-MM-DD"
-              style={{ flex: isMobile ? 1 : undefined }}
-            />
-          </Space>
+      {/* Filter section */}
+      <Card style={{ marginBottom: isMobile ? 8 : 16 }} className="glass-panel">
+        <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: '100%' }} wrap>
+          <RangePicker
+            value={dateRange}
+            onChange={(dates) => {
+              if (dates && dates[0] && dates[1]) {
+                setDateRange([dates[0], dates[1]]);
+              }
+            }}
+            size={isMobile ? 'small' : 'middle'}
+            style={{ width: isMobile ? '100%' : 'auto' }}
+          />
 
           {(isAdmin || isAgent) && (
             <Select
-              style={{ width: isMobile ? '100%' : 200 }}
-              placeholder="子用户"
+              placeholder="选择下级用户"
               allowClear
               value={selectedUserId}
-              onChange={setSelectedUserId}
-              options={[
-                ...subUsers.map(u => ({
-                  label: u.username,
-                  value: u.id,
-                }))
-              ]}
-            />
+              onChange={(value) => setSelectedUserId(value)}
+              style={{ width: isMobile ? '100%' : 200 }}
+              size={isMobile ? 'small' : 'middle'}
+            >
+              {subUsers.map((u) => (
+                <Select.Option key={u.id} value={u.id}>
+                  {u.username} ({u.role})
+                </Select.Option>
+              ))}
+            </Select>
           )}
 
           <Select
-            style={{ width: isMobile ? '100%' : 200 }}
-            placeholder="账号筛选"
-            showSearch
+            placeholder="选择账号"
             allowClear
             value={selectedAccountId || undefined}
             onChange={(value) => setSelectedAccountId(value || '')}
-            options={accounts.map(acc => ({
-              label: acc.username,
-              value: acc.id.toString(),
-            }))}
-            filterOption={(input, option) =>
-              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-            }
-          />
+            style={{ width: isMobile ? '100%' : 200 }}
+            size={isMobile ? 'small' : 'middle'}
+          >
+            {accounts.map((acc) => (
+              <Select.Option key={acc.id} value={acc.id}>
+                {acc.username}
+              </Select.Option>
+            ))}
+          </Select>
 
           <Button
             type="primary"
             icon={<SearchOutlined />}
-            onClick={handleSearch}
+            onClick={loadDashboardData}
             loading={loading}
+            size={isMobile ? 'small' : 'middle'}
             style={{ width: isMobile ? '100%' : 'auto' }}
           >
             查询
@@ -197,82 +186,86 @@ const DashboardPage: React.FC = () => {
         </Space>
       </Card>
 
-      {/* 统计卡片 */}
+      {/* Statistics Cards */}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '50px 0' }}>
           <Spin size="large" />
         </div>
       ) : (
-        <>
-          <Row gutter={isMobile ? [8, 8] : [16, 16]}>
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="投注金额"
-                  value={stats.totalBetAmount}
-                  precision={2}
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Card>
-            </Col>
+        <Row gutter={isMobile ? [8, 8] : [16, 16]}>
+          {/* 投注金额 */}
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="glass-panel">
+              <Statistic
+                title={<span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>投注金额</span>}
+                value={stats.totalBetAmount}
+                precision={2}
+                valueStyle={{ color: '#0891B2', fontWeight: 700, fontSize: '28px' }}
+              />
+            </Card>
+          </Col>
 
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="实数金额"
-                  value={stats.actualAmount}
-                  precision={2}
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Card>
-            </Col>
+          {/* 实数金额 */}
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="glass-panel">
+              <Statistic
+                title={<span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>实数金额</span>}
+                value={stats.actualAmount}
+                precision={2}
+                valueStyle={{ color: '#0891B2', fontWeight: 700, fontSize: '28px' }}
+              />
+            </Card>
+          </Col>
 
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="实数输赢"
-                  value={stats.actualWinLoss}
-                  precision={2}
-                  valueStyle={{
-                    color: stats.actualWinLoss >= 0 ? '#3f8600' : '#cf1322'
-                  }}
-                />
-              </Card>
-            </Col>
-          </Row>
+          {/* 实数输赢 */}
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="glass-panel">
+              <Statistic
+                title={<span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>实数输赢</span>}
+                value={stats.actualWinLoss}
+                precision={2}
+                valueStyle={{
+                  color: stats.actualWinLoss >= 0 ? '#059669' : '#DC2626',
+                  fontWeight: 700,
+                  fontSize: '28px'
+                }}
+              />
+            </Card>
+          </Col>
 
-          <Row gutter={isMobile ? [8, 8] : [16, 16]} style={{ marginTop: isMobile ? 8 : 16 }}>
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="票单数"
-                  value={stats.totalTickets}
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Card>
-            </Col>
+          {/* 票单数 */}
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="glass-panel">
+              <Statistic
+                title={<span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>票单数</span>}
+                value={stats.totalTickets}
+                valueStyle={{ color: '#4F46E5', fontWeight: 700, fontSize: '28px' }}
+              />
+            </Card>
+          </Col>
 
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="注单数"
-                  value={stats.totalBets}
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Card>
-            </Col>
+          {/* 注单数 */}
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="glass-panel">
+              <Statistic
+                title={<span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>注单数</span>}
+                value={stats.totalBets}
+                valueStyle={{ color: '#4F46E5', fontWeight: 700, fontSize: '28px' }}
+              />
+            </Card>
+          </Col>
 
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="划单数(含赛中)"
-                  value={stats.canceledBets}
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Card>
-            </Col>
-          </Row>
-        </>
+          {/* 划单数 */}
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="glass-panel">
+              <Statistic
+                title={<span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>划单数</span>}
+                value={stats.canceledBets}
+                valueStyle={{ color: '#D97706', fontWeight: 700, fontSize: '28px' }}
+              />
+            </Card>
+          </Col>
+        </Row>
       )}
     </div>
   );

@@ -1,66 +1,285 @@
-/* CSS Variables for Blue Theme */
+/* CSS Variables for Premium Light Theme */
 :root {
-  --primary-blue: #1677FF;
-  --primary-blue-hover: #4096FF;
-  --primary-blue-light: #69B7FF;
-  --primary-blue-lighter: #91CAFF;
-  --background-blue: #F0F8FF;
-  --background-light-blue: #E6F7FF;
-  --card-background: #FFFFFF;
-  --text-primary: #1c1c1c;
-  --text-secondary: #666666;
-  --border-light: #e8f4fd;
-  --shadow-blue: rgba(22, 119, 255, 0.1);
+  /* Core Palette - Light & Clean */
+  --bg-dark: #F0F4F8;
+  /* Very light blue-gray background */
+  --bg-card: #FFFFFF;
+  /* Pure white cards */
+  --bg-card-hover: #F9FAFB;
+
+  /* Accents */
+  --primary-brand: #2563EB;
+  /* Blue 600 */
+  --primary-brand-hover: #1D4ED8;
+  /* Blue 700 */
+  --accent-cyan: #0891B2;
+  /* Cyan 600 */
+  --accent-success: #059669;
+  /* Emerald 600 */
+  --accent-danger: #DC2626;
+  /* Red 600 */
+  --accent-gold: #D97706;
+  /* Amber 600 */
+
+  /* Text - High Contrast Dark */
+  --text-primary: #1E293B;
+  /* Slate 800 */
+  --text-secondary: #475569;
+  /* Slate 600 */
+  --text-tertiary: #94A3B8;
+  /* Slate 400 */
+
+  /* Borders & Effects */
+  --glass-border: 1px solid #E2E8F0;
+  /* Slate 200 */
+  --glass-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --glow-primary: 0 0 0 transparent;
+
+  /* Ant Design Overrides Variables */
+  --ant-primary-color: var(--primary-brand);
 }
 
 #root {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: var(--text-primary);
 }
 
-.App {
-  text-align: center;
-}
-
-/* 全局样式重置 */
+/* Global Reset & Body */
 * {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
   overflow-x: hidden;
 }
 
 body {
-  background: linear-gradient(135deg, var(--background-blue), var(--background-light-blue));
+  background: #F0F4F8;
   min-height: 100vh;
 }
 
-/* 赛事页面样式 - 紧凑表格版本 */
+/* --- Utility Classes --- */
+.glass-panel {
+  background: var(--bg-card);
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #2563EB 0%, #0891B2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* --- Ant Design Global Overrides for Light Theme --- */
+
+/* Card */
+.ant-card {
+  background: var(--bg-card) !important;
+  border: var(--glass-border) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+
+.ant-card-head {
+  border-bottom: 1px solid #F1F5F9 !important;
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+  background: #fff !important;
+}
+
+.ant-card-head-title {
+  color: var(--text-primary) !important;
+}
+
+/* Typography */
+.ant-typography,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-primary) !important;
+}
+
+span,
+div,
+p {
+  color: var(--text-primary);
+}
+
+/* Inputs */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-select-selector {
+  background-color: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  color: var(--text-primary) !important;
+  border-radius: 6px !important;
+  font-weight: 400;
+}
+
+.ant-input::placeholder {
+  color: #94A3B8 !important;
+}
+
+.ant-input:hover,
+.ant-input-affix-wrapper:hover,
+.ant-select-selector:hover {
+  border-color: var(--primary-brand) !important;
+}
+
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-select-selector:focus {
+  border-color: var(--primary-brand) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+}
+
+/* Select Dropdown */
+.ant-select-dropdown {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.ant-select-item {
+  color: var(--text-secondary) !important;
+}
+
+.ant-select-item-option-selected {
+  background-color: #DBEAFE !important;
+  color: var(--primary-brand) !important;
+  font-weight: 600;
+}
+
+.ant-select-item-option-active {
+  background-color: #F1F5F9 !important;
+}
+
+/* Buttons */
+.ant-btn-primary {
+  background: var(--primary-brand) !important;
+  border-color: var(--primary-brand) !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+  font-weight: 600;
+  color: #fff !important;
+  text-shadow: none !important;
+}
+
+.ant-btn-primary:hover {
+  background: var(--primary-brand-hover) !important;
+  border-color: var(--primary-brand-hover) !important;
+}
+
+.ant-btn-default {
+  background: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: var(--text-secondary) !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.ant-btn-default:hover {
+  border-color: var(--primary-brand) !important;
+  color: var(--primary-brand) !important;
+  background: #F8FAFC !important;
+}
+
+/* Table */
+.ant-table {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+.ant-table-thead>tr>th {
+  background: #F8FAFC !important;
+  color: var(--text-secondary) !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+.ant-table-tbody>tr>td {
+  border-bottom: 1px solid #E2E8F0 !important;
+  color: var(--text-primary) !important;
+  background: #fff !important;
+}
+
+.ant-table-tbody>tr:hover>td {
+  background: #F1F5F9 !important;
+}
+
+/* Modal */
+.ant-modal-content {
+  background: #FFFFFF !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+.ant-modal-header {
+  background: transparent !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+.ant-modal-title {
+  color: var(--text-primary) !important;
+  font-size: 18px !important;
+}
+
+.ant-modal-close {
+  color: var(--text-tertiary) !important;
+}
+
+/* Menu */
+.ant-menu {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  border-right: none !important;
+}
+
+.ant-menu-item {
+  color: var(--text-secondary) !important;
+  margin: 4px 8px !important;
+  width: calc(100% - 16px) !important;
+  border-radius: 6px !important;
+}
+
+.ant-menu-item-selected {
+  background: #DBEAFE !important;
+  color: var(--primary-brand) !important;
+  font-weight: 600;
+}
+
+.ant-menu-item:hover {
+  color: var(--primary-brand) !important;
+  background: #F8FAFC !important;
+}
+
+/* --- Specific Page Styles (Light Theme) --- */
+
+/* Matches Page */
 .matches-page {
-  padding: 8px;
-  background: #f8f9fa;
+  padding: 16px;
 }
 
 .matches-filter-card {
-  margin-bottom: 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(22, 119, 255, 0.15);
-  box-shadow: 0 10px 25px rgba(22, 119, 255, 0.08);
-  background: linear-gradient(145deg, #ffffff 0%, #f4f8ff 100%);
-}
-
-.matches-filter-card .ant-card-body {
-  padding: 14px 18px !important;
+  margin-bottom: 16px;
+  border-radius: 8px;
 }
 
 .filter-grid {
@@ -74,1992 +293,240 @@ body {
 .filter-left {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .filter-group {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
-}
-
-.filter-group .ant-select,
-.filter-group .ant-segmented {
-  min-width: 120px;
-}
-
-.filter-group .ant-select-selector {
-  border-radius: 10px !important;
-  border-color: rgba(22, 119, 255, 0.25) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  padding: 0 8px !important;
-  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
-}
-
-.filter-group .ant-select-selector:hover,
-.filter-group .ant-select-open .ant-select-selector {
-  border-color: #1677ff !important;
-}
-
-.filter-segmented {
-  background: rgba(22, 119, 255, 0.08);
-  border-radius: 18px;
-  padding: 3px;
-}
-
-.filter-segmented .ant-segmented-item {
-  font-size: 12px;
-  padding: 2px 16px;
-  border-radius: 14px;
-  color: #406080;
-}
-
-.filter-segmented .ant-segmented-item-selected {
-  background: #1677ff;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.35);
-}
-
-.filter-actions {
-  margin-left: auto;
-  gap: 10px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.filter-actions .ant-input,
-.filter-actions .ant-input-affix-wrapper {
-  min-width: 200px;
-  border-radius: 12px;
-  border-color: rgba(22, 119, 255, 0.2);
-  background: linear-gradient(180deg, #ffffff 0%, #f6f9ff 100%);
-}
-
-.filter-actions .ant-input:hover,
-.filter-actions .ant-input:focus,
-.filter-actions .ant-input-affix-wrapper-focused {
-  border-color: #1677ff !important;
-  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.12);
-}
-
-.filter-actions .ant-btn {
-  min-width: 90px;
-  border-radius: 12px;
-  border-color: rgba(22, 119, 255, 0.4);
-  background: linear-gradient(180deg, #ffffff 0%, #e7f1ff 100%);
-  color: #0f4db8;
-  font-weight: 600;
-}
-
-.filter-actions .ant-btn:hover {
-  border-color: #1677ff;
-  background: linear-gradient(180deg, #f0f8ff 0%, #d8e9ff 100%);
-  color: #0b3e90;
+  gap: 12px;
 }
 
 .matches-meta {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #0f4db8;
-  background: rgba(22, 119, 255, 0.12);
-  border: 1px solid rgba(22, 119, 255, 0.25);
-  border-radius: 999px;
-  padding: 4px 16px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  color: #0891B2;
+  background: #ECFEFF;
+  border: 1px solid #CFFAFE;
+  border-radius: 20px;
+  padding: 6px 16px;
 }
 
-@media (max-width: 960px) {
-  .filter-grid {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .filter-actions {
-    justify-content: flex-start;
-    margin-left: 0;
-  }
-
-  .filter-actions .ant-input,
-  .filter-actions .ant-input-affix-wrapper {
-    width: 100%;
-  }
-}
-
-/* 下注弹窗紧凑样式 */
+/* Bet Modal */
 .bet-modal .ant-modal-body {
-  background: #f5f7ff;
-  padding: 16px 20px 20px;
-}
-
-.bet-modal.compact .ant-modal-body {
-  padding: 12px 16px 16px;
-  background: #ffffff;
-}
-
-.bet-modal-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.bet-modal-body.compact {
-  gap: 12px;
+  background: transparent;
+  padding: 20px;
 }
 
 .bet-section {
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid rgba(22, 119, 255, 0.08);
-  padding: 14px 16px;
-  box-shadow: 0 8px 20px rgba(22, 119, 255, 0.08);
-}
-
-.bet-modal.compact .bet-section {
+  background: #F8FAFC;
   border-radius: 8px;
-  padding: 10px 12px;
-  border-color: #d9d9d9;
-  box-shadow: none;
+  border: 1px solid #E2E8F0;
+  padding: 16px;
 }
 
 .bet-match-section {
-  background: linear-gradient(135deg, #f3f8ff 0%, #edf4ff 100%);
-  border: 1px solid rgba(22, 119, 255, 0.15);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.bet-match-main {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.bet-match-league {
-  font-size: 12px;
-  color: #3b5785;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.bet-match-teams {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  font-size: 18px;
-  font-weight: 700;
-  color: #14213d;
-}
-
-.bet-match-teams .vs {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 12px;
-  background: rgba(22, 119, 255, 0.15);
-  color: #1677ff;
-  letter-spacing: 1px;
-}
-
-.bet-match-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  font-size: 12px;
-  color: #4e5d7a;
-}
-
-.bet-match-time {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.bet-match-score {
-  color: #ff4d4f;
-  font-weight: 600;
-}
-
-.bet-selection-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #0f4db8;
-  background: rgba(22, 119, 255, 0.12);
-  border-radius: 8px;
-  padding: 4px 10px;
-  width: fit-content;
-}
-
-.bet-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.bet-quick-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.bet-section-header {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1a2c4b;
-  margin-bottom: 10px;
-}
-
-.bet-modal.compact .bet-section-header {
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
-.bet-form .ant-form-item {
-  margin-bottom: 12px;
-}
-
-.bet-form .ant-form-item-label > label {
-  font-size: 12px;
-  color: #4c5e7d;
-}
-
-.bet-quick-form .ant-form-item {
-  margin-bottom: 8px;
-}
-
-.bet-modal.compact .ant-form-item-label > label {
-  font-size: 11px;
-}
-
-.bet-quick-row .ant-form-item {
-  margin-bottom: 0;
-}
-
-.bet-account-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.bet-account-grid.compact {
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+  border: 1px solid #93C5FD;
 }
 
 .bet-account-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(22, 119, 255, 0.18);
-  background: #fcfdff;
-  box-shadow: 0 4px 14px rgba(22, 119, 255, 0.06);
-  transition: all 0.2s ease;
-}
-
-.bet-account-card.compact {
-  padding: 8px 10px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  color: var(--text-primary);
   border-radius: 8px;
-  font-size: 12px;
-  gap: 4px;
-  padding-left: 36px;
-}
-
-.bet-account-card.compact .sub {
-  font-size: 11px;
-  color: #9ba3b1;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .bet-account-card:hover {
-  border-color: #1677ff;
-  box-shadow: 0 6px 18px rgba(22, 119, 255, 0.15);
+  border-color: var(--primary-brand);
+  background: #DBEAFE;
 }
 
 .bet-account-card.active {
-  border-color: #1677ff;
-  background: rgba(22, 119, 255, 0.12);
+  border-color: var(--primary-brand);
+  background: #DBEAFE;
+  box-shadow: 0 0 0 1px var(--primary-brand);
 }
 
-.bet-account-card.offline {
-  border-color: #d9d9d9;
-  background: #f6f6f6;
-  color: #9ba3b1;
+/* Three-column Matches Layout - Horizontal Markets */
+.matches-table-container {
+  overflow-x: auto;
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #E2E8F0;
 }
 
-.bet-account-card.offline .name {
-  color: #8c8c8c;
+/* Match Block: Left (Home) | Center (Info+Markets) | Right (Away) */
+.match-block {
+  display: grid;
+  grid-template-columns: 100px 1fr 100px;
+  border-bottom: 2px solid #E2E8F0;
+  min-height: 120px;
 }
 
-.bet-account-card .bet-account-info {
+/* Team Columns (Left & Right) */
+.team-col {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.bet-account-checkbox {
-  position: relative;
-  display: block;
-}
-
-.bet-account-checkbox .ant-checkbox {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 2;
-}
-
-.bet-account-checkbox .ant-checkbox + span {
-  display: block;
-  width: 100%;
-  padding-left: 0;
-}
-
-.bet-account-card .bet-account-info .name {
-  font-weight: 600;
-  color: #14213d;
-}
-
-.bet-account-card .bet-account-info .sub {
-  font-size: 12px;
-  color: #61708d;
-}
-
-.bet-account-card .bet-account-info .tag {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(22, 119, 255, 0.15);
-  color: #0f4db8;
-  font-size: 11px;
-  width: fit-content;
-}
-
-.bet-account-card .stats {
-  font-size: 11px;
-  color: #647491;
-}
-
-.bet-account-card .status {
-  font-size: 11px;
-  margin-top: 2px;
-}
-
-.bet-account-card .status.status-online {
-  color: #1d9f6e;
-}
-
-.bet-account-card .status.status-offline {
-  color: #b0b0b0;
-}
-
-.bet-info-chip {
-  margin-top: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #0f4db8;
-  background: rgba(22, 119, 255, 0.1);
-  border-radius: 999px;
-  padding: 4px 12px;
-}
-
-.bet-modal.compact .bet-info-chip {
-  font-size: 11px;
-  padding: 3px 10px;
-}
-
-.bet-number-input {
-  width: 100%;
-  border-radius: 10px !important;
-}
-
-.bet-modal.compact .bet-number-input {
-  border-radius: 8px !important;
-}
-
-.bet-number-input .ant-input-number-input {
-  height: 32px;
-}
-
-.bet-summary {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  background: linear-gradient(135deg, #f6faff 0%, #eef5ff 100%);
-}
-
-.bet-summary-item {
-  flex: 1;
-  min-width: 160px;
-  background: #ffffff;
-  border-radius: 10px;
-  border: 1px solid rgba(22, 119, 255, 0.1);
-  padding: 10px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  box-shadow: 0 6px 16px rgba(22, 119, 255, 0.08);
-}
-
-.bet-summary-item .label {
-  font-size: 12px;
-  color: #5a6a8f;
-}
-
-.bet-summary-item .value {
-  font-size: 16px;
-  font-weight: 700;
-  color: #14213d;
-}
-
-.bet-summary-item .value.danger {
-  color: #ff4d4f;
-}
-
-.bet-summary-item .value.success {
-  color: #30a46c;
-}
-
-@media (max-width: 768px) {
-  .bet-modal .ant-modal-body {
-    padding: 14px;
-  }
-
-  .bet-section {
-    padding: 12px;
-  }
-
-  .bet-account-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .bet-summary-item {
-    min-width: 140px;
-  }
-}
-
-.bet-quick-head {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.bet-quick-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 16px;
-  color: #1d1d1f;
-}
-
-.bet-quick-title .score {
-  font-size: 13px;
-  color: #ff4d4f;
-}
-
-.bet-quick-sub {
-  display: flex;
-  gap: 10px;
-  font-size: 11px;
-  color: #5a5a5a;
-}
-
-.bet-quick-selection {
-  background: #f1f3f8;
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 12px;
-}
-
-.bet-modal.compact .bet-quick-selection {
-  padding: 6px 8px;
-}
-
-.bet-quick-row {
-  margin-bottom: 4px;
-}
-
-.bet-quick-item .ant-input,
-.bet-quick-item .ant-input-number,
-.bet-quick-item .ant-select-selector {
-  border-radius: 6px !important;
-  height: 36px;
-}
-
-.bet-modal.compact .bet-quick-item .ant-input,
-.bet-modal.compact .bet-quick-item .ant-input-number,
-.bet-modal.compact .bet-quick-item .ant-select-selector {
-  height: 32px;
-}
-
-.bet-quick-mode {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.bet-quick-mode .label {
-  font-size: 11px;
-  color: #606060;
-}
-
-.bet-quick-mode .mode-buttons {
-  display: inline-flex;
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.bet-quick-mode .mode-buttons button {
-  width: 50%;
-  padding: 6px 0;
-  border: none;
-  background: #f5f5f5;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.bet-quick-mode .mode-buttons button.active {
-  background: #0f4db8;
-  color: #ffffff;
-}
-
-.bet-quick-mode .mode-buttons button:not(.active):hover {
-  background: #e6e6e6;
-}
-
-/* 紧凑表格样式 */
-.compact-matches-table {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-}
-
-.compact-table-header {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(96px, 1fr));
-  background: #e0e0e0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-  padding: 6px 10px;
-  border: 1px solid #d4d4d4;
-  border-radius: 6px;
-}
-
-.header-cell {
-  text-align: center;
-}
-
-.compact-match-card {
-  border: 1px solid #d5d5d5;
-  border-radius: 6px;
-  overflow: hidden;
-  background: #f2f2f2;
-}
-
-.compact-match-card.even {
-  background: #f6f6f6;
-}
-
-.compact-match-card:hover {
-  border-color: #a3a3a3;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-}
-
-.match-header-box {
-  background: #dedede;
-  padding: 10px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: center;
-}
-
-/* 移动端赛事头部优化 */
-@media (max-width: 768px) {
-  .match-header-box {
-    padding: 6px 8px;
-    gap: 4px;
-  }
-
-  .match-league {
-    font-size: 10px !important;
-  }
-
-  .match-team {
-    font-size: 11px !important;
-  }
-
-  .score-main {
-    font-size: 14px !important;
-  }
-
-  .score-sub {
-    font-size: 9px !important;
-  }
-
-  .match-score-box {
-    gap: 8px !important;
-  }
-}
-
-.match-league {
-  font-size: 12px;
-  font-weight: 600;
-  color: #3f3f3f;
-}
-
-.match-score-box {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 16px;
-  width: 100%;
-}
-
-.match-team {
+  padding: 12px 8px;
   font-size: 14px;
   font-weight: 600;
-  color: #353535;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.match-team.home {
-  text-align: right;
-}
-
-.match-team.away {
-  text-align: left;
-}
-
-.match-score-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.score-main {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111;
-  letter-spacing: 0.5px;
-}
-
-.score-sub {
-  font-size: 11px;
-  color: #555;
-}
-
-.odds-section {
-  position: relative;
-}
-
-.odds-section.half {
-  border-top: 1px solid #d5d5d5;
-}
-
-.odds-section-title {
-  background: #e8e8e8;
-  padding: 4px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #666;
+  color: #1E293B;
+  background: #F8FAFC;
+  border-right: 1px solid #E2E8F0;
   text-align: center;
-  border-top: 1px solid #d5d5d5;
+  word-break: break-word;
 }
 
-.odds-header-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  background: #e8e8e8;
-  border-top: 1px solid #d5d5d5;
-  padding: 8px 0;
+.team-col.team-away {
+  border-right: none;
+  border-left: 1px solid #E2E8F0;
 }
 
-.odds-header-cell {
-  text-align: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-  padding: 0 4px;
-}
-
-.odds-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  background: #fafafa;
-}
-
-/* 移动端赛事盘口优化 */
-@media (max-width: 768px) {
-  .odds-section-title {
-    display: none;
-  }
-
-  .odds-header-cell {
-    font-size: 11px !important;
-    padding: 4px 2px !important;
-  }
-
-  .compact-match-card.mobile {
-    margin-bottom: 8px;
-  }
-}
-
-.odds-col {
-  padding: 6px 4px;
-  border-left: 1px solid #e0e0e0;
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-  background: #ffffff;
-}
-
-.odds-col:first-child {
-  border-left: none;
-}
-
-/* 移动端赔率列优化 */
-@media (max-width: 768px) {
-  .odds-col {
-    padding: 4px 2px;
-  }
-}
-
-.odds-stack {
+/* Center Block: Match Info + Markets */
+.match-center-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  width: 100%;
-}
-
-.odds-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  color: #1a2533;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, #f5f9ff 100%);
-  border: 1px solid rgba(22, 119, 255, 0.16);
-  min-height: 38px;
-}
-
-/* 移动端赔率项优化 */
-@media (max-width: 768px) {
-  .odds-item {
-    padding: 4px 4px;
-    gap: 2px;
-    min-height: 32px;
-    border-radius: 4px;
-  }
-
-  .odds-item .odds-line {
-    font-size: 8px !important;
-  }
-
-  .odds-item .odds-value {
-    font-size: 11px !important;
-  }
-}
-
-.odds-item:hover {
-  background: linear-gradient(180deg, #1677ff 0%, #4096ff 100%);
-  color: white;
-  transform: translateY(-1px) scale(1.01);
-  box-shadow: 0 6px 18px rgba(22, 119, 255, 0.24);
-  border-color: transparent;
-}
-
-.odds-item .odds-line {
-  font-size: 9px;
-  color: #6b7280;
-  font-weight: 500;
-  text-align: center;
-}
-
-.odds-item:hover .odds-line {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.odds-item .odds-value {
-  font-weight: 700;
-  font-size: 13px;
-  color: #ff4d4f;
-}
-
-.odds-item:hover .odds-value {
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-/* 新的左右分栏布局样式 */
-.odds-stack-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-}
-
-.odds-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px;
-  width: 100%;
-}
-
-.odds-item-left,
-.odds-item-right {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 6px 4px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: #ffffff;
-  border: 1px solid #e8e8e8;
-  min-height: 36px;
-}
-
-.odds-item-left:hover,
-.odds-item-right:hover {
-  background: linear-gradient(180deg, #1677ff 0%, #4096ff 100%);
-  color: white;
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.2);
-  border-color: transparent;
-}
-
-.odds-item-left .odds-team,
-.odds-item-right .odds-team {
-  font-size: 10px;
-  color: #666;
-  font-weight: 500;
-  text-align: center;
-  line-height: 1.2;
-}
-
-.odds-item-left:hover .odds-team,
-.odds-item-right:hover .odds-team {
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.odds-item-left .odds-value,
-.odds-item-right .odds-value {
-  font-weight: 700;
-  font-size: 13px;
-  color: #ff4d4f;
-}
-
-.odds-item-left:hover .odds-value,
-.odds-item-right:hover .odds-value {
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-/* Ant Design 样式覆盖 - Blue Theme */
-.ant-layout {
-  background: transparent;
-}
-
-.ant-layout-header {
-  height: 64px;
-  line-height: 64px;
-  background: var(--card-background);
-  border-bottom: 1px solid var(--border-light);
-  box-shadow: 0 2px 8px var(--shadow-blue);
-}
-
-.ant-layout-sider {
-  position: fixed !important;
-  height: 100vh;
-  left: 0;
-  top: 0;
-  z-index: 1000;
-  background: var(--primary-blue) !important;
-  box-shadow: 2px 0 12px rgba(22, 119, 255, 0.25);
-}
-
-.ant-menu-dark.ant-menu-inline .ant-menu-item {
-  margin: 4px 8px;
-  border-radius: 8px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.ant-menu-dark.ant-menu-inline .ant-menu-item-selected {
-  background: rgba(255, 255, 255, 0.15) !important;
-  color: #ffffff !important;
-  font-weight: 600;
-}
-
-.ant-menu-dark.ant-menu-inline .ant-menu-item:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: #ffffff;
-}
-
-.ant-menu-dark {
-  background: transparent !important;
-}
-
-/* 卡片阴影效果 - Blue Theme */
-.ant-card {
-  background: var(--card-background);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  box-shadow: 0 2px 12px var(--shadow-blue);
-}
-
-.ant-card:hover {
-  box-shadow: 0 6px 20px rgba(22, 119, 255, 0.15);
-  border-color: var(--primary-blue-light);
-  transition: all 0.3s ease;
-  transform: translateY(-2px);
-}
-
-/* 统计卡片样式 */
-.ant-statistic-title {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 4px;
-}
-
-.ant-statistic-content {
-  font-size: 24px;
-  font-weight: 600;
-}
-
-/* 表格样式 */
-.ant-table-thead > tr > th {
-  background: #fafafa;
-  font-weight: 600;
-}
-
-.ant-table-tbody > tr:hover > td {
-  background: #f5f7fa;
-}
-
-/* 按钮样式 - Blue Theme */
-.ant-btn-primary {
-  background: var(--primary-blue);
-  border-color: var(--primary-blue);
-  box-shadow: 0 2px 8px var(--shadow-blue);
-  border-radius: 8px;
-  font-weight: 500;
-}
-
-.ant-btn-primary:hover,
-.ant-btn-primary:focus {
-  background: var(--primary-blue-hover);
-  border-color: var(--primary-blue-hover);
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-.ant-btn {
-  border-radius: 8px;
-  font-weight: 500;
-}
-
-.ant-btn:hover {
-  transform: translateY(-1px);
-  transition: all 0.2s ease;
-}
-
-/* 表单样式 */
-.ant-form-item-label > label {
-  font-weight: 500;
-}
-
-.ant-input,
-.ant-input-password {
-  border-radius: 6px;
-}
-
-.ant-input:focus,
-.ant-input-password:focus,
-.ant-input-focused {
-  border-color: #40a9ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
-/* 标签样式 */
-.ant-tag {
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-/* 分页样式 - Blue Theme */
-.ant-pagination-item-active {
-  background: var(--primary-blue);
-  border-color: var(--primary-blue);
-}
-
-.ant-pagination-item-active a {
-  color: #fff;
-}
-
-.ant-pagination-item:hover {
-  border-color: var(--primary-blue-light);
-}
-
-.ant-pagination-item a:hover {
-  color: var(--primary-blue);
-}
-
-/* 模态框样式 */
-.ant-modal-header {
-  border-bottom: 1px solid #f0f0f0;
-  border-radius: 6px 6px 0 0;
-}
-
-.ant-modal-footer {
-  border-top: 1px solid #f0f0f0;
-  border-radius: 0 0 6px 6px;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .ant-layout-sider {
-    position: fixed !important;
-    z-index: 999;
-    height: 100vh;
-  }
-
-  .ant-layout-content {
-    margin-left: 0 !important;
-  }
-}
-
-/* 加载动画 */
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 200px;
-}
-
-/* 空状态样式 */
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #999;
-}
-
-.empty-state .ant-empty-description {
-  color: #999;
-}
-
-/* 自定义滚动条 */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--primary-blue-light);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-blue);
-}
-
-/* Account Card Layout Styles */
-.account-card-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  padding: 16px;
-}
-
-.account-card {
-  background: var(--card-background);
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  font-size: 12px;
-}
-
-.account-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.15);
-  border-color: var(--primary-blue-light);
-}
-
-/* 头部区域样式 */
-.account-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.account-card-user {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.account-card-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #f0f8ff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.account-card-user-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.account-card-username {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.account-card-user-id {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
-
-.account-card-status-switch {
-  display: flex;
-  align-items: center;
-}
-
-/* 详细信息区域样式 */
-.account-card-details {
-  margin-bottom: 12px;
-}
-
-.account-card-detail-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto 1fr auto 1fr;
-  gap: 8px 16px;
-  align-items: center;
-  margin-bottom: 8px;
-  font-size: 12px;
-}
-
-.account-card-detail-row .ant-typography {
-  font-size: 12px;
-  margin: 0;
-}
-
-.account-card-detail-row .ant-typography-strong {
-  color: var(--text-secondary);
-  font-weight: normal;
-}
-
-.account-card-limits {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid #f5f5f5;
-}
-
-.account-card-limit-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-  font-size: 12px;
-}
-
-.account-card-limit-row .ant-typography {
-  font-size: 12px;
-  margin: 0;
-}
-
-.account-card-limit-row .ant-typography-strong {
-  color: var(--text-secondary);
-  font-weight: normal;
-  min-width: 30px;
-}
-
-/* 底部操作区域样式 */
-.account-card-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.account-card-actions-left {
-  display: flex;
-  align-items: center;
-}
-
-.account-card-actions-center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-}
-
-.account-card-actions .ant-btn {
-  height: 28px;
-  padding: 0 8px;
-  font-size: 12px;
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-}
-
-.account-card-actions .ant-btn:hover {
-  color: var(--primary-blue);
-  background: rgba(22, 119, 255, 0.05);
-}
-
-.account-card-actions .ant-btn.ant-btn-dangerous {
-  color: #ff4d4f;
-}
-
-.account-card-actions .ant-btn.ant-btn-dangerous:hover {
-  color: #ff4d4f;
-  background: rgba(255, 77, 79, 0.05);
-}
-
-/* Responsive breakpoints for account cards */
-.mobile-content .ant-card > .ant-card-body {
-  padding: 0 !important;
-}
-
-.mobile-content .account-card-grid {
-  grid-template-columns: 1fr;
-  gap: 1px;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-.mobile-content .account-card {
-  padding: 10px 12px;
-  margin: 0 !important;
-  border-radius: 0 !important;
-  border-left: none !important;
-  border-right: none !important;
   background: #fff;
 }
 
-.mobile-content .account-card:first-child {
-  border-top: none !important;
-}
-
-.mobile-content .account-card:last-child {
-  border-bottom: none !important;
-}
-
-.mobile-content .account-card:hover {
-  transform: none;
-  box-shadow: none;
-}
-
-  .account-card-detail-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 12px;
-    font-size: 12px;
-  }
-
-  .account-card-detail-row > * {
-    display: inline;
-  }
-
-  .account-card-detail-row .ant-typography {
-    font-size: 12px;
-  }
-
-  .account-card-detail-row .ant-typography-strong {
-    margin-right: 4px;
-  }
-
-  .account-card-header {
-    margin-bottom: 8px;
-    padding-bottom: 6px;
-  }
-
-  .account-card-details {
-    margin-bottom: 8px;
-  }
-
-  .account-card-limits {
-    margin-top: 6px;
-    padding-top: 6px;
-  }
-
-  .account-card-limit-row {
-    font-size: 11px;
-    margin-bottom: 2px;
-  }
-
-  .account-card-actions {
-    padding-top: 8px;
-  }
-
-  .account-card-actions .ant-btn {
-    height: 24px;
-    padding: 0 6px;
-    font-size: 11px;
-  }
-
-  .account-card-username {
-    font-size: 14px;
-  }
-
-  .account-card-avatar {
-    width: 28px;
-    height: 28px;
-  }
-
-  .account-card-user-id {
-    font-size: 11px;
-  }
-}
-
-@media (max-width: 768px) and (min-width: 577px) {
-  .account-card-grid {
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
-
-  .account-card {
-    padding: 14px;
-  }
-}
-
-@media (max-width: 1024px) and (min-width: 769px) {
-  .account-card-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-}
-
-@media (min-width: 1025px) {
-  .account-card-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-  }
-}
-
-/* 移动端模态框优化 */
-@media (max-width: 768px) {
-  .ant-modal {
-    max-width: 100vw !important;
-    margin: 0 !important;
-    padding-bottom: 0 !important;
-    top: 0 !important;
-  }
-
-  .ant-modal-content {
-    border-radius: 0 !important;
-  }
-
-  .ant-modal-body {
-    max-height: calc(100vh - 110px);
-    overflow-y: auto;
-  }
-
-  .ant-modal-footer {
-    position: sticky;
-    bottom: 0;
-    background: #fff;
-    z-index: 1;
-  }
-}
-
-/* 固定导航栏的内容区域适配 */
-.ant-layout-content {
-  margin-left: 200px !important;
-  transition: margin-left 0.2s ease;
-}
-
-.ant-layout-sider-collapsed + .ant-layout .ant-layout-content {
-  margin-left: 80px !important;
-}
-
-/* 移动端内容区域样式 - 使用 class 而不是 media query */
-.mobile-content.ant-layout-content {
-  margin: 0 !important;
-  margin-left: 0 !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  width: 100vw !important;
-}
-
-.ant-layout-sider-collapsed + .ant-layout .mobile-content.ant-layout-content {
-  margin-left: 0 !important;
-}
-
-.mobile-content > div {
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-.mobile-content .ant-card {
-  margin: 0 !important;
-  margin-bottom: 1px !important;
-  border-radius: 0 !important;
-}
-
-.mobile-content .ant-card-body {
-  padding: 12px !important;
-}
-
-.mobile-content .ant-row {
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  row-gap: 1px !important;
-}
-
-.mobile-content .ant-col {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-.mobile-content .ant-space {
-  width: 100% !important;
-}
-
-.mobile-content .ant-space-vertical {
-  width: 100% !important;
-}
-
-.mobile-content .ant-select,
-.mobile-content .ant-picker,
-.mobile-content .ant-btn {
-  width: 100% !important;
-}
-
-/* 响应式设计 - 固定导航栏 */
-@media (max-width: 768px) {
-  .ant-layout-sider {
-    position: fixed !important;
-    z-index: 1001 !important;
-    height: 100vh;
-    left: 0;
-    top: 0;
-    transition: transform 0.3s ease;
-  }
-
-  /* 移动端：收起状态 = 隐藏在左侧 */
-  .ant-layout-sider.ant-layout-sider-collapsed {
-    transform: translateX(-100%) !important;
-  }
-
-  /* 移动端：展开状态 = 显示 */
-  .ant-layout-sider:not(.ant-layout-sider-collapsed) {
-    transform: translateX(0) !important;
-  }
-
-  .ant-layout-content {
-    margin-left: 0 !important;
-  }
-
-  .matches-meta {
-    font-size: 16px;
-    padding: 10px 12px;
-  }
-
-  /* 添加遮罩层，点击后关闭侧边栏 */
-  .ant-layout-sider:not(.ant-layout-sider-collapsed)::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.45);
-    z-index: -1;
-  }
-}
-
-/* 移动端登录页面适配 */
-@media (max-width: 768px) {
-  /* 登录页面背景装饰球体 - 移动端隐藏或缩小 */
-  .ant-row > div:first-child > div > div[style*="position: absolute"] {
-    display: none !important;
-  }
-
-  /* 登录表单卡片 */
-  .ant-card {
-    max-width: 100% !important;
-    margin: 0 !important;
-    border-radius: 12px !important;
-  }
-
-  .ant-card-body {
-    padding: 32px 24px !important;
-  }
-
-  /* 登录页面左侧信息区域 */
-  .ant-col > div[style*="color: white"] {
-    padding: 20px !important;
-  }
-
-  .ant-col > div[style*="color: white"] > div:first-child {
-    font-size: 32px !important;
-    margin-bottom: 16px !important;
-  }
-
-  .ant-col > div[style*="color: white"] > div:nth-child(2) {
-    font-size: 18px !important;
-    margin-bottom: 20px !important;
-  }
-
-  .ant-col > div[style*="color: white"] > div:nth-child(3) {
-    font-size: 14px !important;
-  }
-
-  .ant-col > div[style*="color: white"] > div:nth-child(3) p {
-    margin: 8px 0 !important;
-  }
-}
-
-@media (max-width: 576px) {
-  /* 超小屏幕 - 进一步优化 */
-  .ant-card-body {
-    padding: 24px 20px !important;
-  }
-
-  /* 输入框 */
-  .ant-input-lg,
-  .ant-input-password-lg {
-    height: 44px !important;
-    font-size: 14px !important;
-    padding: 10px 14px !important;
-  }
-
-  /* 按钮 */
-  .ant-btn-lg {
-    height: 44px !important;
-    font-size: 15px !important;
-  }
-
-  /* 登录页面标题 */
-  .ant-col > div[style*="color: white"] > div:first-child {
-    font-size: 28px !important;
-  }
-
-  .ant-col > div[style*="color: white"] > div:nth-child(2) {
-    font-size: 16px !important;
-  }
-
-  /* 表单标签 */
-  .ant-form-item-label > label {
-    font-size: 13px !important;
-  }
-
-  /* 顶部导航栏 - 移动端优化 */
-  .ant-layout-header {
-    padding: 0 12px !important;
-  }
-
-  .header-right-section {
-    gap: 8px !important;
-  }
-
-  .coin-balance-tag {
-    font-size: 12px !important;
-    padding: 2px 8px !important;
-  }
-
-  .coin-label {
-    display: none;
-  }
-
-  .username-text {
-    display: none;
-  }
-
-  .user-info-space {
-    gap: 0 !important;
-  }
-
-  /* 内容区域 - 完全移除边距 */
-  .ant-layout-content.main-content {
-    margin: 0 !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-  }
-
-  /* 页面根容器 */
-  .ant-layout-content > div {
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-
-  /* 所有页面的卡片 - 完全移除边距和圆角 */
-  .ant-card {
-    margin: 0 !important;
-    margin-bottom: 1px !important;
-    border-radius: 0 !important;
-  }
-
-  .ant-card .ant-card-body {
-    padding: 12px !important;
-  }
-
-  /* 统计卡片 */
-  .ant-statistic {
-    text-align: center;
-  }
-
-  .ant-statistic-title {
-    font-size: 13px !important;
-  }
-
-  .ant-statistic-content {
-    font-size: 20px !important;
-  }
-
-  /* Row 间距 - 完全移除负边距 */
-  .ant-row {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    row-gap: 1px !important;
-  }
-
-  .ant-col {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
-  /* 表单项 */
-  .ant-form-item {
-    margin-bottom: 12px !important;
-  }
-
-  /* 按钮组 */
-  .ant-space {
-    gap: 8px !important;
-  }
-
-  /* 表格 */
-  .ant-table-wrapper {
-    overflow-x: auto;
-  }
-
-  .ant-table {
-    font-size: 12px !important;
-  }
-
-  .ant-table-thead > tr > th {
-    padding: 8px 4px !important;
-    font-size: 12px !important;
-  }
-
-  .ant-table-tbody > tr > td {
-    padding: 8px 4px !important;
-    font-size: 12px !important;
-  }
-
-  /* 筛选器 */
-  .ant-select,
-  .ant-picker,
-  .ant-input {
-    font-size: 13px !important;
-  }
-
-  /* 日期选择器 */
-  .ant-picker {
-    width: 100% !important;
-  }
-}
-
-/* 中等屏幕优化 */
-@media (max-width: 768px) and (min-width: 577px) {
-  .ant-layout-header {
-    padding: 0 16px !important;
-  }
-
-  .header-right-section {
-    gap: 12px !important;
-  }
-
-  .coin-balance-tag {
-    font-size: 13px !important;
-    padding: 3px 10px !important;
-  }
-
-  /* 内容区域 */
-  .ant-layout-content.main-content {
-    margin: 12px !important;
-    padding: 12px !important;
-    border-radius: 12px !important;
-  }
-
-  .ant-card {
-    margin-bottom: 12px !important;
-  }
-
-  .ant-card-body {
-    padding: 16px !important;
-  }
-}
-
-/* ========================================
-   V2 横向 6 列布局样式
-   ======================================== */
-
-/* 卡片容器 */
-.compact-match-card-v2 {
-  background: #ffffff;
-  border: 1px solid rgba(22, 119, 255, 0.2);
-  border-radius: 8px;
-  margin-bottom: 6px;
-  overflow: hidden;
-  transition: all 0.2s ease;
-}
-
-.compact-match-card-v2:hover {
-  border-color: rgba(22, 119, 255, 0.4);
-  box-shadow: 0 2px 8px rgba(22, 119, 255, 0.1);
-}
-
-/* 卡片头部：主队 + 联赛(时间) + 客队 */
-.match-header-v2 {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  padding: 6px 12px;
-  background: linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%);
-  border-bottom: 1px solid rgba(22, 119, 255, 0.15);
-  gap: 16px;
-}
-
-.match-header-v2 .header-home {
-  font-size: 13px;
-  font-weight: 600;
-  color: #333;
-  text-align: right;
-}
-
-.match-header-v2 .header-center {
+/* Match Info Header */
+.match-info-header {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-}
-
-.match-header-v2 .header-league {
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #F1F5F9;
+  border-bottom: 1px solid #E2E8F0;
   font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.match-info-header .league-name {
+  color: #3B82F6;
   font-weight: 600;
-  color: #1677ff;
-  text-align: center;
-  white-space: nowrap;
 }
 
-.match-header-v2 .header-time {
-  font-size: 11px;
-  color: #666;
-  text-align: center;
-  white-space: nowrap;
+.match-info-header .score-display {
+  color: #DC2626;
+  font-weight: 700;
 }
 
-.match-header-v2 .header-away {
-  font-size: 13px;
-  font-weight: 600;
-  color: #333;
-  text-align: left;
+.match-info-header .time-display {
+  color: #64748B;
 }
 
-/* 盘口主体：6列横向排列 */
-.match-body-v2 {
+/* Markets Grid - Horizontal Layout */
+.markets-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 0;
-  border-top: 1px solid rgba(22, 119, 255, 0.1);
+  gap: 1px;
+  background: #E2E8F0;
+  padding: 1px;
 }
 
-.market-column {
-  border-right: 1px solid rgba(22, 119, 255, 0.1);
-  padding: 6px;
-  min-height: 60px;
-}
-
-.market-column:last-child {
-  border-right: none;
+/* Market Section */
+.market-section {
+  background: #fff;
+  display: flex;
+  flex-direction: column;
 }
 
 .market-title {
+  background: #E0F2FE;
+  color: #1E40AF;
   font-size: 11px;
   font-weight: 600;
-  color: #666;
   text-align: center;
-  padding: 2px 6px;
-  background: #f5f5f5;
-  border-radius: 3px;
-  margin-bottom: 4px;
+  padding: 6px 4px;
+  border-bottom: 1px solid #BFDBFE;
 }
 
-/* 独赢横向显示 */
-.moneyline-row-v2 {
-  display: flex;
-  gap: 3px;
-  align-items: center;
-  justify-content: space-around;
-}
-
-.moneyline-row-v2 .odds-value {
-  font-size: 11px;
-  font-weight: 600;
-  color: #333;
-  cursor: pointer;
-  padding: 2px 4px;
-  border: 1px solid rgba(22, 119, 255, 0.15);
-  border-radius: 3px;
-  background: #ffffff;
-  transition: all 0.2s ease;
-  text-decoration: underline;
+/* Market Odds Grid */
+.market-odds-grid {
+  display: grid;
+  gap: 1px;
+  background: #F1F5F9;
   flex: 1;
-  text-align: center;
 }
 
-.moneyline-row-v2 .odds-value:hover {
-  background: #1677ff;
-  color: white;
-  border-color: #1677ff;
-  text-decoration: none;
+/* Moneyline Grid: 3 cells in 1 row */
+.moneyline-grid {
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
-.moneyline-row-v2 .odds-value.empty {
-  color: #ccc;
-  cursor: default;
-  text-decoration: none;
-  border-color: #f0f0f0;
-  background: #fafafa;
+/* Handicap/OU Grid: 3 columns (label | home/over | away/under) */
+.handicap-grid {
+  grid-template-columns: auto 1fr 1fr;
 }
 
-.moneyline-row-v2 .odds-value.empty:hover {
-  background: #fafafa;
-  color: #ccc;
-  border-color: #f0f0f0;
-}
-
-/* 盘口线表格 */
-.lines-table-v2 {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.line-row-v2 {
-  display: flex;
-  gap: 3px;
-  align-items: center;
-}
-
-.line-label {
+.hdp-label-cell {
+  background: #F8FAFC;
+  color: #64748B;
   font-size: 10px;
   font-weight: 600;
-  color: #666;
-  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 4px 6px;
-  border-radius: 3px;
-  min-width: 45px;
-  text-align: center;
-  flex-shrink: 0;
+  border-right: 1px solid #E2E8F0;
 }
 
-.line-row-v2 .odds-value {
-  font-size: 11px;
-  font-weight: 600;
-  color: #333;
+.odds-cell {
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
   cursor: pointer;
-  padding: 4px 8px;
-  border: 1px solid rgba(22, 119, 255, 0.15);
+  transition: all 0.12s;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1E293B;
+  min-height: 32px;
+}
+
+.odds-cell:hover {
+  background: #DBEAFE;
+}
+
+.odds-cell .hdp-label {
+  font-size: 10px;
+  color: #64748B;
+  margin-bottom: 2px;
+}
+
+.odds-cell .odds-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1E293B;
+}
+
+
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
   border-radius: 4px;
-  background: #ffffff;
-  transition: all 0.2s ease;
-  text-decoration: underline;
-  flex: 1;
-  text-align: center;
 }
 
-.line-row-v2 .odds-value:hover {
-  background: #1677ff;
-  color: white;
-  border-color: #1677ff;
-  text-decoration: none;
-}
-
-.line-row-v2 .odds-value.empty {
-  color: #ccc;
-  cursor: default;
-  text-decoration: none;
-  border-color: #f0f0f0;
-  background: #fafafa;
-}
-
-.line-row-v2 .odds-value.empty:hover {
-  background: #fafafa;
-  color: #ccc;
-  border-color: #f0f0f0;
-}
-
-/* 无盘口提示 */
-.no-odds {
-  font-size: 11px;
-  color: #999;
-  text-align: center;
-  padding: 6px;
-}
-
-/* 移动端响应式 */
-@media (max-width: 768px) {
-  .match-body-v2 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .market-column:nth-child(3) {
-    border-right: none;
-  }
-
-  .market-column:nth-child(4),
-  .market-column:nth-child(5),
-  .market-column:nth-child(6) {
-    border-top: 1px solid rgba(22, 119, 255, 0.1);
-  }
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
 }

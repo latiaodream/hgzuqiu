@@ -7560,6 +7560,86 @@ export class CrownAutomationService {
     }
   }
 
+  // 仅解析 get_game_more 中的角球盘口（全场角球让球 / 大小）
+  private parseCornerMarketsFromXml(xml: string): {
+    cornerHandicapLines: any[];
+    cornerOverUnderLines: any[];
+  } {
+    try {
+      const { XMLParser } = require('fast-xml-parser');
+      const parser = new XMLParser({ ignoreAttributes: false });
+      const parsed = parser.parse(xml);
+
+      const games = parsed?.serverresponse?.game;
+      if (!games) {
+        return { cornerHandicapLines: [], cornerOverUnderLines: [] };
+      }
+
+      const gameArray = Array.isArray(games) ? games : [games];
+
+      const cornerHandicapLines: any[] = [];
+      const cornerOverUnderLines: any[] = [];
+
+      const pickString = (source: any, candidateKeys: string[]): string => {
+        if (!source) return '';
+        for (const key of candidateKeys) {
+          if (source[key] !== undefined && source[key] !== null && source[key] !== '') {
+            return String(source[key]).trim();
+          }
+          const attrKey = `@_${key}`;
+          if (source[attrKey] !== undefined && source[attrKey] !== null && source[attrKey] !== '') {
+            return String(source[attrKey]).trim();
+          }
+        }
+        return '';
+      };
+
+      for (const game of gameArray) {
+        const wtypeRaw = pickString(game, ['WTYPE', 'wtype', 'type']);
+        const rtypeRaw = pickString(game, ['RTYPE', 'rtype']);
+        const wtype = (wtypeRaw || rtypeRaw || '').toUpperCase();
+
+        const mode = pickString(game, ['@_mode', 'mode']);
+        const ptype = pickString(game, ['@_ptype', 'ptype']);
+        const teamH = pickString(game, ['TEAM_H', 'team_h']);
+        const teamC = pickString(game, ['TEAM_C', 'team_c']);
+
+        const isCorner = mode === 'CN' || /CN/.test(wtype) || ptype?.includes('角球') || teamH?.includes('角球') || teamC?.includes('角球');
+        const isCard = mode === 'RN' || ptype?.includes('罰牌') || teamH?.includes('罰牌') || teamC?.includes('罰牌');
+
+        // 跳过罚牌盘口
+        if (isCard) {
+          continue;
+        }
+
+        if (!isCorner) {
+          continue;
+        }
+
+        // 角球让球盘口
+        const cornerHandicapLine = pickString(game, ['RATIO_CNRH', 'RATIO_CNRC', 'ratio_cnrh', 'ratio_cnrc', 'ratio']);
+        const cornerHandicapHome = pickString(game, ['IOR_CNRH', 'ior_CNRH', 'ior_cnrh']);
+        const cornerHandicapAway = pickString(game, ['IOR_CNRC', 'ior_CNRC', 'ior_cnrc']);
+        if (cornerHandicapLine && cornerHandicapHome && cornerHandicapAway) {
+          cornerHandicapLines.push({ line: cornerHandicapLine, home: cornerHandicapHome, away: cornerHandicapAway });
+        }
+
+        // 角球大小盘口
+        const cornerOuLine = pickString(game, ['RATIO_CNOUO', 'RATIO_CNOUU', 'ratio_cnouo', 'ratio_cnouu', 'ratio_o', 'ratio_u']);
+        const cornerOuOver = pickString(game, ['IOR_CNOUH', 'ior_CNOUH', 'ior_cnouh']);
+        const cornerOuUnder = pickString(game, ['IOR_CNOUC', 'ior_CNOUC', 'ior_cnouc']);
+        if (cornerOuLine && cornerOuOver && cornerOuUnder) {
+          cornerOverUnderLines.push({ line: cornerOuLine, over: cornerOuOver, under: cornerOuUnder });
+        }
+      }
+
+      return { cornerHandicapLines, cornerOverUnderLines };
+    } catch (error) {
+      console.error('❌ 解析 get_game_more 角球盘口失败:', error);
+      return { cornerHandicapLines: [], cornerOverUnderLines: [] };
+    }
+  }
+
   private async loadAccountById(accountId: number): Promise<CrownAccount | null> {
     const result = await query('SELECT * FROM crown_accounts WHERE id = $1 LIMIT 1', [accountId]);
     if (result.rows.length === 0) {
@@ -7712,6 +7792,98 @@ export class CrownAutomationService {
     } catch (error) {
       console.error('❌ 调用 get_game_more 失败:', error);
       return { handicapLines: [], overUnderLines: [], halfHandicapLines: [], halfOverUnderLines: [] };
+    } finally {
+      await client.close();
+    }
+  }
+
+  // 提取 get_game_more XML 中的角球盘口（让球 / 大小）
+  async fetchCornerMarkets(params: {
+    gid: string;
+    lid?: string;
+    gtype?: string;
+    showtype?: string;
+    ltype?: string;
+    isRB?: string;
+    accountId?: number;
+  }): Promise<{ cornerHandicapLines: any[]; cornerOverUnderLines: any[] }> {
+    const showtype = (params.showtype || 'live').toLowerCase();
+    const gtype = params.gtype || 'ft';
+    const ltype = params.ltype || '3';
+    const isRB = params.isRB || (showtype === 'live' ? 'Y' : 'N');
+
+    const cacheKey = `crown:corner_markets:${params.gid}:${showtype}:${gtype}`;
+    const redis = getRedisClient();
+
+    if (redis.isAvailable()) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          const data = JSON.parse(cached);
+          return data;
+        }
+      } catch (error) {
+        console.error('❌ Redis 读取角球盘口缓存失败:', error);
+      }
+    }
+
+    let account: CrownAccount | null = null;
+    if (params.accountId) {
+      account = await this.loadAccountById(Number(params.accountId));
+    } else {
+      account = await this.pickAccountForApi();
+    }
+
+    if (!account) {
+      console.warn('⚠️ 无可用账号获取角球盘口');
+      return { cornerHandicapLines: [], cornerOverUnderLines: [] };
+    }
+
+    let prepared = await this.prepareApiClient(account.id);
+    if (!prepared.success || !prepared.client) {
+      const loginResult = await this.loginAccountWithApi(account);
+      if (!loginResult.success) {
+        console.error(`❌ 账号 ${account.username} API 登录失败（角球盘口）:`, loginResult.message);
+        return { cornerHandicapLines: [], cornerOverUnderLines: [] };
+      }
+      prepared = await this.prepareApiClient(account.id);
+      if (!prepared.success || !prepared.client) {
+        console.error(`❌ 无法获取账号 ${account.username} 的 API 客户端（角球盘口）:`, prepared.message);
+        return { cornerHandicapLines: [], cornerOverUnderLines: [] };
+      }
+    }
+
+    const client = prepared.client!;
+    try {
+      const req: any = {
+        gid: String(params.gid),
+        gtype,
+        showtype,
+        ltype,
+        isRB,
+      };
+      if (params.lid) req.lid = String(params.lid);
+      const xml = await client.getGameMore(req);
+
+      if (typeof xml !== 'string' || xml.trim() === '') {
+        return { cornerHandicapLines: [], cornerOverUnderLines: [] };
+      }
+
+      const result = this.parseCornerMarketsFromXml(xml);
+
+      if (redis.isAvailable()) {
+        try {
+          const ttl = showtype === 'live' ? 120 : 300;
+          await redis.setex(cacheKey, ttl, JSON.stringify(result));
+        } catch (error) {
+          console.error('❌ Redis 写入角球盘口缓存失败:', error);
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error('❌ 调用 get_game_more 获取角球盘口失败:', error);
+      return { cornerHandicapLines: [], cornerOverUnderLines: [] };
     } finally {
       await client.close();
     }

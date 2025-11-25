@@ -15,10 +15,11 @@ import MatchesPage from './pages/MatchesPage';
 import StaffPage from './pages/StaffPage';
 import AgentsPage from './pages/AgentsPage';
 import SettingsPage from './pages/SettingsPage';
-import AliasManagerPage from './pages/AliasManagerPage';
-import CrownMatchesPage from './pages/CrownMatchesPage';
-import ISportsMatchesPage from './pages/ISportsMatchesPage';
-import OddsApiMatchesPage from './pages/OddsApiMatchesPage';
+// 下线名称映射和赛事记录相关页面
+// import AliasManagerPage from './pages/AliasManagerPage';
+// import CrownMatchesPage from './pages/CrownMatchesPage';
+// import ISportsMatchesPage from './pages/ISportsMatchesPage';
+// import OddsApiMatchesPage from './pages/OddsApiMatchesPage';
 import './App.css';
 
 const App: React.FC = () => {
@@ -55,8 +56,8 @@ const App: React.FC = () => {
           <ProtectedRoute>
             <MainLayout />
           </ProtectedRoute>
-        }
-      >
+	        }
+	      >
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="agents" element={<AgentsPage />} />
@@ -66,10 +67,11 @@ const App: React.FC = () => {
         <Route path="groups" element={<GroupsPage />} />
         <Route path="betting" element={<BettingPage />} />
         <Route path="matches" element={<MatchesPage />} />
-        <Route path="crown-matches" element={<CrownMatchesPage />} />
-        <Route path="isports-matches" element={<ISportsMatchesPage />} />
-        <Route path="oddsapi-matches" element={<OddsApiMatchesPage />} />
-        <Route path="aliases" element={<AliasManagerPage />} />
+	        {/* 下线赛事记录和名称映射相关路由 */}
+	        {/* <Route path="crown-matches" element={<CrownMatchesPage />} /> */}
+	        {/* <Route path="isports-matches" element={<ISportsMatchesPage />} /> */}
+	        {/* <Route path="oddsapi-matches" element={<OddsApiMatchesPage />} /> */}
+	        {/* <Route path="aliases" element={<AliasManagerPage />} /> */}
         <Route path="coins" element={<CoinsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
