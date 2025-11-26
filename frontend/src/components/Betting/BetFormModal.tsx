@@ -96,7 +96,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   }, [accounts]);
 
   const selectionMeta = defaultSelection || undefined;
-  const matchKey = match ? (match.crown_gid || match.match_id || match.id) : null;
+  const matchKey = match ? (match.crown_gid || match.gid || match.match_id || match.id) : null;
   const marketSnapshot = useMemo(() => {
     if (!matchKey) return match;
     if (!getMatchSnapshot) return match;
@@ -310,7 +310,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     const payload = {
       account_id: accountId,
       match_id: match.id,
-      crown_match_id: match.crown_gid || match.match_id,
+      crown_match_id: match.crown_gid || match.gid || match.match_id,
       bet_type: betTypeValue,
       bet_option: betOptionValue,
       odds: oddsValue,
@@ -580,7 +580,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         interval_range: values.interval_range,
         quantity: values.quantity,
         min_odds: values.min_odds,
-        crown_match_id: match.crown_gid || match.match_id,
+        crown_match_id: match.crown_gid || match.gid || match.match_id,
         league_name: match.league_name,
         home_team: match.home_team,
         away_team: match.away_team,

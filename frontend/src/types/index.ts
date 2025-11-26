@@ -177,6 +177,7 @@ export interface AccountSelectionResponse {
 export interface Match {
   id: number;
   match_id: string;
+  gid?: string;  // WSS 推送数据的皇冠比赛 ID
   league_name: string;
   home_team: string;
   away_team: string;
