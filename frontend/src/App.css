@@ -326,6 +326,16 @@ p {
   padding: 6px 16px;
 }
 
+/* 盘口单元格 - 停盘提示 */
+.market-cell .odds-value-display.closed {
+  color: #DC2626;
+  font-weight: 600;
+  background: #FEE2E2;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
 /* Bet Modal */
 .bet-modal .ant-modal-body {
   background: transparent;

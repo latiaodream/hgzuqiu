@@ -362,7 +362,7 @@ const MatchesPage: React.FC = () => {
   };
 
   const MarketCell = ({ label, odds, onClick }: { label?: string, odds?: string, onClick?: () => void }) => {
-    if (!odds) return <div className="market-cell empty"><span className="odds-value-display empty">-</span></div>;
+    if (!odds) return <div className="market-cell empty"><span className="odds-value-display empty closed">停</span></div>;
     return (
       <div className="market-cell" onClick={onClick}>
         {label && <div className="handicap-label">{label}</div>}
