@@ -27,7 +27,7 @@ const PORT = process.env.PORT || 3001;
 // 中间件
 app.use(cors({
     origin: process.env.NODE_ENV === 'production'
-        ? ['https://yourdomain.com']
+        ? ['https://aibcbot.top', 'http://aibcbot.top']
         : [
             'http://localhost:3000',
             'http://localhost:5173',
