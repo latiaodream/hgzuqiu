@@ -6520,17 +6520,26 @@ export class CrownAutomationService {
     try {
       const lookup = await this.lookupLatestOdds(apiClient, betRequest);
       if (!lookup.success) {
-        // 处理 doubleLogin 错误：清除会话
-        if (lookup.reasonCode === 'DOUBLE_LOGIN') {
-          console.log('⚠️ 清除账号会话 (accountId=' + accountId + ')');
+        // 处理会话失效错误：清除会话并更新数据库状态
+        const sessionExpiredCodes = ['DOUBLE_LOGIN', 'SESSION_EXPIRED', 'MARKET_CLOSED'];
+        if (sessionExpiredCodes.includes(lookup.reasonCode || '')) {
+          console.log('⚠️ 清除账号会话 (accountId=' + accountId + ', reason=' + lookup.reasonCode + ')');
           this.apiLoginSessions.delete(accountId);
           this.apiUids.delete(accountId);
+          // 对于会话失效的错误，更新数据库中的在线状态
+          if (lookup.reasonCode === 'DOUBLE_LOGIN' || lookup.reasonCode === 'SESSION_EXPIRED') {
+            await query(
+              `UPDATE crown_accounts SET is_online = false, api_uid = NULL, api_login_time = NULL WHERE id = $1`,
+              [accountId]
+            );
+            console.log('📝 已更新数据库: 账号 ' + accountId + ' 设为离线');
+          }
         }
 
         return {
           success: false,
           message: lookup.message,
-          closed: lookup.reasonCode === '555',
+          closed: lookup.reasonCode === '555' || lookup.reasonCode === 'MARKET_CLOSED',
           reasonCode: lookup.reasonCode,
           crownMatchId: lookup.crownMatchId,
         };
