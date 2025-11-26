@@ -6426,6 +6426,10 @@ export class CrownAutomationService {
     const maxRetries = 3;
     const retryDelay = 2000;
 
+    // 提取盘口线参数
+    const spreadValue = betRequest.market_line ?? betRequest.marketLine ?? '';
+    console.log('📊 盘口线:', spreadValue || '未指定');
+
     for (const variant of variants) {
       console.log('🎯 尝试获取赔率组合:', variant);
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -6435,6 +6439,7 @@ export class CrownAutomationService {
           gtype: 'FT',
           wtype: variant.wtype,
           chose_team: variant.chose_team,
+          spread: spreadValue || undefined,
         });
 
         if (oddsResult.success) {
