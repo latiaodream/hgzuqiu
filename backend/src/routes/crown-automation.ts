@@ -1993,23 +1993,41 @@ router.post('/odds/preview', async (req: any, res) => {
         let spreadMismatch = false;
 
         if (requestedLine !== undefined && returnedSpread !== undefined) {
-            // 标准化盘口线格式（去除空格、统一格式）
-            const normalizeSpread = (value: any): string => {
-                if (value === null || value === undefined) return '';
+            // 标准化盘口线格式并转换为数值进行比较
+            const parseSpreadToNumber = (value: any): number | null => {
+                if (value === null || value === undefined) return null;
                 const str = String(value).trim();
+                
+                // 处理复合盘口格式如 "0 / 0.5" -> 计算平均值 0.25
+                if (str.includes('/')) {
+                    const parts = str.split('/').map(s => parseFloat(s.trim()));
+                    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                        return (parts[0] + parts[1]) / 2;
+                    }
+                }
+                
                 // 处理格式如 "0+4450" -> "0"
                 const match = str.match(/^([+-]?[\d.]+)/);
-                return match ? match[1] : str;
+                if (match) {
+                    const num = parseFloat(match[1]);
+                    return isNaN(num) ? null : num;
+                }
+                return null;
             };
 
-            const normalizedReturned = normalizeSpread(returnedSpread);
-            const normalizedRequested = normalizeSpread(requestedLine);
+            const returnedNum = parseSpreadToNumber(returnedSpread);
+            const requestedNum = parseSpreadToNumber(requestedLine);
 
-            if (normalizedReturned && normalizedRequested && normalizedReturned !== normalizedRequested) {
+            // 只有当两个值都能解析为数字且差值超过 0.01 时才认为不匹配
+            const spreadMatches = returnedNum !== null && requestedNum !== null 
+                ? Math.abs(returnedNum - requestedNum) < 0.01
+                : String(returnedSpread).trim() === String(requestedLine).trim();
+
+            if (!spreadMatches) {
                 spreadMismatch = true;
                 console.log('⚠️ 盘口线不匹配:', {
-                    requested: normalizedRequested,
-                    returned: normalizedReturned,
+                    requested: requestedNum,
+                    returned: returnedNum,
                     raw_spread: returnedSpread,
                 });
 
