@@ -877,6 +877,8 @@ p {
 
 .bet-v2-odds .odds-value.closed {
   color: #DC2626;
+  text-decoration: line-through;
+  opacity: 0.7;
 }
 
 .bet-v2-odds .odds-actions {
@@ -899,6 +901,17 @@ p {
   background: #FEF3C7;
   padding: 4px 8px;
   border-radius: 4px;
+}
+
+.bet-v2-odds .odds-closed {
+  color: #DC2626;
+  font-size: 12px;
+  margin-top: 4px;
+  background: #FEE2E2;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-weight: 500;
+  border: 1px solid #FECACA;
 }
 
 .bet-v2-odds .odds-value.below-min {

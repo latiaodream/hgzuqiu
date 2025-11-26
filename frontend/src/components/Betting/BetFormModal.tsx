@@ -773,8 +773,12 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
                 <span style={{ fontSize: 11 }}>自动</span>
               </Checkbox>
             </div>
-            {previewError && <div className="odds-error">{previewError}</div>}
-            {minOdds && oddsPreview?.odds && oddsPreview.odds < minOdds && (
+            {/* 官方提示信息（封盘、错误等） */}
+            {oddsPreview?.closed && (
+              <div className="odds-closed">🚫 {oddsPreview.message || '盘口已封盘'}</div>
+            )}
+            {previewError && !oddsPreview?.closed && <div className="odds-error">{previewError}</div>}
+            {minOdds && oddsPreview?.odds && oddsPreview.odds < minOdds && !oddsPreview?.closed && (
               <div className="odds-warning">当前赔率 {oddsPreview.odds} 低于最低赔率 {minOdds}</div>
             )}
           </div>
