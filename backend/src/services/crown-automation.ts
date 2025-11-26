@@ -6439,7 +6439,6 @@ export class CrownAutomationService {
           gtype: 'FT',
           wtype: variant.wtype,
           chose_team: variant.chose_team,
-          spread: spreadValue || undefined,
         });
 
         if (oddsResult.success) {
