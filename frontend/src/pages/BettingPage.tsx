@@ -135,12 +135,12 @@ const BettingPage: React.FC = () => {
     loadBets();
   }, [selectedAgent, selectedDate, selectedPlatform]);
 
-  // 自动刷新：每 3 秒刷新一次待确认订单
+  // 自动刷新：每 30 秒刷新一次待确认订单
   useEffect(() => {
     const timer = setInterval(() => {
       // 静默刷新（不显示 loading）
       loadBets(true);
-    }, 3000); // 每 3 秒刷新一次
+    }, 30000); // 每 30 秒刷新一次
 
     return () => clearInterval(timer);
   }, [selectedAgent, selectedDate, selectedPlatform]);
