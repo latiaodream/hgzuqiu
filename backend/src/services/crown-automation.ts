@@ -6508,12 +6508,46 @@ export class CrownAutomationService {
     crownMatchId?: string;
     reasonCode?: string;
   }> {
-    const prepared = await this.prepareApiClient(accountId);
+    let prepared = await this.prepareApiClient(accountId);
+    
+    // 如果 prepareApiClient 失败，尝试自动重新登录
     if (!prepared.success || !prepared.client) {
-      return {
-        success: false,
-        message: prepared.message,
-      };
+      console.log('⚠️ API 客户端准备失败:', prepared.message, '，尝试自动重新登录...');
+      
+      // 检查账号是否启用
+      const accountCheck = await query(
+        'SELECT * FROM crown_accounts WHERE id = $1 AND is_enabled = true',
+        [accountId]
+      );
+      
+      if (accountCheck.rows.length > 0) {
+        console.log('🔄 账号已启用，尝试自动登录...');
+        try {
+          const loginResult = await this.loginAccount(accountCheck.rows[0] as CrownAccount);
+          if (loginResult.success) {
+            console.log('✅ 自动登录成功');
+            // 重新准备 API 客户端
+            prepared = await this.prepareApiClient(accountId);
+          } else {
+            console.log('❌ 自动登录失败:', loginResult.message);
+            // 更新数据库状态
+            await query(
+              `UPDATE crown_accounts SET is_online = false WHERE id = $1`,
+              [accountId]
+            );
+          }
+        } catch (loginError: any) {
+          console.error('❌ 自动登录异常:', loginError.message);
+        }
+      }
+      
+      // 再次检查
+      if (!prepared.success || !prepared.client) {
+        return {
+          success: false,
+          message: prepared.message,
+        };
+      }
     }
 
     let apiClient = prepared.client;
