@@ -337,29 +337,14 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       if (response.success && response.data) {
         const previewData = response.data;
 
-        // 检查盘口线是否匹配
+        // 检查盘口线是否匹配（仅记录警告，不阻止下注）
         if (previewData.spread_mismatch) {
           console.warn('⚠️ Crown API 返回的盘口线与用户选择不匹配:', {
             requested: previewData.requested_line,
             returned: previewData.returned_spread,
           });
-          // 使用前端已有的赔率
-          const frontendOdds = deriveOddsFromMarkets();
-          if (frontendOdds?.odds) {
-            setOddsPreview({
-              odds: frontendOdds.odds,
-              closed: false,
-              message: '使用前端赔率',
-            });
-            setPreviewError(null);
-            // 更新表单中的赔率
-            form.setFieldValue('odds', frontendOdds.odds);
-          } else {
-            setOddsPreview(null);
-            setPreviewError('盘口线不匹配，无法获取赔率');
-          }
-          // 返回成功，但标记为使用前端赔率
-          return { success: true, data: { ...previewData, odds: frontendOdds?.odds } };
+          // 即使盘口线不完全匹配，仍然使用返回的赔率继续下注
+          // 因为皇冠的盘口格式可能与前端显示不同（如 "0 / 0.5" vs "0.25"）
         }
 
         setOddsPreview({
