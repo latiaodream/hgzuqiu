@@ -935,7 +935,7 @@ export class CrownApiClient {
       p: `${params.gtype}_order_view`,
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-tw',  // 使用繁体中文版本
+	      langx: 'zh-cn',  // 使用简体中文版本（与抓包示例一致）
       odd_f_type: 'H',
       gid: params.gid,
       gtype: params.gtype,
@@ -1217,7 +1217,7 @@ export class CrownApiClient {
       p: `${params.gtype}_bet`,  // 操作类型：FT_bet, BK_bet 等
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-tw',  // 使用繁体中文版本
+	      langx: 'zh-cn',  // 使用简体中文版本（与抓包示例一致）
       odd_f_type: 'H',           // 赔率格式类型（香港盘）
       golds: params.gold,        // 注意：是 golds 不是 gold
       gid: params.gid,
