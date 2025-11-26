@@ -40,7 +40,7 @@ const SettingsPage: React.FC = () => {
     try {
       setCoinsLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/coins/balance', {
+      const response = await fetch('/api/coins/balance', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

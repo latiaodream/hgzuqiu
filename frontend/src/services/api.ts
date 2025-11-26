@@ -29,11 +29,8 @@ const resolveBaseURL = (): string => {
   }
 
   // 本地开发时默认走同源代理，避免直接命中前端 dev server 返回 404
-  if (import.meta.env.DEV) {
-    return '/api';
-  }
-
-  return 'http://localhost:3001/api';
+  // 生产环境也使用相对路径 /api，由 nginx 反向代理
+  return '/api';
 };
 
 const baseURL = resolveBaseURL();

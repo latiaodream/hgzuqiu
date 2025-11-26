@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
   const fetchAutomationStatus = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:3001/api/crown-automation/status', {
+      const response = await axios.get('/api/crown-automation/status', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -61,7 +61,7 @@ const Dashboard: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `http://localhost:3001/api/crown-automation/login/${accountId}`,
+        `/api/crown-automation/login/${accountId}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -84,7 +84,7 @@ const Dashboard: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `http://localhost:3001/api/crown-automation/logout/${accountId}`,
+        `/api/crown-automation/logout/${accountId}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -113,7 +113,7 @@ const Dashboard: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        'http://localhost:3001/api/crown-automation/batch-login',
+        '/api/crown-automation/batch-login',
         { accountIds },
         { headers: { Authorization: `Bearer ${token}` } }
       );
