@@ -260,6 +260,13 @@ const normalizeMatchForFrontend = (match: any) => {
     if (!match) return match;
     const normalized = { ...match };
 
+    // 皇冠比赛 ID：优先 crown_gid，其次 gid、ecid
+    const crownGid = pickValue(match.crown_gid, match.gid, match.ecid);
+    if (crownGid !== undefined) {
+        normalized.crown_gid = String(crownGid);
+        normalized.gid = String(crownGid);
+    }
+
     const home = pickValue(match.home, match.team_h, match.teamH, match.homeName, match.home_team);
     if (home !== undefined) normalized.home = home;
 
