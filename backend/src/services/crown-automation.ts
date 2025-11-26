@@ -6516,26 +6516,54 @@ export class CrownAutomationService {
       };
     }
 
-    const apiClient = prepared.client;
+    let apiClient = prepared.client;
     try {
-      const lookup = await this.lookupLatestOdds(apiClient, betRequest);
-      if (!lookup.success) {
-        // 处理会话失效错误：清除会话并更新数据库状态
-        const sessionExpiredCodes = ['DOUBLE_LOGIN', 'SESSION_EXPIRED', 'MARKET_CLOSED'];
-        if (sessionExpiredCodes.includes(lookup.reasonCode || '')) {
-          console.log('⚠️ 清除账号会话 (accountId=' + accountId + ', reason=' + lookup.reasonCode + ')');
-          this.apiLoginSessions.delete(accountId);
-          this.apiUids.delete(accountId);
-          // 对于会话失效的错误，更新数据库中的在线状态
-          if (lookup.reasonCode === 'DOUBLE_LOGIN' || lookup.reasonCode === 'SESSION_EXPIRED') {
-            await query(
-              `UPDATE crown_accounts SET is_online = false, api_uid = NULL, api_login_time = NULL WHERE id = $1`,
-              [accountId]
-            );
-            console.log('📝 已更新数据库: 账号 ' + accountId + ' 设为离线');
+      let lookup = await this.lookupLatestOdds(apiClient, betRequest);
+      
+      // 处理会话失效错误：尝试自动重新登录
+      const sessionExpiredCodes = ['DOUBLE_LOGIN', 'SESSION_EXPIRED'];
+      if (!lookup.success && sessionExpiredCodes.includes(lookup.reasonCode || '')) {
+        console.log('⚠️ 会话已失效 (accountId=' + accountId + ', reason=' + lookup.reasonCode + ')，尝试自动重新登录...');
+        this.apiLoginSessions.delete(accountId);
+        this.apiUids.delete(accountId);
+        await apiClient.close();
+        
+        // 检查账号是否启用，如果启用则尝试自动重新登录
+        const accountCheck = await query(
+          'SELECT is_enabled, username, password FROM crown_accounts WHERE id = $1',
+          [accountId]
+        );
+        
+        if (accountCheck.rows.length > 0 && accountCheck.rows[0].is_enabled) {
+          console.log('🔄 账号已启用，尝试自动重新登录...');
+          try {
+            const loginResult = await this.loginAccount(accountId);
+            if (loginResult.success) {
+              console.log('✅ 自动重新登录成功，重新获取赔率...');
+              // 重新准备 API 客户端
+              const newPrepared = await this.prepareApiClient(accountId);
+              if (newPrepared.success && newPrepared.client) {
+                apiClient = newPrepared.client;
+                // 重新获取赔率
+                lookup = await this.lookupLatestOdds(apiClient, betRequest);
+              }
+            } else {
+              console.log('❌ 自动重新登录失败:', loginResult.message);
+            }
+          } catch (reloginError: any) {
+            console.error('❌ 自动重新登录异常:', reloginError.message);
           }
+        } else {
+          // 账号未启用，更新数据库状态
+          await query(
+            `UPDATE crown_accounts SET is_online = false, api_uid = NULL, api_login_time = NULL WHERE id = $1`,
+            [accountId]
+          );
+          console.log('📝 账号未启用或不存在，已设为离线');
         }
-
+      }
+      
+      if (!lookup.success) {
         return {
           success: false,
           message: lookup.message,
