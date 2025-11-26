@@ -634,9 +634,29 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       }
     } catch (error) {
       console.error('Failed to create bet:', error);
-      const axiosError = error as AxiosError<{ error?: string; message?: string }>;
-      const serverMessage = axiosError.response?.data?.error || axiosError.response?.data?.message;
-      message.error(serverMessage || axiosError.message || '创建下注失败');
+      const axiosError = error as AxiosError<{ error?: string; message?: string; data?: any }>;
+      const responseData = axiosError.response?.data as any;
+      
+      // 检查是否有详细的失败信息
+      if (responseData?.data?.failed && responseData.data.failed.length > 0) {
+        const errorMessages = responseData.data.failed.map((f: any) => {
+          const accountName = accounts.find(a => a.id === f.accountId)?.username || `账号${f.accountId}`;
+          return `${accountName}: ${f.error}`;
+        }).join('\n');
+        
+        message.error({
+          content: (
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: 8 }}>{responseData.message || '下注失败'}</div>
+              <div style={{ whiteSpace: 'pre-line', fontSize: '13px' }}>{errorMessages}</div>
+            </div>
+          ),
+          duration: 8,
+        });
+      } else {
+        const serverMessage = responseData?.error || responseData?.message || axiosError.message;
+        message.error(serverMessage || '创建下注失败');
+      }
     } finally {
       setLoading(false);
     }
