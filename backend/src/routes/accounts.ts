@@ -45,6 +45,8 @@ router.get('/auto-select', async (req: any, res) => {
 
         const selection = await selectAccounts({
             userId,
+            userRole: req.user.role,
+            agentId: req.user.agent_id,
             matchId,
             limit,
         });

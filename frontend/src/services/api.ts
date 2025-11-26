@@ -454,7 +454,13 @@ export const crownApi = {
 
   // 获取账号今日下注
   getTodayWagers: (accountId: number, params?: { gtype?: string; chk_cw?: string }): Promise<ApiResponse> =>
-    apiClient.get(`/crown-automation/today-wagers/${accountId}`, { params, timeout: 30000 }).then(res => res.data),
+    apiClient.get(`/crown-automation/wagers/${accountId}`, { params, timeout: 30000 }).then(res => res.data),
+  // 获取所有在线账号的今日下注
+  getAllWagers: (): Promise<ApiResponse<{ wagers: any[]; errors: any[]; total_accounts: number; total_wagers: number }>> =>
+    apiClient.get('/crown-automation/wagers-all', { timeout: 60000 }).then(res => res.data),
+  // 获取本地存储的注单历史
+  getLocalWagers: (params?: { date?: string; account_id?: number; limit?: number }): Promise<ApiResponse<{ wagers: any[]; total: number }>> =>
+    apiClient.get('/crown-automation/wagers-local', { params, timeout: 30000 }).then(res => res.data),
 };
 
 export const aliasApi = {

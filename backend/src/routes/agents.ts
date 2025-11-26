@@ -15,7 +15,7 @@ router.use(authenticateToken);
  */
 router.get('/', requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
-        // 获取代理列表，并计算每个代理的信用额度（下属员工添加的皇冠账号余额总和）
+        // 获取代理列表，并计算每个代理的皇冠额度（代理下所有皇冠账号的 credit 总和）
         const result = await query(
             `SELECT
                 u.id,
@@ -26,10 +26,9 @@ router.get('/', requireAdmin, async (req: AuthRequest, res: Response) => {
                 u.agent_id,
                 u.created_at,
                 u.updated_at,
-                COALESCE(SUM(ca.balance), 0) as credit_limit
+                COALESCE(SUM(ca.credit), 0) as credit_limit
             FROM users u
-            LEFT JOIN users staff ON staff.agent_id = u.id
-            LEFT JOIN crown_accounts ca ON ca.user_id = staff.id
+            LEFT JOIN crown_accounts ca ON ca.agent_id = u.id
             WHERE u.role = $1
             GROUP BY u.id, u.username, u.email, u.role, u.parent_id, u.agent_id, u.created_at, u.updated_at
             ORDER BY u.created_at DESC`,

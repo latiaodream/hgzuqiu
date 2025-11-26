@@ -710,6 +710,25 @@ async function autoFetchAndSaveLimits(accountId: number, account: any): Promise<
         );
 
         console.log(`✅ 自动获取限额成功:`, limitsData);
+
+        // 同时获取信用额度
+        try {
+            console.log(`💰 开始获取账号 ${accountId} 的信用额度...`);
+            const financial = await getCrownAutomation().getAccountFinancialSummary(accountId);
+            if (financial.credit !== null || financial.balance !== null) {
+                await query(
+                    `UPDATE crown_accounts
+                     SET balance = COALESCE($1, balance),
+                         credit = COALESCE($2, credit),
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $3`,
+                    [financial.balance, financial.credit, accountId]
+                );
+                console.log(`💰 信用额度获取成功: balance=${financial.balance}, credit=${financial.credit}`);
+            }
+        } catch (creditError) {
+            console.warn('⚠️ 获取信用额度失败:', creditError);
+        }
     } catch (error) {
         console.error('❌ 自动获取限额失败:', error);
         // 不影响登录结果，只记录错误
@@ -2782,6 +2801,290 @@ router.post('/fetch-limits/:accountId', async (req: any, res) => {
         res.status(500).json({
             success: false,
             error: '获取限额信息失败'
+        });
+    }
+});
+
+// 获取账号今日注单（实时记录）
+router.get('/wagers/:accountId', async (req: any, res) => {
+    try {
+        const accountId = parseInt(req.params.accountId);
+
+        // 验证账号是否属于当前用户
+        const access = buildAccountAccess(req.user, { includeDisabled: true });
+        const accountResult = await query(
+            `SELECT ca.* FROM crown_accounts ca WHERE ca.id = $1${access.clause}`,
+            [accountId, ...access.params]
+        );
+
+        if (accountResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: '账号不存在'
+            });
+        }
+
+        const account = accountResult.rows[0];
+
+        // 需在线才可获取注单
+        if (!getCrownAutomation().isAccountOnline(accountId)) {
+            return res.status(400).json({
+                success: false,
+                error: '账号未登录，无法获取注单'
+            });
+        }
+
+        const uid = getCrownAutomation().getApiUid(accountId);
+        if (!uid) {
+            return res.status(400).json({
+                success: false,
+                error: '无法获取账号 UID'
+            });
+        }
+
+        // 创建 API 客户端
+        const { CrownApiClient } = await import('../services/crown-api-client');
+        const apiClient = new CrownApiClient({
+            baseUrl: process.env.CROWN_BASE_URL || 'https://hga038.com',
+            deviceType: account.device_type || 'iPhone 14',
+            userAgent: account.user_agent,
+            proxy: account.proxy_enabled ? {
+                enabled: true,
+                type: account.proxy_type || 'http',
+                host: account.proxy_host,
+                port: account.proxy_port,
+                username: account.proxy_username,
+                password: account.proxy_password,
+            } : { enabled: false },
+        });
+
+        if (account.api_cookies) {
+            apiClient.setCookies(account.api_cookies);
+        }
+        apiClient.setUid(uid);
+
+        // 获取今日注单
+        const wagersData = await apiClient.getTodayWagers({ gtype: 'ALL' });
+
+        res.json({
+            success: true,
+            message: '获取注单成功',
+            data: wagersData
+        } as ApiResponse);
+
+    } catch (error) {
+        console.error('获取今日注单错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取注单失败'
+        });
+    }
+});
+
+// 获取所有在线账号的今日注单（汇总）
+router.get('/wagers-all', async (req: any, res) => {
+    console.log('📋 收到 wagers-all 请求');
+    try {
+        const user = req.user;
+        console.log('📋 用户:', user?.username, '角色:', user?.role);
+        let accountsSql = `SELECT ca.* FROM crown_accounts ca WHERE ca.is_online = true AND ca.is_enabled = true`;
+        const accountsParams: any[] = [];
+        
+        if (user.role === 'agent') {
+            accountsSql += ` AND (ca.user_id = $1 OR ca.user_id IN (SELECT id FROM users WHERE agent_id = $1))`;
+            accountsParams.push(user.id);
+        } else if (user.role === 'staff') {
+            accountsSql += ` AND ca.agent_id = $1`;
+            accountsParams.push(user.agent_id);
+        }
+        // admin 不需要额外条件
+        
+        const accountsResult = await query(accountsSql, accountsParams);
+
+        const allWagers: any[] = [];
+        const errors: any[] = [];
+
+        for (const account of accountsResult.rows) {
+            try {
+                const uid = getCrownAutomation().getApiUid(account.id);
+                if (!uid) continue;
+
+                const { CrownApiClient } = await import('../services/crown-api-client');
+                const apiClient = new CrownApiClient({
+                    baseUrl: process.env.CROWN_BASE_URL || 'https://hga038.com',
+                    deviceType: account.device_type || 'iPhone 14',
+                    userAgent: account.user_agent,
+                    proxy: account.proxy_enabled ? {
+                        enabled: true,
+                        type: account.proxy_type || 'http',
+                        host: account.proxy_host,
+                        port: account.proxy_port,
+                        username: account.proxy_username,
+                        password: account.proxy_password,
+                    } : { enabled: false },
+                });
+
+                if (account.api_cookies) {
+                    apiClient.setCookies(account.api_cookies);
+                }
+                apiClient.setUid(uid);
+
+                const wagersData = await apiClient.getTodayWagers({ gtype: 'ALL' });
+                console.log(`📋 账号 ${account.username} 注单完整响应:`, JSON.stringify(wagersData, null, 2).substring(0, 3000));
+                
+                // 添加账号信息到每条注单 - 尝试多种可能的数据结构
+                let wagersList: any[] = [];
+                if (Array.isArray(wagersData)) {
+                    wagersList = wagersData;
+                } else if (wagersData && Array.isArray(wagersData.wagers)) {
+                    wagersList = wagersData.wagers;
+                } else if (wagersData && Array.isArray(wagersData.data)) {
+                    wagersList = wagersData.data;
+                } else if (wagersData && Array.isArray(wagersData.list)) {
+                    wagersList = wagersData.list;
+                } else if (wagersData && typeof wagersData === 'object') {
+                    // 尝试找到数组类型的属性
+                    for (const key of Object.keys(wagersData)) {
+                        if (Array.isArray(wagersData[key]) && wagersData[key].length > 0) {
+                            wagersList = wagersData[key];
+                            console.log(`📋 找到注单数组在属性: ${key}`);
+                            break;
+                        }
+                    }
+                }
+                
+                for (const wager of wagersList) {
+                    const wagerRecord = {
+                        ...wager,
+                        account_id: account.id,
+                        account_username: account.username,
+                    };
+                    allWagers.push(wagerRecord);
+                    
+                    // 保存到本地数据库 - 使用皇冠API返回的字段名
+                    const ticketId = wager.w_id || wager.ticket_id;
+                    if (ticketId) {
+                        try {
+                            await query(`
+                                INSERT INTO crown_wagers (
+                                    account_id, ticket_id, league, team_h, team_c, score,
+                                    bet_type, bet_team, spread, odds, gold, win_gold,
+                                    status, result, wager_time, raw_data
+                                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                                ON CONFLICT (ticket_id) DO UPDATE SET
+                                    status = EXCLUDED.status,
+                                    result = EXCLUDED.result,
+                                    updated_at = CURRENT_TIMESTAMP
+                            `, [
+                                account.id,
+                                ticketId,
+                                wager.league,
+                                wager.team_h_show || wager.team_h,
+                                wager.team_c_show || wager.team_c,
+                                wager.score,
+                                wager.wtype || wager.bet_type,
+                                wager.result || wager.bet_team,
+                                wager.concede || wager.spread,
+                                wager.ioratio || wager.odds,
+                                parseFloat(wager.gold || '0'),
+                                parseFloat(wager.win_gold || '0'),
+                                wager.ball_act_ret || wager.status || '待确认',
+                                wager.fore_result,
+                                wager.adddate || new Date(),
+                                JSON.stringify(wager)
+                            ]);
+                        } catch (dbErr: any) {
+                            console.warn(`保存注单 ${ticketId} 失败:`, dbErr.message);
+                        }
+                    }
+                }
+            } catch (err: any) {
+                errors.push({
+                    account_id: account.id,
+                    account_username: account.username,
+                    error: err.message
+                });
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `获取 ${accountsResult.rows.length} 个在线账号的注单`,
+            data: {
+                wagers: allWagers,
+                errors,
+                total_accounts: accountsResult.rows.length,
+                total_wagers: allWagers.length
+            }
+        } as ApiResponse);
+
+    } catch (error) {
+        console.error('获取所有注单错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取注单失败'
+        });
+    }
+});
+
+// 获取本地存储的注单历史
+router.get('/wagers-local', async (req: any, res) => {
+    try {
+        const user = req.user;
+        const { date, account_id, limit = 100 } = req.query;
+        
+        let sql = `
+            SELECT cw.*, ca.username as account_username 
+            FROM crown_wagers cw
+            JOIN crown_accounts ca ON cw.account_id = ca.id
+            WHERE 1=1
+        `;
+        const params: any[] = [];
+        let paramIndex = 1;
+        
+        // 权限过滤
+        if (user.role === 'agent') {
+            sql += ` AND (ca.user_id = $${paramIndex} OR ca.user_id IN (SELECT id FROM users WHERE agent_id = $${paramIndex}))`;
+            params.push(user.id);
+            paramIndex++;
+        } else if (user.role === 'staff') {
+            sql += ` AND ca.agent_id = $${paramIndex}`;
+            params.push(user.agent_id);
+            paramIndex++;
+        }
+        
+        // 日期过滤
+        if (date) {
+            sql += ` AND DATE(cw.wager_time) = $${paramIndex}`;
+            params.push(date);
+            paramIndex++;
+        }
+        
+        // 账号过滤
+        if (account_id) {
+            sql += ` AND cw.account_id = $${paramIndex}`;
+            params.push(parseInt(account_id));
+            paramIndex++;
+        }
+        
+        sql += ` ORDER BY cw.wager_time DESC LIMIT $${paramIndex}`;
+        params.push(parseInt(limit as string));
+        
+        const result = await query(sql, params);
+        
+        res.json({
+            success: true,
+            data: {
+                wagers: result.rows,
+                total: result.rows.length
+            }
+        } as ApiResponse);
+        
+    } catch (error) {
+        console.error('获取本地注单错误:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取注单失败'
         });
     }
 });

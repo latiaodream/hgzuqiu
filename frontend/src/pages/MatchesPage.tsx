@@ -370,22 +370,33 @@ const MatchesPage: React.FC = () => {
   };
 
   return (
-    <div className="matches-page" style={{ padding: isMobile ? 0 : undefined }}>
-      {!isMobile && <Title level={2}>赛事管理</Title>}
-      <Card className="matches-filter-card glass-panel" bodyStyle={{ padding: isMobile ? 8 : 14 }}>
-        <div className="filter-grid">
-          <div className="filter-left">
-            <div className="filter-group">
-              <Select size="small" value={gtype} onChange={(v) => setGtype(v as any)} style={{ width: 80 }} options={[{ label: '足球', value: 'ft' }, { label: '篮球', value: 'bk' }]} />
-              <Select size="small" value={showtype} onChange={(v) => setShowtype(v as any)} style={{ width: 80 }} options={[{ label: '滚球', value: 'live' }, { label: '今日', value: 'today' }, { label: '早盘', value: 'early' }]} />
-            </div>
+    <div className="matches-page" style={{ padding: isMobile ? 0 : '4px 8px' }}>
+      <Card className="matches-filter-card glass-panel" bodyStyle={{ padding: isMobile ? 12 : 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <Select
+              value={gtype}
+              onChange={(v) => setGtype(v as any)}
+              style={{ width: 110 }}
+              size="large"
+              options={[{ label: '足球', value: 'ft' }, { label: '篮球', value: 'bk' }]}
+            />
+            <Select
+              value={showtype}
+              onChange={(v) => setShowtype(v as any)}
+              style={{ width: 110 }}
+              size="large"
+              options={[{ label: '滚球', value: 'live' }, { label: '今日', value: 'today' }, { label: '早盘', value: 'early' }]}
+            />
             <div className="matches-meta">当前赛事：{filtered.length} 场</div>
           </div>
-          <div className="filter-group filter-actions">
-            <Input size="small" allowClear placeholder="搜索联赛/球队" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 200 }} />
-            <Button size="small" icon={<ReloadOutlined />} onClick={() => loadMatches()}>刷新</Button>
-            <div className="matches-meta">最近刷新：{renderLastUpdated()}</div>
-          </div>
+          <Input
+            allowClear
+            placeholder="搜索联赛/球队"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: isMobile ? '100%' : 240, marginTop: isMobile ? 8 : 0 }}
+          />
         </div>
       </Card>
 
@@ -399,8 +410,10 @@ const MatchesPage: React.FC = () => {
                 const leagueLabel = manualName(m.league ?? m.league_name, '未识别联赛');
                 const homeLabel = manualName(m.home ?? m.home_team, '-');
                 const awayLabel = manualName(m.away ?? m.away_team, '-');
-                const period = m.period || m.match_period || '';
-                const clock = m.clock || '';
+                // 优先使用 retimeset（如 "2H^93:26"），否则用 period/clock
+                const retimeset = m.retimeset || m.RETIMESET || '';
+                const period = retimeset || m.period || m.match_period || '';
+                const clock = retimeset || m.clock || '';
                 const scoreLabel = m.score || m.current_score || '';
 	                const markets = m.markets || {};
 
@@ -470,20 +483,25 @@ const MatchesPage: React.FC = () => {
                 const fullMl = markets.moneyline || markets.full?.moneyline || {};
                 const halfMl = markets.half?.moneyline || {};
 
-                let timeLabel = m.time || '';
-                if (!timeLabel && m.match_time) {
-                  try {
-                    const date = new Date(m.match_time);
-                    const chinaTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-                    const month = String(chinaTime.getUTCMonth() + 1).padStart(2, '0');
-                    const day = String(chinaTime.getUTCDate()).padStart(2, '0');
-                    const hours = String(chinaTime.getUTCHours()).padStart(2, '0');
-                    const minutes = String(chinaTime.getUTCMinutes()).padStart(2, '0');
-                    timeLabel = `${month}-${day} ${hours}:${minutes}`;
-                  } catch { timeLabel = m.match_time; }
-                }
                 const liveClock = buildLiveClock(period, clock);
-                const displayTime = liveClock || timeLabel;
+                let displayTime = liveClock;
+                if (!displayTime) {
+                  // 非滚球：只显示时间 HH:mm
+                  const rawTime = m.time || '';
+                  if (rawTime) {
+                    // 如果已有时间格式如 "07:00" 或 "11-26 07:00"，提取时间部分
+                    const timeMatch = rawTime.match(/(\d{1,2}:\d{2})/);
+                    displayTime = timeMatch ? timeMatch[1] : rawTime;
+                  } else if (m.match_time) {
+                    try {
+                      const date = new Date(m.match_time);
+                      const chinaTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+                      const hours = String(chinaTime.getUTCHours()).padStart(2, '0');
+                      const minutes = String(chinaTime.getUTCMinutes()).padStart(2, '0');
+                      displayTime = `${hours}:${minutes}`;
+                    } catch { displayTime = ''; }
+                  }
+                }
 
                 return (
                   <div key={`${m.gid}-${idx}`} className="match-block">
@@ -495,7 +513,14 @@ const MatchesPage: React.FC = () => {
                       {/* Match Info Header */}
                       <div className="match-info-header">
                         <span className="league-name">{leagueLabel}</span>
-                        {scoreLabel && <span className="score-display">({scoreLabel})</span>}
+                        {isMobile && (
+                          <div className="mobile-teams-row">
+                            <span className="mobile-team-home">{homeLabel}</span>
+                            <span className="mobile-score">{scoreLabel || 'vs'}</span>
+                            <span className="mobile-team-away">{awayLabel}</span>
+                          </div>
+                        )}
+                        {!isMobile && scoreLabel && <span className="score-display">({scoreLabel})</span>}
                         <span className="time-display">{displayTime}</span>
                       </div>
 
@@ -533,10 +558,10 @@ const MatchesPage: React.FC = () => {
 	                              return (
 	                                <React.Fragment key={i}>
 	                                  <div className="hdp-label-cell">{displayHdp}</div>
-                                  <div className="odds-cell" onClick={() => line.home && openBetModal(m, { bet_type: '让球', bet_option: `${homeLabel} (${displayHdp})`, odds: line.home, label: `[让球] ${homeLabel} (${displayHdp}) @${line.home}`, market_category: 'handicap', market_scope: 'full', market_side: 'home', market_line: rawHdp, market_index: i })}>
+                                  <div className="odds-cell" onClick={() => line.home && openBetModal(m, { bet_type: isCorner ? '角球让球' : '让球', bet_option: `${homeLabel} (${displayHdp})`, odds: line.home, label: `[${isCorner ? '角球让球' : '让球'}] ${homeLabel} (${displayHdp}) @${line.home}`, market_category: 'handicap', market_scope: 'full', market_side: 'home', market_line: rawHdp, market_index: i, market_wtype: isCorner ? 'CNR' : undefined, market_rtype: isCorner ? 'CNRH' : undefined })}>
                                     {line.home || '-'}
                                   </div>
-                                  <div className="odds-cell" onClick={() => line.away && openBetModal(m, { bet_type: '让球', bet_option: `${awayLabel} (${displayHdp})`, odds: line.away, label: `[让球] ${awayLabel} (${displayHdp}) @${line.away}`, market_category: 'handicap', market_scope: 'full', market_side: 'away', market_line: rawHdp, market_index: i })}>
+                                  <div className="odds-cell" onClick={() => line.away && openBetModal(m, { bet_type: isCorner ? '角球让球' : '让球', bet_option: `${awayLabel} (${displayHdp})`, odds: line.away, label: `[${isCorner ? '角球让球' : '让球'}] ${awayLabel} (${displayHdp}) @${line.away}`, market_category: 'handicap', market_scope: 'full', market_side: 'away', market_line: rawHdp, market_index: i, market_wtype: isCorner ? 'CNR' : undefined, market_rtype: isCorner ? 'CNRC' : undefined })}>
                                     {line.away || '-'}
                                   </div>
                                 </React.Fragment>
@@ -564,10 +589,10 @@ const MatchesPage: React.FC = () => {
 	                              return (
 	                                <React.Fragment key={i}>
 	                                  <div className="hdp-label-cell">{displayHdp}</div>
-                                  <div className="odds-cell" onClick={() => line.over && openBetModal(m, { bet_type: '大小', bet_option: `大 ${displayHdp}`, odds: line.over, label: `[大小] 大 ${displayHdp} @${line.over}`, market_category: 'overunder', market_scope: 'full', market_side: 'over', market_line: rawHdp, market_index: i })}>
+                                  <div className="odds-cell" onClick={() => line.over && openBetModal(m, { bet_type: isCorner ? '角球大小' : '大小', bet_option: `大 ${displayHdp}`, odds: line.over, label: `[${isCorner ? '角球大小' : '大小'}] 大 ${displayHdp} @${line.over}`, market_category: 'overunder', market_scope: 'full', market_side: 'over', market_line: rawHdp, market_index: i, market_wtype: isCorner ? 'CNOU' : undefined, market_rtype: isCorner ? 'CNOUC' : undefined })}>
                                     {line.over || '-'}
                                   </div>
-                                  <div className="odds-cell" onClick={() => line.under && openBetModal(m, { bet_type: '大小', bet_option: `小 ${displayHdp}`, odds: line.under, label: `[大小] 小 ${displayHdp} @${line.under}`, market_category: 'overunder', market_scope: 'full', market_side: 'under', market_line: rawHdp, market_index: i })}>
+                                  <div className="odds-cell" onClick={() => line.under && openBetModal(m, { bet_type: isCorner ? '角球大小' : '大小', bet_option: `小 ${displayHdp}`, odds: line.under, label: `[${isCorner ? '角球大小' : '大小'}] 小 ${displayHdp} @${line.under}`, market_category: 'overunder', market_scope: 'full', market_side: 'under', market_line: rawHdp, market_index: i, market_wtype: isCorner ? 'CNOU' : undefined, market_rtype: isCorner ? 'CNOUH' : undefined })}>
                                     {line.under || '-'}
                                   </div>
                                 </React.Fragment>
@@ -608,10 +633,10 @@ const MatchesPage: React.FC = () => {
                               return (
                                 <React.Fragment key={i}>
                                   <div className="hdp-label-cell">{displayHdp}</div>
-                                  <div className="odds-cell" onClick={() => line.home && openBetModal(m, { bet_type: '半场让球', bet_option: `${homeLabel} (${displayHdp})`, odds: line.home, label: `[半场让球] ${homeLabel} (${displayHdp}) @${line.home}`, market_category: 'handicap', market_scope: 'half', market_side: 'home', market_line: rawHdp, market_index: i })}>
+                                  <div className="odds-cell" onClick={() => line.home && openBetModal(m, { bet_type: isCorner ? '半场角球让球' : '半场让球', bet_option: `${homeLabel} (${displayHdp})`, odds: line.home, label: `[${isCorner ? '半场角球让球' : '半场让球'}] ${homeLabel} (${displayHdp}) @${line.home}`, market_category: 'handicap', market_scope: 'half', market_side: 'home', market_line: rawHdp, market_index: i, market_wtype: isCorner ? 'HCNR' : undefined, market_rtype: isCorner ? 'HCNRH' : undefined })}>
                                     {line.home || '-'}
                                   </div>
-                                  <div className="odds-cell" onClick={() => line.away && openBetModal(m, { bet_type: '半场让球', bet_option: `${awayLabel} (${displayHdp})`, odds: line.away, label: `[半场让球] ${awayLabel} (${displayHdp}) @${line.away}`, market_category: 'handicap', market_scope: 'half', market_side: 'away', market_line: rawHdp, market_index: i })}>
+                                  <div className="odds-cell" onClick={() => line.away && openBetModal(m, { bet_type: isCorner ? '半场角球让球' : '半场让球', bet_option: `${awayLabel} (${displayHdp})`, odds: line.away, label: `[${isCorner ? '半场角球让球' : '半场让球'}] ${awayLabel} (${displayHdp}) @${line.away}`, market_category: 'handicap', market_scope: 'half', market_side: 'away', market_line: rawHdp, market_index: i, market_wtype: isCorner ? 'HCNR' : undefined, market_rtype: isCorner ? 'HCNRC' : undefined })}>
                                     {line.away || '-'}
                                   </div>
                                 </React.Fragment>
@@ -639,10 +664,10 @@ const MatchesPage: React.FC = () => {
                               return (
                                 <React.Fragment key={i}>
                                   <div className="hdp-label-cell">{displayHdp}</div>
-                                  <div className="odds-cell" onClick={() => line.over && openBetModal(m, { bet_type: '半场大小', bet_option: `大 ${displayHdp}`, odds: line.over, label: `[半场大小] 大 ${displayHdp} @${line.over}`, market_category: 'overunder', market_scope: 'half', market_side: 'over', market_line: rawHdp, market_index: i })}>
+                                  <div className="odds-cell" onClick={() => line.over && openBetModal(m, { bet_type: isCorner ? '半场角球大小' : '半场大小', bet_option: `大 ${displayHdp}`, odds: line.over, label: `[${isCorner ? '半场角球大小' : '半场大小'}] 大 ${displayHdp} @${line.over}`, market_category: 'overunder', market_scope: 'half', market_side: 'over', market_line: rawHdp, market_index: i, market_wtype: isCorner ? 'HCNOU' : undefined, market_rtype: isCorner ? 'HCNOUC' : undefined })}>
                                     {line.over || '-'}
                                   </div>
-                                  <div className="odds-cell" onClick={() => line.under && openBetModal(m, { bet_type: '半场大小', bet_option: `小 ${displayHdp}`, odds: line.under, label: `[半场大小] 小 ${displayHdp} @${line.under}`, market_category: 'overunder', market_scope: 'half', market_side: 'under', market_line: rawHdp, market_index: i })}>
+                                  <div className="odds-cell" onClick={() => line.under && openBetModal(m, { bet_type: isCorner ? '半场角球大小' : '半场大小', bet_option: `小 ${displayHdp}`, odds: line.under, label: `[${isCorner ? '半场角球大小' : '半场大小'}] 小 ${displayHdp} @${line.under}`, market_category: 'overunder', market_scope: 'half', market_side: 'under', market_line: rawHdp, market_index: i, market_wtype: isCorner ? 'HCNOU' : undefined, market_rtype: isCorner ? 'HCNOUH' : undefined })}>
                                     {line.under || '-'}
                                   </div>
                                 </React.Fragment>

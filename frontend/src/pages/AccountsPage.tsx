@@ -577,10 +577,8 @@ const AccountsPage: React.FC = () => {
 
 
   return (
-    <div style={{ padding: isMobile ? 0 : '24px' }}>
-      <Title level={isMobile ? 4 : 2} style={{ padding: isMobile ? '12px' : 0 }}>账号管理</Title>
-
-      <Card style={isMobile ? { marginBottom: 1, borderRadius: 0 } : { marginBottom: 16 }}>
+    <div style={{ padding: isMobile ? 0 : '4px 8px' }}>
+      <Card style={isMobile ? { marginBottom: 1, borderRadius: 0 } : { marginBottom: 12 }}>
         <Row gutter={isMobile ? [0, 8] : [16, 16]} align="middle">
           <Col xs={24} sm={8} md={6}>
             <Select

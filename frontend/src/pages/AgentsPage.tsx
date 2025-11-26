@@ -309,12 +309,12 @@ const AgentsPage: React.FC = () => {
       ),
     },
     {
-      title: '信用额度',
+      title: '皇冠额度',
       dataIndex: 'credit_limit',
       key: 'credit_limit',
       responsive: ['lg'] as any,
       render: (credit_limit: number) => (
-        <span>{credit_limit ? credit_limit.toLocaleString() : '0'}</span>
+        <span style={{ fontWeight: 500 }}>{credit_limit ? Number(credit_limit).toLocaleString() : '0'}</span>
       ),
     },
     {
@@ -396,14 +396,9 @@ const AgentsPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: isMobile ? 0 : '24px' }}>
+    <div style={{ padding: isMobile ? 0 : '4px 8px' }}>
       <Card style={isMobile ? { margin: 0, borderRadius: 0 } : {}}>
-        <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-          <Col xs={24} sm={12}>
-            <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
-              <UserOutlined /> 代理管理
-            </Title>
-          </Col>
+        <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
           <Col xs={24} sm={12} style={{ marginTop: isMobile ? 12 : 0 }}>
             <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: '100%' }}>
               <Search

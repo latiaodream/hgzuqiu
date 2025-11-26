@@ -118,7 +118,7 @@ const SettingsPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ padding: '4px 8px' }}>
       <Row gutter={[16, 16]}>
         {/* 账号信息卡片 */}
         <Col xs={24} lg={16}>

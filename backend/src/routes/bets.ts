@@ -299,6 +299,22 @@ router.post('/', async (req: any, res) => {
                 error: '总金额必须大于 0'
             });
         }
+
+        // 检查金币余额是否足够
+        const chargeUserId = (userRole === 'staff' && agentId) ? agentId : userId;
+        const coinBalanceResult = await query(
+            'SELECT COALESCE(SUM(amount), 0) as balance FROM coin_transactions WHERE user_id = $1',
+            [chargeUserId]
+        );
+        const coinBalance = parseFloat(coinBalanceResult.rows[0].balance);
+        if (coinBalance < betData.total_amount) {
+            console.log('❌ 金币余额不足:', { coinBalance, required: betData.total_amount, chargeUserId });
+            return res.status(400).json({
+                success: false,
+                error: `金币余额不足，当前余额: ${coinBalance.toFixed(2)}，需要: ${betData.total_amount}`
+            });
+        }
+
         let crownMatchIdRaw = (betData.crown_match_id || '').toString().trim();
         let crownMatchId = crownMatchIdRaw || (
             typeof betData.match_id === 'number' && Number.isFinite(betData.match_id)
@@ -390,8 +406,8 @@ router.post('/', async (req: any, res) => {
 
                     // 计算每个结果的相似度评分
                     const scoredResults = crownMatchResult.rows.map((row: any) => {
-                        const homeScore = calculateSimilarity(betData.home_team.toLowerCase(), row.crown_home.toLowerCase());
-                        const awayScore = calculateSimilarity(betData.away_team.toLowerCase(), row.crown_away.toLowerCase());
+                        const homeScore = calculateSimilarity((betData.home_team || '').toLowerCase(), row.crown_home.toLowerCase());
+                        const awayScore = calculateSimilarity((betData.away_team || '').toLowerCase(), row.crown_away.toLowerCase());
                         const totalScore = homeScore + awayScore;
                         return { ...row, score: totalScore };
                     });
@@ -514,21 +530,21 @@ router.post('/', async (req: any, res) => {
         const eligibleMap = new Map<number, AccountSelectionEntry>();
         const excludedMap = new Map<number, AccountSelectionEntry>();
 
-        const ownerIds = Array.from(new Set(ownershipResult.rows.map(row => Number(row.user_id))));
-        for (const ownerId of ownerIds) {
-            const ownerSelection = await selectAccounts({
-                userId: ownerId,
-                matchId: betData.match_id,
-            });
+        // 使用当前用户的权限查询账号状态
+        const selection = await selectAccounts({
+            userId,
+            userRole,
+            agentId,
+            matchId: betData.match_id,
+        });
 
-            ownerSelection.eligible_accounts.forEach((entry) => {
-                eligibleMap.set(entry.account.id, entry);
-            });
+        selection.eligible_accounts.forEach((entry) => {
+            eligibleMap.set(entry.account.id, entry);
+        });
 
-            ownerSelection.excluded_accounts.forEach((entry) => {
-                excludedMap.set(entry.account.id, entry);
-            });
-        }
+        selection.excluded_accounts.forEach((entry) => {
+            excludedMap.set(entry.account.id, entry);
+        });
 
         const invalidAccounts: Array<{ id: number; reason: string }> = [];
         const usedLineKeys = new Set<string>();

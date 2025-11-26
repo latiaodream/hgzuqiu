@@ -372,14 +372,9 @@ const StaffPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: isMobile ? 0 : '24px' }}>
+    <div style={{ padding: isMobile ? 0 : '4px 8px' }}>
       <Card style={isMobile ? { margin: 0, borderRadius: 0 } : {}}>
-        <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-          <Col xs={24} sm={12}>
-            <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
-              <UserOutlined /> 员工管理
-            </Title>
-          </Col>
+        <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
           <Col xs={24} sm={12} style={{ marginTop: isMobile ? 12 : 0 }}>
             <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: '100%' }}>
               <Search

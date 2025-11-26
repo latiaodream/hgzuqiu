@@ -6,6 +6,8 @@ import type {
 
 interface SelectAccountsOptions {
     userId: number;
+    userRole?: string;
+    agentId?: number;
     matchId?: number;
     limit?: number;
 }
@@ -75,19 +77,36 @@ const rowsToMap = (rows: AggregatedRow[], key: keyof AggregatedRow): Map<number,
 };
 
 export async function selectAccounts(options: SelectAccountsOptions): Promise<AccountSelectionResponse> {
-    const { userId, matchId, limit } = options;
+    const { userId, userRole, agentId, matchId, limit } = options;
 
     const dailyBoundary = getDailyBoundary();
     const weeklyBoundary = getWeeklyBoundary(dailyBoundary);
+
+    // 根据用户角色构建查询条件
+    let whereClause: string;
+    let queryParams: any[];
+
+    if (userRole === 'admin') {
+        // 管理员可以查看所有账号
+        whereClause = 'ca.is_enabled = true';
+        queryParams = [];
+    } else if (userRole === 'agent') {
+        // 代理可以查看下属员工的所有账号
+        whereClause = 'ca.agent_id = $1 AND ca.is_enabled = true';
+        queryParams = [userId];
+    } else {
+        // 员工可以查看同一代理下的所有账号（共享账号池）
+        whereClause = 'ca.agent_id = $1 AND ca.is_enabled = true';
+        queryParams = [agentId || userId];
+    }
 
     const accountsResult = await query(
         `SELECT ca.*, g.name AS group_name
            FROM crown_accounts ca
            LEFT JOIN groups g ON g.id = ca.group_id
-          WHERE ca.user_id = $1
-            AND ca.is_enabled = true
+          WHERE ${whereClause}
           ORDER BY ca.created_at ASC`,
-        [userId],
+        queryParams,
     );
 
     const accountRows: AccountRow[] = accountsResult.rows;

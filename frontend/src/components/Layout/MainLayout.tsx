@@ -43,6 +43,13 @@ const MainLayout: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // 监听路由变化，手机端自动收起侧边栏
+  useEffect(() => {
+    if (isMobile) {
+      setCollapsed(true);
+    }
+  }, [location.pathname, isMobile]);
+
   useEffect(() => {
     loadCoinBalance();
     const interval = setInterval(loadCoinBalance, 30000);
@@ -92,6 +99,11 @@ const MainLayout: React.FC = () => {
           label: '下注记录',
         },
         {
+          key: '/live-wagers',
+          icon: <DollarOutlined />,
+          label: '实时注单',
+        },
+        {
           key: '/matches',
           icon: <CalendarOutlined />,
           label: '赛事管理',
@@ -100,11 +112,6 @@ const MainLayout: React.FC = () => {
           key: '/coins',
           icon: <DollarOutlined />,
           label: '金币流水',
-        },
-        {
-          key: '/crown-sites',
-          icon: <GlobalOutlined />,
-          label: '站点管理',
         }
       );
     }
@@ -127,6 +134,11 @@ const MainLayout: React.FC = () => {
           label: '下注记录',
         },
         {
+          key: '/live-wagers',
+          icon: <DollarOutlined />,
+          label: '实时注单',
+        },
+        {
           key: '/coins',
           icon: <DollarOutlined />,
           label: '金币流水',
@@ -145,6 +157,11 @@ const MainLayout: React.FC = () => {
           key: '/betting',
           icon: <FileTextOutlined />,
           label: '下注记录',
+        },
+        {
+          key: '/live-wagers',
+          icon: <DollarOutlined />,
+          label: '实时注单',
         },
         {
           key: '/matches',
@@ -190,10 +207,14 @@ const MainLayout: React.FC = () => {
 
   const handleMenuClick = ({ key }: { key: string }) => {
     navigate(key);
+    // 手机端点击菜单后自动收起侧边栏
+    if (isMobile) {
+      setCollapsed(true);
+    }
   };
 
   return (
-    <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
+    <Layout style={{ minHeight: '100vh', height: '100vh', background: 'transparent', overflow: 'hidden' }}>
       {!collapsed && isMobile && (
         <div
           style={{
@@ -211,13 +232,16 @@ const MainLayout: React.FC = () => {
         collapsible
         collapsed={collapsed}
         width={240}
+        collapsedWidth={isMobile ? 0 : 80}
         style={{
           background: '#FFFFFF',
           borderRight: '1px solid #E5E7EB',
           position: isMobile ? 'fixed' : 'relative',
           height: '100vh',
           zIndex: 1001,
-          boxShadow: '4px 0 24px 0 rgba(0,0,0,0.02)'
+          boxShadow: '4px 0 24px 0 rgba(0,0,0,0.02)',
+          left: isMobile && collapsed ? '-240px' : '0',
+          transition: 'all 0.2s',
         }}
       >
         <div style={{
@@ -228,30 +252,24 @@ const MainLayout: React.FC = () => {
           borderBottom: '1px solid #F3F4F6',
         }}>
           {collapsed ? (
-            <div style={{
-              width: 40,
-              height: 40,
-              background: 'linear-gradient(135deg, #4F46E5 0%, #4338CA 100%)',
-              borderRadius: 10,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              color: '#fff'
-            }}>Z</div>
+            <img
+              src="/favicon.svg"
+              alt="Logo"
+              style={{
+                width: 40,
+                height: 40,
+              }}
+            />
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 32,
-                height: 32,
-                background: 'linear-gradient(135deg, #4F46E5 0%, #4338CA 100%)',
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 'bold',
-                color: '#fff'
-              }}>Z</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <img
+                src="/favicon.svg"
+                alt="Logo"
+                style={{
+                  width: 36,
+                  height: 36,
+                }}
+              />
               <span style={{
                 fontSize: 18,
                 fontWeight: 700,
@@ -274,7 +292,7 @@ const MainLayout: React.FC = () => {
           }}
         />
       </Sider>
-      <Layout style={{ background: 'transparent' }}>
+      <Layout style={{ background: 'transparent', overflow: 'hidden' }}>
         <Header
           style={{
             padding: '0 24px',
@@ -334,9 +352,13 @@ const MainLayout: React.FC = () => {
         </Header>
         <Content
           style={{
-            margin: '24px',
-            minHeight: 280,
+            margin: isMobile ? '8px' : '24px',
+            marginBottom: isMobile ? '60px' : '24px',
             background: 'transparent',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            flex: 1,
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           <Outlet />

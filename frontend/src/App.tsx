@@ -11,6 +11,7 @@ import GroupsPage from './pages/GroupsPage';
 import BettingPage from './pages/BettingPage';
 import CoinsPage from './pages/CoinsPage';
 import MatchesPage from './pages/MatchesPage';
+import LiveWagersPage from './pages/LiveWagersPage';
 // import FetchAccountsPage from './pages/FetchAccountsPage';
 import StaffPage from './pages/StaffPage';
 import AgentsPage from './pages/AgentsPage';
@@ -67,6 +68,7 @@ const App: React.FC = () => {
         <Route path="groups" element={<GroupsPage />} />
         <Route path="betting" element={<BettingPage />} />
         <Route path="matches" element={<MatchesPage />} />
+        <Route path="live-wagers" element={<LiveWagersPage />} />
 	        {/* 下线赛事记录和名称映射相关路由 */}
 	        {/* <Route path="crown-matches" element={<CrownMatchesPage />} /> */}
 	        {/* <Route path="isports-matches" element={<ISportsMatchesPage />} /> */}

@@ -286,7 +286,67 @@ const BettingPage: React.FC = () => {
   };
 
   // 主表格列定义
-  const mainColumns: ColumnsType<BetGroup> = [
+  const mainColumns: ColumnsType<BetGroup> = isMobile ? [
+    // 移动端简化列
+    {
+      title: '比赛/盘口',
+      key: 'match_bet',
+      width: 180,
+      render: (_: any, record: BetGroup) => {
+        const lines = record.match_info.split('\n');
+        const percentage = Math.round(record.bet_rate * 100);
+        return (
+          <div style={{ fontSize: 11 }}>
+            <div style={{ color: '#888', marginBottom: 2 }}>{lines[0]}</div>
+            <div style={{ fontWeight: 500, marginBottom: 2 }}>{lines[1]}</div>
+            <div style={{ color: '#1890ff', fontSize: 10 }}>{record.bet_target}</div>
+            <div style={{ marginTop: 4 }}>
+              {record.status === 'completed' ? (
+                <Tag color="success" style={{ fontSize: 10, padding: '0 4px' }}>完成</Tag>
+              ) : (
+                <Tag color="processing" style={{ fontSize: 10, padding: '0 4px' }}>{percentage}%</Tag>
+              )}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      title: '金额/赔率',
+      key: 'amount_odds',
+      width: 90,
+      align: 'right' as const,
+      render: (_: any, record: BetGroup) => {
+        const [completed, total] = record.completed_amount.split('/');
+        const color = record.total_profit_loss > 0 ? '#52c41a' : record.total_profit_loss < 0 ? '#ff4d4f' : '#8c8c8c';
+        return (
+          <div style={{ fontSize: 11 }}>
+            <div><b>{completed}</b>/{total}</div>
+            <div style={{ color: '#1890ff' }}>@{formatOdds(record.average_odds)}</div>
+            <div style={{ color, fontWeight: 500 }}>{record.total_profit_loss > 0 ? '+' : ''}{record.total_profit_loss.toFixed(0)}</div>
+          </div>
+        );
+      },
+    },
+    {
+      title: '单数',
+      dataIndex: 'result_count',
+      key: 'result_count',
+      width: 70,
+      align: 'center' as const,
+      render: (text: string) => {
+        const [total, settled, cancelled] = text.split('/');
+        return (
+          <div style={{ fontSize: 10 }}>
+            <Badge count={total} showZero style={{ backgroundColor: '#1890ff' }} size="small" />
+            <Badge count={settled} showZero style={{ backgroundColor: '#52c41a' }} size="small" />
+            <Badge count={cancelled} showZero style={{ backgroundColor: '#8c8c8c' }} size="small" />
+          </div>
+        );
+      },
+    },
+  ] : [
+    // 桌面端完整列
     {
       title: '状态',
       dataIndex: 'status',
@@ -389,9 +449,9 @@ const BettingPage: React.FC = () => {
         const [total, settled, cancelled] = text.split('/');
         return (
           <Space size={4}>
-            <Badge count={total} style={{ backgroundColor: '#1890ff' }} />
-            <Badge count={settled} style={{ backgroundColor: '#52c41a' }} />
-            <Badge count={cancelled} style={{ backgroundColor: '#8c8c8c' }} />
+            <Badge count={total} showZero style={{ backgroundColor: '#1890ff' }} />
+            <Badge count={settled} showZero style={{ backgroundColor: '#52c41a' }} />
+            <Badge count={cancelled} showZero style={{ backgroundColor: '#8c8c8c' }} />
           </Space>
         );
       },
@@ -570,18 +630,10 @@ const BettingPage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: isMobile ? 0 : '24px', background: isMobile ? '#fff' : '#f0f2f5', minHeight: '100vh' }}>
-      {/* 页面标题 */}
-      {!isMobile && (
-        <div style={{ marginBottom: 24 }}>
-          <Title level={3} style={{ margin: 0 }}>下注记录</Title>
-          <Text type="secondary">查看和管理所有下注记录</Text>
-        </div>
-      )}
-
+    <div style={{ padding: isMobile ? 0 : '4px 8px', background: isMobile ? '#fff' : '#f0f2f5', minHeight: '100vh' }}>
       {/* 筛选条件 */}
       <Card
-        style={isMobile ? { marginBottom: 1, borderRadius: 0 } : { marginBottom: 16 }}
+        style={isMobile ? { marginBottom: 1, borderRadius: 0 } : { marginBottom: 12 }}
         bodyStyle={{ padding: isMobile ? '12px' : '16px 24px' }}
       >
         <Row gutter={isMobile ? [0, 8] : [16, 16]} align="middle">
@@ -799,7 +851,7 @@ const BettingPage: React.FC = () => {
             },
             style: { padding: '16px 24px' },
           }}
-          scroll={{ x: 1400 }}
+          scroll={{ x: isMobile ? 340 : 1400 }}
           size="middle"
           rowClassName={(record, index) => index % 2 === 0 ? 'table-row-light' : 'table-row-dark'}
         />

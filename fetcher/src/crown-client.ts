@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
+import https from 'https';
 
 interface LoginResult {
   success: boolean;
@@ -42,6 +43,10 @@ export class CrownClient {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
       },
+      // 禁用 SSL 证书验证（解决证书过期问题）
+      httpsAgent: new https.Agent({
+        rejectUnauthorized: false
+      })
     });
 
     // 加载已保存的会话
@@ -448,6 +453,7 @@ export class CrownClient {
 
         const datetime = pickString(game, ['DATETIME', 'TIME']);
         const running = pickString(game, ['RUNNING', 'STATUS']);
+        const retimeset = pickString(game, ['RETIMESET', 'TIMESET']); // 比赛阶段+时间，如 "2H^93:26"
 
         // 转换时间格式：将 "11-07 01:00" 转换为 ISO 格式
         const convertToISO = (timeStr: string): string => {
@@ -493,7 +499,8 @@ export class CrownClient {
           timer: isoDatetime,
           status: running,
           state: running,
-          period: running === '1' ? '滚球' : running === '0' ? '未开赛' : '',
+          period: retimeset || (running === '1' || running === 'Y' ? '滚球' : running === '0' || running === 'N' ? '未开赛' : ''),
+          clock: retimeset || '',
           markets,
           raw: game,
         };

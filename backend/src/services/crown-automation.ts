@@ -339,6 +339,11 @@ export class CrownAutomationService {
           // 会话仍然有效，恢复到内存
           this.apiLoginSessions.set(accountId, loginTime);
           this.apiUids.set(accountId, uid);
+          // 同时更新数据库 is_online 状态
+          await query(
+            `UPDATE crown_accounts SET is_online = true WHERE id = $1`,
+            [accountId]
+          );
           restoredCount++;
           console.log(`✅ 恢复会话: accountId=${accountId}, username=${row.username}, uid=${uid}`);
         } else {

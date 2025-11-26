@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, Typography, Space, Divider, message } from 'antd';
+import { Form, Input, Button, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import type { LoginRequest } from '../../types';
@@ -8,13 +8,7 @@ import EmailBindingModal from './EmailBindingModal';
 import LoginVerificationModal from './LoginVerificationModal';
 import { authApi } from '../../services/api';
 
-const { Title, Text } = Typography;
-
-interface LoginFormProps {
-  onSwitchToRegister: () => void;
-}
-
-const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
+const LoginForm: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -109,86 +103,66 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
 
   return (
     <>
-      <Card
-        style={{
-          width: 400,
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-        }}
+      <Form
+        form={form}
+        name="login"
+        layout="vertical"
+        onFinish={handleSubmit}
+        autoComplete="off"
+        size="large"
       >
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <div style={{ textAlign: 'center' }}>
-            <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-              智投系统
-            </Title>
-            <Text type="secondary">皇冠足球下注管理平台</Text>
-          </div>
+        <Form.Item
+          name="username"
+          label={<span style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>用户名</span>}
+          rules={[
+            { required: true, message: '请输入用户名' },
+            { min: 3, message: '用户名至少3个字符' },
+          ]}
+          style={{ marginBottom: '16px' }}
+        >
+          <Input
+            prefix={<UserOutlined style={{ color: '#9CA3AF' }} />}
+            placeholder="请输入用户名"
+            style={{ height: '46px', borderRadius: '8px', fontSize: '15px' }}
+          />
+        </Form.Item>
 
-          <Form
-            form={form}
-            name="login"
-            layout="vertical"
-            onFinish={handleSubmit}
-            autoComplete="off"
-          >
-            <Form.Item
-              name="username"
-              label="用户名"
-              rules={[
-                { required: true, message: '请输入用户名' },
-                { min: 3, message: '用户名至少3个字符' },
-              ]}
-            >
-              <Input
-                prefix={<UserOutlined style={{ color: '#94A3B8', marginRight: '8px' }} />}
-                placeholder="请输入用户名"
-                size="large"
-                style={{ paddingLeft: '12px' }}
-              />
-            </Form.Item>
+        <Form.Item
+          name="password"
+          label={<span style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>密码</span>}
+          rules={[
+            { required: true, message: '请输入密码' },
+            { min: 6, message: '密码至少6个字符' },
+          ]}
+          style={{ marginBottom: '24px' }}
+        >
+          <Input.Password
+            prefix={<LockOutlined style={{ color: '#9CA3AF' }} />}
+            placeholder="请输入密码"
+            style={{ height: '46px', borderRadius: '8px', fontSize: '15px' }}
+          />
+        </Form.Item>
 
-            <Form.Item
-              name="password"
-              label="密码"
-              rules={[
-                { required: true, message: '请输入密码' },
-                { min: 6, message: '密码至少6个字符' },
-              ]}
-            >
-              <Input.Password
-                prefix={<LockOutlined style={{ color: '#94A3B8', marginRight: '8px' }} />}
-                placeholder="请输入密码"
-                size="large"
-                style={{ paddingLeft: '12px' }}
-              />
-            </Form.Item>
-
-            <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                size="large"
-                loading={loading}
-                style={{ width: '100%' }}
-              >
-                登录
-              </Button>
-            </Form.Item>
-          </Form>
-
-          <Divider>
-            <Text type="secondary">还没有账号？</Text>
-          </Divider>
-
+        <Form.Item style={{ marginBottom: 0 }}>
           <Button
-            type="link"
-            size="large"
-            onClick={onSwitchToRegister}
-            style={{ width: '100%' }}
+            type="primary"
+            htmlType="submit"
+            loading={loading}
+            style={{
+              width: '100%',
+              height: '46px',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 600,
+              background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+              border: 'none',
+              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
+            }}
           >
-            立即注册
+            登录
           </Button>
-        </Space>
-      </Card>
+        </Form.Item>
+      </Form>
 
       {/* 邮箱绑定弹窗 */}
       <EmailBindingModal

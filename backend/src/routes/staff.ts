@@ -21,7 +21,7 @@ router.get('/', requireAgent, async (req: AuthRequest, res: Response) => {
         let staffParams: any[];
 
         if (req.user!.role === 'admin') {
-            // 管理员可以查看所有员工，并计算每个员工的信用额度（皇冠账号余额总和）
+            // 管理员可以查看所有员工，并计算每个员工所属代理的皇冠额度总和
             staffQuery = `SELECT
                 u.id,
                 u.username,
@@ -31,15 +31,15 @@ router.get('/', requireAgent, async (req: AuthRequest, res: Response) => {
                 u.agent_id,
                 u.created_at,
                 u.updated_at,
-                COALESCE(SUM(ca.balance), 0) as credit_limit
+                COALESCE(SUM(ca.credit), 0) as credit_limit
             FROM users u
-            LEFT JOIN crown_accounts ca ON ca.user_id = u.id
+            LEFT JOIN crown_accounts ca ON ca.agent_id = u.agent_id
             WHERE u.role = $1
             GROUP BY u.id, u.username, u.email, u.role, u.parent_id, u.agent_id, u.created_at, u.updated_at
             ORDER BY u.created_at DESC`;
             staffParams = ['staff'];
         } else {
-            // 代理只能查看自己创建的员工，并计算每个员工的信用额度（皇冠账号余额总和）
+            // 代理只能查看自己创建的员工，并计算代理下所有皇冠账号的额度总和
             staffQuery = `SELECT
                 u.id,
                 u.username,
@@ -49,9 +49,9 @@ router.get('/', requireAgent, async (req: AuthRequest, res: Response) => {
                 u.agent_id,
                 u.created_at,
                 u.updated_at,
-                COALESCE(SUM(ca.balance), 0) as credit_limit
+                COALESCE(SUM(ca.credit), 0) as credit_limit
             FROM users u
-            LEFT JOIN crown_accounts ca ON ca.user_id = u.id
+            LEFT JOIN crown_accounts ca ON ca.agent_id = u.agent_id
             WHERE u.role = $1 AND u.parent_id = $2
             GROUP BY u.id, u.username, u.email, u.role, u.parent_id, u.agent_id, u.created_at, u.updated_at
             ORDER BY u.created_at DESC`;

@@ -2,6 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { parseStringPromise } from 'xml2js';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
+import https from 'https';
 
 /**
  * 皇冠网站纯 API 客户端
@@ -53,19 +54,30 @@ export class CrownApiClient {
 
   constructor(config: ClientConfig = {}) {
     this.baseUrl = config.baseUrl || 'https://hga038.com';
-    this.version = '2025-10-16-fix342_120'; // 默认版本，会动态更新
+    this.version = '2025-11-06-phPasscodeBug_121'; // 默认版本，会动态更新
     this.deviceType = config.deviceType || 'iPhone 14';
     this.userAgent = config.userAgent || this.generateUserAgent(this.deviceType);
     this.proxyConfig = config.proxy || { enabled: false };
 
     // 创建 HTTP 客户端配置
+    // 这里尽量与 fetcher/src/crown-client.ts 中的配置保持一致，避免同一站点不同行为
     const axiosConfig: any = {
       baseURL: this.baseUrl,
       headers: {
+        // 注意：这里的 HTTP 层 User-Agent 使用 PC 浏览器 UA，
+        // 与 crown-scraper/fetcher 完全一致；
+        // 真正传给 transform.php 的 userAgent 参数仍然是 iPhone UA（在 login() 里单独设置）。
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        // 登录等 POST 请求仍然使用 x-www-form-urlencoded
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': this.userAgent,
       },
       timeout: 30000,
+      // 禁用 SSL 证书验证（解决证书过期问题）
+      httpsAgent: new https.Agent({
+        rejectUnauthorized: false
+      })
     };
 
     // 配置代理
@@ -103,8 +115,16 @@ export class CrownApiClient {
     // 添加请求拦截器来自动发送 Cookie
     this.httpClient.interceptors.request.use(
       (config) => {
-        if (this.cookies) {
-          config.headers['Cookie'] = this.cookies;
+        // 只有在已经登录且存在 Cookie 时，才自动带上 Cookie
+        // 避免在首次访问首页 /transform.php 登录时就带 Cookie，
+        // 与 fetcher/crown-scraper 的无 Cookie 行为保持一致。
+        if (this.cookies && this.uid) {
+          const headers: any = config.headers ? config.headers : {};
+          // 如果调用方已经显式传了 Cookie，则不覆盖
+          if (!('Cookie' in headers)) {
+            headers['Cookie'] = this.cookies;
+          }
+          config.headers = headers;
         }
         return config;
       },
@@ -189,10 +209,17 @@ export class CrownApiClient {
     try {
       const response = await this.httpClient.get('/');
       const html = response.data;
-      const match = html.match(/top\.ver\s*=\s*'([^']+)'/);
+      // 先尝试解析形如 ver=2024102801 的写法（与 fetcher/src/crown-client.ts 保持一致）
+      let match = html.match(/ver=(\d+)/);
+      if (!match) {
+        // 再尝试旧的 top.ver='2025-11-06-phPasscodeBug_121' 形式
+        match = html.match(/top\.ver\s*=\s*'([^']+)'/);
+      }
       if (match) {
         this.version = match[1];
         console.log('✅ 版本号获取成功:', this.version);
+      } else {
+        console.warn('⚠️ 未在首页 HTML 中解析到版本号，继续使用默认版本:', this.version);
       }
       return this.version;
     } catch (error) {
@@ -202,17 +229,63 @@ export class CrownApiClient {
   }
 
   /**
+   * 对 XML 字符串做预处理，修复常见格式问题
+   * 目前主要处理：未转义的 & 符号（会导致 "Invalid character in entity name"）
+   */
+  private sanitizeXml(xml: string): string {
+    if (typeof xml !== 'string') return xml as any;
+
+    const original = xml;
+
+    // 将除了常见合法实体以外的所有 & 转成 &amp;
+    // 合法实体示例：&amp; &lt; &gt; &quot; &apos; &#123; &#x1F;
+    const fixed = original.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)/g, '&amp;');
+
+    if (fixed !== original) {
+      console.warn('⚠️ 检测到 XML 中存在未转义的 & 符号，已自动修复');
+    }
+
+    return fixed;
+  }
+
+  /**
+   * 简单判断响应是否是 HTML 页面，而不是 XML
+   */
+  private isHtmlResponse(xml: string): boolean {
+    if (typeof xml !== 'string') return false;
+    const trimmed = xml.trim().toLowerCase();
+    if (!trimmed) return false;
+    // 常见 HTML 开头
+    return trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html');
+  }
+
+  /**
    * 解析 XML 响应
    */
   private async parseXmlResponse(xml: string): Promise<any> {
+    // 如果明显是 HTML，就不要再按 XML 解析，直接抛出更准确的错误
+    if (this.isHtmlResponse(xml)) {
+      const preview = String(xml || '').slice(0, 500);
+      console.error('❌ 收到 HTML 而非 XML 响应，无法按 API 解析，预览:', preview);
+      throw new Error('皇冠返回网页而不是接口响应（可能域名或版本号不匹配，需要人工检查）');
+    }
+
     try {
-      const result = await parseStringPromise(xml, {
+      const sanitized = this.sanitizeXml(xml);
+
+      const result = await parseStringPromise(sanitized, {
         explicitArray: false,
         ignoreAttrs: false,
       });
       return result.serverresponse || result;
     } catch (error) {
       console.error('❌ XML 解析失败:', error);
+      try {
+        const preview = String(xml).slice(0, 500);
+        console.error('🧾 XML 原始响应前 500 字:', preview);
+      } catch (_) {
+        // 忽略预览失败
+      }
       throw new Error('响应格式错误');
     }
   }
@@ -234,10 +307,11 @@ export class CrownApiClient {
     const userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1';
     const encodedUA = Buffer.from(userAgent).toString('base64');
 
-    // 构建请求参数
+    // 构建请求参数（尽量与 fetcher/src/crown-client.ts 保持一致）
     const params = new URLSearchParams({
       p: 'chk_login',
-      langx: 'zh-tw',  // 使用繁体中文版本
+      // 与抓取服务保持一致，使用简体中文环境
+      langx: 'zh-cn',
       ver: this.version,
       username,
       password,
@@ -577,7 +651,7 @@ export class CrownApiClient {
     console.log(`💰 开始获取余额，UID: ${uid}`);
 
     // 确保有最新的版本号
-    if (!this.version || this.version === '2025-10-16-fix342_120') {
+    if (!this.version || this.version === '2025-11-06-phPasscodeBug_121') {
       await this.getVersion();
     }
 

@@ -437,17 +437,9 @@ const CoinsPage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: isMobile ? 0 : '24px', background: isMobile ? '#fff' : '#f0f2f5', minHeight: '100vh' }}>
-      {/* 页面标题 */}
-      {!isMobile && (
-        <div style={{ marginBottom: 24 }}>
-          <Title level={3} style={{ margin: 0 }}>金币流水</Title>
-          <Text type="secondary">查看和管理金币交易记录</Text>
-        </div>
-      )}
-
+    <div style={{ padding: isMobile ? 0 : '4px 8px', background: isMobile ? '#fff' : '#f0f2f5', minHeight: '100vh' }}>
       {/* 统计卡片 */}
-      <Row gutter={isMobile ? 4 : 16} style={{ marginBottom: isMobile ? 4 : 16 }}>
+      <Row gutter={isMobile ? 4 : 16} style={{ marginBottom: isMobile ? 4 : 12 }}>
         {getStatsCards().map((stat, index) => (
           <Col xs={12} sm={12} lg={6} key={index}>
             <Card

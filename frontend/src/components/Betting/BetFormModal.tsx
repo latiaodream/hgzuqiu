@@ -63,6 +63,13 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   getMatchSnapshot,
 }) => {
   const [form] = Form.useForm();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [loading, setLoading] = useState(false);
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
   const [estimatedPayout, setEstimatedPayout] = useState(0);
@@ -74,6 +81,13 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   const [oddsPreview, setOddsPreview] = useState<{ odds: number | null; closed: boolean; message?: string } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [autoRefreshOdds, setAutoRefreshOdds] = useState(true); // 自动刷新赔率开关
+
+  // 监听表单值变化以触发重渲染
+  const totalAmount = Form.useWatch('total_amount', form);
+  const singleLimit = Form.useWatch('single_limit', form);
+  const intervalRange = Form.useWatch('interval_range', form);
+  const quantity = Form.useWatch('quantity', form);
+  const minOdds = Form.useWatch('min_odds', form);
 
   const accountDict = useMemo(() => {
     const map = new Map<number, CrownAccount>();
@@ -259,17 +273,8 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
     const currentValues = form.getFieldsValue();
 
+    // 先获取前端计算的赔率作为备用，但不立即设置到 oddsPreview
     const derived = deriveOddsFromMarkets();
-    if (derived) {
-      setOddsPreview({
-        odds: derived.odds ?? null,
-        closed: false,
-        message: derived.message,
-      });
-      if (derived.odds !== null && derived.odds !== undefined) {
-        form.setFieldValue('odds', derived.odds);
-      }
-    }
 
     // 获取在线账号列表
     const onlineAccounts = accounts.filter(acc => isAccountOnline(acc.id));
@@ -281,7 +286,17 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     }
 
     if (!accountId) {
-      if (!derived && !silent) {
+      // 没有在线账号时，使用前端计算的赔率
+      if (derived) {
+        setOddsPreview({
+          odds: derived.odds ?? null,
+          closed: false,
+          message: derived.message,
+        });
+        if (derived.odds !== null) {
+          form.setFieldValue('odds', derived.odds);
+        }
+      } else if (!silent) {
         setOddsPreview(null);
         setPreviewError('没有可用的在线账号');
       }
@@ -389,19 +404,22 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
   }, [match, selectedAccounts, form, defaultSelection, accounts, isAccountOnline]);
 
   // 自动刷新赔率：每 2 秒刷新一次
+  const previewOddsRef = React.useRef(previewOddsRequest);
+  previewOddsRef.current = previewOddsRequest;
+
   useEffect(() => {
     if (!visible || !match || !autoRefreshOdds) return;
 
     // 首次加载时立即获取赔率
-    previewOddsRequest(true);
+    previewOddsRef.current(true);
 
     // 设置定时器
     const timer = setInterval(() => {
-      previewOddsRequest(true);
+      previewOddsRef.current(true);
     }, 2000); // 每 2 秒刷新一次
 
     return () => clearInterval(timer);
-  }, [visible, match, autoRefreshOdds, previewOddsRequest]);
+  }, [visible, match, autoRefreshOdds]);
 
   const fetchAutoSelection = useCallback(async (limit?: number, silent = false) => {
     if (!match) return;
@@ -469,13 +487,13 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
     }
   }, [form, match, accountDict, previewOddsRequest]);
 
+  const matchId = match?.id;
   useEffect(() => {
-    if (!visible || !match) return;
-    // 始终调用优选 API 来获取符合条件的账号列表
-    // 在"优选"模式下会自动选中账号，其他模式只用于过滤显示
-    fetchAutoSelection(undefined, betMode !== '优选');
+    if (!visible || !matchId) return;
+    // 弹窗打开时自动优选账号（静默模式，不显示提示）
+    fetchAutoSelection(undefined, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, match, betMode]);
+  }, [visible, matchId]);
 
   const handleAccountsChange = (accountIds: Array<number | string>) => {
     const normalized = accountIds.map(id => Number(id));
@@ -695,280 +713,182 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
   return (
     <Modal
-      title={
-        <Space size={6}>
-          <TrophyOutlined />
-          <span>创建下注</span>
-        </Space>
-      }
+      title={null}
       open={visible}
       onOk={handleSubmit}
       onCancel={handleCancel}
       confirmLoading={loading}
-      width={620}
+      width={isMobile ? '100%' : 480}
+      style={isMobile ? { top: 0, margin: 0, maxWidth: '100vw', padding: 0 } : undefined}
       maskClosable={false}
-      className="bet-modal compact"
-      okText="下单"
-      cancelButtonProps={{ style: { display: 'none' } }}
+      className="bet-modal-v2"
+      footer={
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button onClick={handleCancel} style={{ flex: 1 }}>取消</Button>
+          <Button type="primary" onClick={handleSubmit} loading={loading} style={{ flex: 2 }}>
+            确认下注 ({selectedAccounts.length}个账号)
+          </Button>
+        </div>
+      }
     >
-      <div className="bet-modal-body compact">
-        {match ? (
-          <>
-            <div className="bet-quick-head">
-              <div className="bet-quick-title">
-                <strong>{match.home_team} - {match.away_team}</strong>
-                {match.current_score && <span className="score">({match.current_score})</span>}
+      {match ? (
+        <div className="bet-v2">
+          {/* 隐藏字段 */}
+          <Form form={form} onValuesChange={handleFormValuesChange} style={{ display: 'none' }}>
+            <Form.Item name="bet_type"><Input /></Form.Item>
+            <Form.Item name="bet_option"><Input /></Form.Item>
+            <Form.Item name="odds"><InputNumber /></Form.Item>
+            <Form.Item name="account_ids"><Input /></Form.Item>
+            <Form.Item name="total_amount"><InputNumber /></Form.Item>
+            <Form.Item name="single_limit"><Input /></Form.Item>
+            <Form.Item name="interval_range"><Input /></Form.Item>
+            <Form.Item name="quantity"><InputNumber /></Form.Item>
+            <Form.Item name="min_odds"><InputNumber /></Form.Item>
+          </Form>
+
+          {/* 比赛信息头部 */}
+          <div className="bet-v2-header">
+            <div className="bet-v2-match">
+              <span className="teams">{match.home_team} vs {match.away_team}</span>
+              {match.current_score && <span className="score">{match.current_score}</span>}
+            </div>
+            <div className="bet-v2-meta">
+              <span>{match.league_name}</span>
+              <span>{matchTimeLabel}</span>
+            </div>
+          </div>
+
+          {/* 赔率显示 */}
+          <div className="bet-v2-odds">
+            <div className="odds-main">
+              <span className="odds-label">{selectionLabel || '当前赔率'}</span>
+              <span className={`odds-value ${oddsPreview?.closed ? 'closed' : ''} ${minOdds && oddsPreview?.odds && oddsPreview.odds < minOdds ? 'below-min' : ''}`}>
+                {oddsPreview ? (oddsPreview.odds ?? '-') : '--'}
+              </span>
+              {previewLoading && <Spin size="small" />}
+            </div>
+            <div className="odds-actions">
+              <Button size="small" icon={<ReloadOutlined />} onClick={() => previewOddsRequest(false)} />
+              <Checkbox checked={autoRefreshOdds} onChange={(e) => setAutoRefreshOdds(e.target.checked)}>
+                <span style={{ fontSize: 11 }}>自动</span>
+              </Checkbox>
+            </div>
+            {previewError && <div className="odds-error">{previewError}</div>}
+            {minOdds && oddsPreview?.odds && oddsPreview.odds < minOdds && (
+              <div className="odds-warning">当前赔率 {oddsPreview.odds} 低于最低赔率 {minOdds}</div>
+            )}
+          </div>
+
+          {/* 表单区域 - 紧凑网格 */}
+          <div className="bet-v2-form">
+            <div className="form-grid">
+              <div className="form-cell">
+                <label>总金额</label>
+                <InputNumber
+                  size="small"
+                  min={50}
+                  style={{ width: '100%' }}
+                  placeholder="50000"
+                  value={totalAmount}
+                  onChange={(v) => { form.setFieldValue('total_amount', v); handleFormValuesChange(); }}
+                />
               </div>
-              <div className="bet-quick-sub">
-                <span className="league">[{match.league_name}]</span>
-                <span className="time">{matchTimeLabel}</span>
+              <div className="form-cell">
+                <label>单笔限额</label>
+                <Input
+                  size="small"
+                  placeholder="留空自动"
+                  value={singleLimit}
+                  onChange={(e) => form.setFieldValue('single_limit', e.target.value)}
+                />
+              </div>
+              <div className="form-cell">
+                <label>间隔(秒)</label>
+                <Input
+                  size="small"
+                  placeholder="3-15"
+                  value={intervalRange}
+                  onChange={(e) => form.setFieldValue('interval_range', e.target.value)}
+                />
+              </div>
+              <div className="form-cell">
+                <label>数量</label>
+                <InputNumber
+                  size="small"
+                  min={1}
+                  max={10}
+                  style={{ width: '100%' }}
+                  value={quantity}
+                  onChange={(v) => form.setFieldValue('quantity', v)}
+                />
+              </div>
+              <div className="form-cell">
+                <label>最低赔率</label>
+                <InputNumber
+                  size="small"
+                  min={0}
+                  step={0.01}
+                  style={{ width: '100%' }}
+                  placeholder="可选"
+                  value={minOdds}
+                  onChange={(v) => form.setFieldValue('min_odds', v)}
+                />
+              </div>
+              <div className="form-cell">
+                <label>模式</label>
+                <div className="mode-switch">
+                  {(['优选', '平均'] as const).map(mode => (
+                    <span
+                      key={mode}
+                      className={mode === betMode ? 'active' : ''}
+                      onClick={() => handleModeSwitch(mode)}
+                    >{mode}</span>
+                  ))}
+                </div>
               </div>
             </div>
-
-            <Form
-              form={form}
-              layout="vertical"
-              onValuesChange={handleFormValuesChange}
-              className="bet-quick-form"
-            >
-              <Form.Item
-                name="bet_type"
-                rules={[{ required: true, message: '请选择投注类型' }]}
-                hidden
-              >
-                <Input />
-              </Form.Item>
-
-              <Form.Item
-                name="bet_option"
-                rules={[{ required: true, message: '请选择投注选项' }]}
-                hidden
-              >
-                <Input />
-              </Form.Item>
-
-              <Form.Item
-                name="odds"
-                rules={[{ required: true, message: '缺少赔率' }]}
-                hidden
-              >
-                <InputNumber min={0} />
-              </Form.Item>
-
-              {selectionLabel && (
-                <div className="bet-quick-selection">{selectionLabel}</div>
-              )}
-
-              <div style={{ marginBottom: 12 }}>
-                <Space size={8} align="center" wrap>
-                  <Tag color={oddsPreview?.closed ? 'red' : 'blue'} style={{ fontSize: 14, padding: '4px 8px' }}>
-                    {oddsPreview ? (oddsPreview.odds ?? '-') : '--'}
-                  </Tag>
-                  {previewLoading && <Spin size="small" />}
-                  <Button
-                    size="small"
-                    icon={<ReloadOutlined />}
-                    onClick={() => previewOddsRequest(false)}
-                  >
-                    刷新赔率
-                  </Button>
-                  <Checkbox
-                    checked={autoRefreshOdds}
-                    onChange={(e) => setAutoRefreshOdds(e.target.checked)}
-                  >
-                    自动刷新
-                  </Checkbox>
-                </Space>
-                {previewError && (
-                  <div style={{ marginTop: 4, color: '#ff4d4f', fontSize: 12 }}>{previewError}</div>
-                )}
-              </div>
-
-              <Row gutter={8} className="bet-quick-row">
-                <Col span={12}>
-                  <Form.Item
-                    name="total_amount"
-                    label={
-                      <span>
-                        总金额（实数）
-                        <Tooltip title="计划实际投入的金额总和，按账号折扣后的真实出款总额">
-                          <QuestionCircleOutlined style={{ marginLeft: 4, fontSize: 12, color: '#999' }} />
-                        </Tooltip>
-                      </span>
-                    }
-                    className="bet-quick-item"
-                    rules={[{ required: true, message: '请输入总金额' }]}
-                  >
-                    <InputNumber size="small" min={50} style={{ width: '100%' }} placeholder="50000" />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="single_limit"
-                    label={
-                      <span>
-                        单笔限额（虚数）
-                        <Tooltip title="如填写（如 10000-14000），按该区间随机拆分虚数金额；若留空，将自动读取账号在皇冠后台的单笔限额">
-                          <QuestionCircleOutlined style={{ marginLeft: 4, fontSize: 12, color: '#999' }} />
-                        </Tooltip>
-                      </span>
-                    }
-                    className="bet-quick-item"
-                  >
-                    <Input size="small" placeholder="10000-14000 或留空" />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Row gutter={8} className="bet-quick-row">
-                <Col span={12}>
-                  <Form.Item
-                    name="interval_range"
-                    label={
-                      <span>
-                        间隔时间（秒）
-                        <Tooltip title="每笔下注之间的等待时间范围，例如 3-15 表示随机等待 3~15 秒">
-                          <QuestionCircleOutlined style={{ marginLeft: 4, fontSize: 12, color: '#999' }} />
-                        </Tooltip>
-                      </span>
-                    }
-                    className="bet-quick-item"
-                  >
-                    <Input size="small" placeholder="3-15" />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="quantity"
-                    label={
-                      <span>
-                        数量
-                        <Tooltip title="每轮参与下注的账号数量。若选中账号超过该数量，将按轮次轮换执行">
-                          <QuestionCircleOutlined style={{ marginLeft: 4, fontSize: 12, color: '#999' }} />
-                        </Tooltip>
-                      </span>
-                    }
-                    className="bet-quick-item"
-                    rules={[{ required: true, message: '请输入数量' }]}
-                  >
-                    <InputNumber size="small" min={1} max={10} style={{ width: '100%' }} placeholder="1" />
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Row gutter={8} className="bet-quick-row">
-                <Col span={12}>
-                  <Form.Item name="min_odds" label="最低赔率" className="bet-quick-item">
-                    <InputNumber size="small" min={0} step={0.01} style={{ width: '100%' }} placeholder="可选" />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <div className="bet-quick-mode">
-                    <span className="label">模式</span>
-                    <div className="mode-buttons">
-                      {(['优选', '平均'] as const).map(mode => (
-                        <button
-                          key={mode}
-                          type="button"
-                          className={mode === betMode ? 'active' : ''}
-                          onClick={() => handleModeSwitch(mode)}
-                        >
-                          {mode}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-
-              <Form.Item name="group" label="分组" className="bet-quick-item">
-                <Select size="small" allowClear placeholder="选择分组">
-                  {[...new Set(accounts.map(acc => acc.group_name))]
-                    .filter(Boolean)
-                    .map(group => (
-                      <Option key={group as string} value={group as string}>{group as string}</Option>
-                    ))}
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="account_ids"
-                label={(
-                  <div className="bet-account-label">
-                    <span>选择账号 ({selectedAccounts.length})</span>
-                    <Space size={8}>
-                      {betMode === '优选' && (
-                        <Button
-                          type="link"
-                          size="small"
-                          onClick={() => fetchAutoSelection()}
-                          disabled={autoLoading}
-                        >
-                          重新优选
-                        </Button>
-                      )}
-                      {autoLoading && <Spin size="small" />}
-                    </Space>
-                  </div>
-                )}
-                rules={[{ required: true, message: '请选择下注账号' }]}
-                className="bet-quick-item"
-              >
-                <Checkbox.Group
-                  value={selectedAccounts}
-                  onChange={(values) => handleAccountsChange(values as Array<number | string>)}
-                >
-                  <div className="bet-account-grid compact">
-                    {sortedAccounts.map(account => {
-                      const selected = selectedAccounts.includes(account.id);
-                      const meta = accountMetaMap.get(account.id);
-                      const online = isAccountOnline(account.id);
-                      return (
-                        <Checkbox
-                          key={account.id}
-                          value={account.id}
-                          className="bet-account-checkbox"
-                          disabled={!online}
-                        >
-                          <div className={`bet-account-card compact ${selected ? 'active' : ''} ${meta ? 'recommended' : ''} ${online ? 'online' : 'offline'}`}>
-                            <div className="bet-account-info">
-                              <span className="name">{account.username}</span>
-                              <span className="sub">{account.display_name || account.group_name || '-'}</span>
-                              <span className={`status ${online ? 'status-online' : 'status-offline'}`}>
-                                {online ? '在线' : '离线'}
-                              </span>
-                            </div>
-                            {meta && (
-                              <span className="stats">
-                                日有效 {formatAmount(meta.stats.daily_effective_amount)}｜
-                                日盈亏 {formatAmount(meta.stats.daily_profit)}
-                              </span>
-                            )}
-                          </div>
-                        </Checkbox>
-                      );
-                    })}
-                  </div>
-                </Checkbox.Group>
-              </Form.Item>
-
-              {autoSelection && (
-                <div className="bet-selection-summary">
-                  <Tag color="blue">优选</Tag>
-                  <span>
-                    共 {autoSelection.eligible_accounts.length} 个账号符合条件，
-                    截止时间 {dayjs(autoSelection.generated_at).format('HH:mm:ss')}
-                  </span>
-                </div>
-              )}
-            </Form>
-          </>
-        ) : (
-          <div style={{ padding: '32px 0', textAlign: 'center' }}>
-            <Empty description="请选择比赛后再进行下注" image={Empty.PRESENTED_IMAGE_SIMPLE} />
           </div>
-        )}
-      </div>
+
+          {/* 账号选择 */}
+          <div className="bet-v2-accounts">
+            <div className="accounts-header">
+              <span>账号 <b>{selectedAccounts.length}</b>/{sortedAccounts.length}</span>
+              <Space size={4}>
+                {betMode === '优选' && (
+                  <Button type="link" size="small" onClick={() => fetchAutoSelection()} disabled={autoLoading} style={{ padding: 0, fontSize: 11 }}>
+                    重选
+                  </Button>
+                )}
+                {autoLoading && <Spin size="small" />}
+              </Space>
+            </div>
+            <div className="accounts-list">
+              {sortedAccounts.map(account => {
+                const selected = selectedAccounts.includes(account.id);
+                const online = isAccountOnline(account.id);
+                return (
+                  <div
+                    key={account.id}
+                    className={`account-item ${selected ? 'selected' : ''} ${online ? '' : 'offline'}`}
+                    onClick={() => {
+                      if (!online) return;
+                      const newSelected = selected
+                        ? selectedAccounts.filter(id => id !== account.id)
+                        : [...selectedAccounts, account.id];
+                      handleAccountsChange(newSelected);
+                    }}
+                  >
+                    <span className="name">{account.username}</span>
+                    <span className={`status ${online ? 'on' : 'off'}`}>{online ? '✓' : '✗'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <Empty description="请选择比赛" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: 20 }} />
+      )}
     </Modal>
   );
 };
