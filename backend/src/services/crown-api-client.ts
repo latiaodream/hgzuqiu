@@ -987,6 +987,17 @@ export class CrownApiClient {
             message: '会话已失效，请重新登录账号。',
           };
         }
+        
+        // VariableStandard 也表示会话失效
+        if (errorText === 'VariableStandard' || errorText.includes('VariableStandard') || errorText === 'Variable Standard') {
+          console.log('❌ 会话已失效 (VariableStandard)，需要重新登录');
+          this.uid = null; // 清除 UID
+          return {
+            success: false,
+            code: 'SESSION_EXPIRED',
+            message: '会话已失效，请重新登录账号。',
+          };
+        }
 
         console.log('❌ 无效的响应格式:', errorText);
         return {
