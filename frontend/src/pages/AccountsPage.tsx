@@ -73,30 +73,11 @@ const AccountsPage: React.FC = () => {
     try {
       setLoading(true);
 
-      const [accountResponse, statusResponse] = await Promise.all([
-        accountApi.getAccounts(selectedGroup),
-        crownApi.getStatus().catch((error) => {
-          console.warn('Failed to load automation status:', error);
-          return undefined;
-        }),
-      ]);
-
-      const onlineMap: Record<number, boolean> = {};
-      if (statusResponse?.success && statusResponse.data) {
-        const statusData = statusResponse.data as {
-          accounts?: Array<{ id: number; online?: boolean }>;
-        };
-        statusData.accounts?.forEach(({ id, online }) => {
-          onlineMap[id] = !!online;
-        });
-      }
+      // 只获取账号列表，在线状态使用数据库中的 is_online 字段
+      const accountResponse = await accountApi.getAccounts(selectedGroup);
 
       if (accountResponse.success && accountResponse.data) {
-        const enriched = accountResponse.data.map((account) => ({
-          ...account,
-          is_online: onlineMap[account.id] ?? account.is_online ?? false,
-        }));
-        setAccounts(enriched);
+        setAccounts(accountResponse.data);
       }
     } catch (error) {
       console.error('Failed to load accounts:', error);
