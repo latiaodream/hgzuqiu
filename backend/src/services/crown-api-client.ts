@@ -1018,10 +1018,23 @@ export class CrownApiClient {
       } else {
         console.log('❌ 获取赔率失败');
         console.log('   错误代码:', data.code);
+        console.log('   错误信息:', data.errormsg);
+        
+        // 针对不同错误码提供友好提示
+        let friendlyMessage = '获取赔率失败';
+        if (data.code === '555') {
+          friendlyMessage = `该盘口暂不可用 (${data.errormsg || '盘口关闭'})`;
+        } else if (data.code === '556') {
+          friendlyMessage = '投注金额超出限制';
+        } else if (data.msg) {
+          friendlyMessage = data.msg;
+        }
+        
         return {
           success: false,
           code: data.code,
-          message: data.msg || '获取赔率失败',
+          message: friendlyMessage,
+          errormsg: data.errormsg,
           ...data,
         };
       }
