@@ -1,0 +1,4176 @@
+{
+  "summary": {
+    "oddsApiTotal": 58,
+    "iSportsTotal": 28,
+    "matched": 0,
+    "oddsApiOnly": 58,
+    "iSportsOnly": 28
+  },
+  "matched": [],
+  "oddsApiOnly": [
+    {
+      "home": "Hong Kong FC",
+      "away": "Eastern SC",
+      "league": "Hong Kong",
+      "time": " China - Premier League",
+      "score": "2025-11-09 16:30:00+08"
+    },
+    {
+      "home": "1. FC Slovacko B",
+      "away": "MFK Vitkovice",
+      "league": "Czechia - MSFL",
+      "time": "2025-11-09 17:15:00+08",
+      "score": "1-0"
+    },
+    {
+      "home": "Slovan Bratislava B",
+      "away": "MSK Puchov",
+      "league": "Slovakia - 2. Liga",
+      "time": "2025-11-09 17:30:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "Sparta Prague B",
+      "away": "FC Zbrojovka Brno",
+      "league": "Czechia - FNL",
+      "time": "2025-11-09 17:30:00+08",
+      "score": "0-3"
+    },
+    {
+      "home": "MSK Zilina B",
+      "away": "FC STK 1914 Samorin",
+      "league": "Slovakia - 2. Liga",
+      "time": "2025-11-09 17:30:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "FC Gifu",
+      "away": "Gainare Tottori",
+      "league": "Japan - J3 League",
+      "time": "2025-11-09 18:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "K. Khanh Hoa",
+      "away": "CS. Dong Thap",
+      "league": "Vietnam - V-League 2",
+      "time": "2025-11-09 18:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "Slavia Tu Kosice",
+      "away": "MFk Dukla Banska Bystrica",
+      "league": "Slovakia - 2. Liga",
+      "time": "2025-11-09 18:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "Fatih Karagumruk Istanbul",
+      "away": "Konyaspor",
+      "league": "Turkiye - Super Lig",
+      "time": "2025-11-09 19:30:00+08",
+      "score": "2-0"
+    },
+    {
+      "home": "Holstein Kiel",
+      "away": "Fortuna Dusseldorf",
+      "league": "Germany - 2. Bundesliga",
+      "time": "2025-11-09 20:30:00+08",
+      "score": "1-0"
+    },
+    {
+      "home": "RSC Anderlecht",
+      "away": "Club Brugge",
+      "league": "Belgium - Pro League",
+      "time": "2025-11-09 20:30:00+08",
+      "score": "1-0"
+    },
+    {
+      "home": "1. FC Magdeburg",
+      "away": "SC Paderborn 07",
+      "league": "Germany - 2. Bundesliga",
+      "time": "2025-11-09 20:30:00+08",
+      "score": "0-1"
+    },
+    {
+      "home": "Eintracht Braunschweig",
+      "away": "VfL Bochum",
+      "league": "Germany - 2. Bundesliga",
+      "time": "2025-11-09 20:30:00+08",
+      "score": "0-2"
+    },
+    {
+      "home": "VfB Stuttgart II",
+      "away": "Alemannia Aachen",
+      "league": "Germany - 3. Liga",
+      "time": "2025-11-09 20:30:00+08",
+      "score": "1-2"
+    },
+    {
+      "home": "FC Unirea 2004 Slobozia",
+      "away": "FC CFR 1907 Cluj",
+      "league": "Romania - Superliga",
+      "time": "2025-11-09 20:30:00+08",
+      "score": "0-1"
+    },
+    {
+      "home": "Ceramica Cleopatra",
+      "away": "Pyramids FC",
+      "league": "Egypt - Supercup",
+      "time": "2025-11-09 20:45:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "AE Kifisia FC",
+      "away": "Olympiacos Piraeus",
+      "league": "Greece - Super League",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "1-1"
+    },
+    {
+      "home": "Torpedo Moscow",
+      "away": "FC Sokol Saratov",
+      "league": "Russia - 1. Liga",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "FC Fredericia",
+      "away": "Viborg FF",
+      "league": "Denmark - Superliga",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "0-2"
+    },
+    {
+      "home": "Athletic Bilbao",
+      "away": "Real Oviedo",
+      "league": "Spain - LaLiga",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "1-0"
+    },
+    {
+      "home": "FC Basel 1893",
+      "away": "FC Lugano",
+      "league": "Switzerland - Super League",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "Pendikspor",
+      "away": "Umraniyespor",
+      "league": "Turkiye - 1. Lig",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "1-0"
+    },
+    {
+      "home": "SK Rotor Volgograd",
+      "away": "FC Shinnik Yaroslavl",
+      "league": "Russia - 1. Liga",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "1-0"
+    },
+    {
+      "home": "Aris Thessaloniki",
+      "away": "Asteras Tripolis",
+      "league": "Greece - Super League",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "Vejle BK",
+      "away": "FC Copenhagen",
+      "league": "Denmark - Superliga",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "FC CSKA 1948",
+      "away": "PFC Cherno More Varna",
+      "league": "Bulgaria - Parva Liga",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "0-1"
+    },
+    {
+      "home": "UD Las Palmas",
+      "away": "Racing Santander",
+      "league": "Spain - LaLiga 2",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "3-1"
+    },
+    {
+      "home": "FC Vaduz",
+      "away": "Stade Lausanne Ouchy",
+      "league": "Switzerland - Challenge League",
+      "time": "2025-11-09 21:00:00+08",
+      "score": "2-1"
+    },
+    {
+      "home": "NEC Nijmegen",
+      "away": "FC Groningen",
+      "league": "Netherlands - Eredivisie",
+      "time": "2025-11-09 21:30:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "Rosenborg BK",
+      "away": "Vaalerenga IF",
+      "league": "Norway - Eliteserien",
+      "time": "2025-11-09 21:30:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "LASK Linz",
+      "away": "SCR Altach",
+      "league": "Austria - Bundesliga",
+      "time": "2025-11-09 21:30:00+08",
+      "score": "1-0"
+    },
+    {
+      "home": "Korona Kielce",
+      "away": "RKS Rakow Czestochowa",
+      "league": "Poland - Ekstraklasa",
+      "time": "2025-11-09 21:45:00+08",
+      "score": "1-2"
+    },
+    {
+      "home": "Legia Warszawa",
+      "away": "Bruk-Bet Termalica Nieciecza",
+      "league": "Poland - Ekstraklasa",
+      "time": "2025-11-09 21:45:00+08",
+      "score": "0-1"
+    },
+    {
+      "home": "Rayo Vallecano B",
+      "away": "CD Quintanar del Rey",
+      "league": "Spain - Segunda Federacion",
+      "time": "2025-11-09 21:45:00+08",
+      "score": "2-0"
+    },
+    {
+      "home": "Nottingham Forest",
+      "away": "Leeds United",
+      "league": "England - Premier League",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-1"
+    },
+    {
+      "home": "Lazio Rome",
+      "away": "SSD Napoli",
+      "league": "Italy - Serie A",
+      "time": " Women",
+      "score": "2025-11-09 22:00:00+08"
+    },
+    {
+      "home": "Hammarby IF",
+      "away": "IF Elfsborg",
+      "league": "Sweden - Allsvenskan",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "FC Lorient",
+      "away": "Toulouse FC",
+      "league": "France - Ligue 1",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "FC Stockholm Internazionale",
+      "away": "Assyriska FF",
+      "league": "Sweden - Ettan",
+      "time": " Norra",
+      "score": "2025-11-09 22:00:00+08"
+    },
+    {
+      "home": "Crystal Palace",
+      "away": "Brighton & Hove Albion",
+      "league": "England - Premier League",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "Malmo FF",
+      "away": "GAIS",
+      "league": "Sweden - Allsvenskan",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "Sollentuna FK",
+      "away": "Karlbergs BK",
+      "league": "Sweden - Ettan",
+      "time": " Norra",
+      "score": "2025-11-09 22:00:00+08"
+    },
+    {
+      "home": "IFK Goteborg",
+      "away": "IFK Norrkoping FK",
+      "league": "Sweden - Allsvenskan",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "IF Karlstad Fotbol",
+      "away": "Hammarby Talang FF",
+      "league": "Sweden - Ettan",
+      "time": " Norra",
+      "score": "2025-11-09 22:00:00+08"
+    },
+    {
+      "home": "IFK Stocksund",
+      "away": "Vasalunds IF",
+      "league": "Sweden - Ettan",
+      "time": " Norra",
+      "score": "2025-11-09 22:00:00+08"
+    },
+    {
+      "home": "Nordic United FC",
+      "away": "FC Arlanda",
+      "league": "Sweden - Ettan",
+      "time": " Norra",
+      "score": "2025-11-09 22:00:00+08"
+    },
+    {
+      "home": "Brentford FC",
+      "away": "Newcastle United",
+      "league": "England - Premier League",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "Gefle IF",
+      "away": "Orebro Syrianska IF",
+      "league": "Sweden - Ettan",
+      "time": " Norra",
+      "score": "2025-11-09 22:00:00+08"
+    },
+    {
+      "home": "Genoa CFC",
+      "away": "ACF Fiorentina",
+      "league": "Italy - Serie A",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "1-0"
+    },
+    {
+      "home": "Bologna FC",
+      "away": "SSC Napoli",
+      "league": "Italy - Serie A",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "FC Felgueiras 1932",
+      "away": "Academico de Viseu FC",
+      "league": "Portugal - Liga Portugal 2",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-1"
+    },
+    {
+      "home": "Cesena FC",
+      "away": "US Avellino",
+      "league": "Italy - Serie B",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "Kocaelispor",
+      "away": "Galatasaray Istanbul",
+      "league": "Turkiye - Super Lig",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "AIK",
+      "away": "Halmstads BK",
+      "league": "Sweden - Allsvenskan",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "IF Brommapojkarna",
+      "away": "Degerfors IF",
+      "league": "Sweden - Allsvenskan",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "Osters IF",
+      "away": "Djurgardens IF",
+      "league": "Sweden - Allsvenskan",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "0-0"
+    },
+    {
+      "home": "IK Sirius",
+      "away": "IFK Varnamo",
+      "league": "Sweden - Allsvenskan",
+      "time": "2025-11-09 22:00:00+08",
+      "score": "1-0"
+    },
+    {
+      "home": "Kazincbarcikai SC",
+      "away": "Ferencvarosi Budapest",
+      "league": "Hungary - NB I",
+      "time": "2025-11-09 22:15:00+08",
+      "score": "0-0"
+    }
+  ],
+  "iSportsOnly": [
+    {
+      "gid": "419499721",
+      "league": "German Bundesliga",
+      "league_short_name": "German Bundesliga",
+      "team_h": "SC Freiburg",
+      "team_c": "St. Pauli",
+      "home": "SC Freiburg",
+      "away": "St. Pauli",
+      "timer": "2025-11-09T14:30:00.000Z",
+      "time": "2025-11-09T14:30:00.000Z",
+      "match_time": "2025-11-09T14:30:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "0.75",
+      "IOR_REH": "1.04",
+      "IOR_REC": "0.85",
+      "IOR_RMH": "1.75",
+      "IOR_RMN": "3.05",
+      "IOR_RMC": "6.70",
+      "RATIO_ROUO": "1.5",
+      "IOR_ROUC": "0.93",
+      "IOR_ROUH": "0.95",
+      "RATIO_HRE": "0.25",
+      "IOR_HREH": "1.69",
+      "IOR_HREC": "0.48",
+      "RATIO_HROUO": "0.5",
+      "IOR_HROUC": "2.00",
+      "IOR_HROUH": "0.38",
+      "more": 1,
+      "strong": "H",
+      "RATIO_RO": "0.5",
+      "IOR_ROH": "0.75",
+      "IOR_ROC": "1.16",
+      "RATIO_RCO": "1",
+      "IOR_RCOH": "1.63",
+      "IOR_RCOC": "0.50",
+      "RATIO_R_4": "0.25",
+      "IOR_R_4H": "0.48",
+      "IOR_R_4C": "1.69",
+      "RATIO_ROUHO": "1.75",
+      "IOR_ROUHOC": "1.23",
+      "IOR_ROUHOH": "0.69",
+      "RATIO_ROUCO": "1.25",
+      "IOR_ROUCOC": "0.62",
+      "IOR_ROUCOH": "1.35",
+      "RATIO_ROU_4": "2",
+      "IOR_ROU_4C": "1.78",
+      "IOR_ROU_4H": "0.44",
+      "RATIO_HRO": "0",
+      "IOR_HROH": "0.30",
+      "IOR_HROC": "2.43",
+      "RATIO_HRCO": "0.5",
+      "IOR_HRCOH": "2.63",
+      "IOR_HRCOC": "0.27",
+      "RATIO_HROUHO": "0.75",
+      "IOR_HROUHOC": "3.12",
+      "IOR_HROUHOH": "0.20",
+      "RATIO_HROUCO": "1",
+      "IOR_HROUCOC": "6.66",
+      "IOR_HROUCOH": "0.03",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "0.75",
+              "home": "1.04",
+              "away": "0.85"
+            },
+            {
+              "line": "0.5",
+              "home": "0.75",
+              "away": "1.16"
+            },
+            {
+              "line": "1",
+              "home": "1.63",
+              "away": "0.50"
+            },
+            {
+              "line": "0.25",
+              "home": "0.48",
+              "away": "1.69"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1.5",
+              "over": "0.93",
+              "under": "0.95"
+            },
+            {
+              "line": "1.75",
+              "over": "1.23",
+              "under": "0.69"
+            },
+            {
+              "line": "1.25",
+              "over": "0.62",
+              "under": "1.35"
+            },
+            {
+              "line": "2",
+              "over": "1.78",
+              "under": "0.44"
+            }
+          ],
+          "moneyline": {
+            "home": "1.75",
+            "draw": "3.05",
+            "away": "6.70"
+          },
+          "handicap": {
+            "line": "0.75",
+            "home": "1.04",
+            "away": "0.85"
+          },
+          "ou": {
+            "line": "1.5",
+            "over": "0.93",
+            "under": "0.95"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.25",
+              "home": "1.69",
+              "away": "0.48"
+            },
+            {
+              "line": "0",
+              "home": "0.30",
+              "away": "2.43"
+            },
+            {
+              "line": "0.5",
+              "home": "2.63",
+              "away": "0.27"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "0.5",
+              "over": "2.00",
+              "under": "0.38"
+            },
+            {
+              "line": "0.75",
+              "over": "3.12",
+              "under": "0.20"
+            },
+            {
+              "line": "1",
+              "over": "6.66",
+              "under": "0.03"
+            }
+          ],
+          "handicap": {
+            "line": "0.25",
+            "home": "1.69",
+            "away": "0.48"
+          },
+          "ou": {
+            "line": "0.5",
+            "over": "2.00",
+            "under": "0.38"
+          }
+        },
+        "moneyline": {
+          "home": "1.75",
+          "draw": "3.05",
+          "away": "6.70"
+        },
+        "handicap": {
+          "line": "0.75",
+          "home": "1.04",
+          "away": "0.85"
+        },
+        "ou": {
+          "line": "1.5",
+          "over": "0.93",
+          "under": "0.95"
+        }
+      }
+    },
+    {
+      "gid": "220439727",
+      "league": "Russia Premier League",
+      "league_short_name": "Russia Premier League",
+      "team_h": "Terek Grozny",
+      "team_c": "Spartak Moscow",
+      "home": "Terek Grozny",
+      "away": "Spartak Moscow",
+      "timer": "2025-11-09T14:30:00.000Z",
+      "time": "2025-11-09T14:30:00.000Z",
+      "match_time": "2025-11-09T14:30:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-0.25",
+      "IOR_REH": "0.86",
+      "IOR_REC": "1.02",
+      "IOR_RMH": "3.5",
+      "IOR_RMN": "2.71",
+      "IOR_RMC": "2.36",
+      "RATIO_ROUO": "1.5",
+      "IOR_ROUC": "0.89",
+      "IOR_ROUH": "0.97",
+      "RATIO_HRE": "0",
+      "IOR_HREH": "1.14",
+      "IOR_HREC": "0.75",
+      "RATIO_HROUO": "0.5",
+      "IOR_HROUC": "1.85",
+      "IOR_HROUH": "0.40",
+      "more": 1,
+      "strong": "C",
+      "RATIO_RO": "-0.5",
+      "IOR_ROH": "0.57",
+      "IOR_ROC": "1.44",
+      "RATIO_RCO": "-0.75",
+      "IOR_RCOH": "0.58",
+      "IOR_RCOC": "1.44",
+      "RATIO_ROUHO": "1.75",
+      "IOR_ROUHOC": "1.19",
+      "IOR_ROUHOH": "0.70",
+      "RATIO_ROUCO": "2.75",
+      "IOR_ROUCOC": "1.38",
+      "IOR_ROUCOH": "0.59",
+      "RATIO_HRO": "-0.25",
+      "IOR_HROH": "0.33",
+      "IOR_HROC": "2.22",
+      "RATIO_HROUHO": "0.75",
+      "IOR_HROUHOC": "2.77",
+      "IOR_HROUHOH": "0.22",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "0.86",
+              "away": "1.02"
+            },
+            {
+              "line": "-0.5",
+              "home": "0.57",
+              "away": "1.44"
+            },
+            {
+              "line": "-0.75",
+              "home": "0.58",
+              "away": "1.44"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1.5",
+              "over": "0.89",
+              "under": "0.97"
+            },
+            {
+              "line": "1.75",
+              "over": "1.19",
+              "under": "0.70"
+            },
+            {
+              "line": "2.75",
+              "over": "1.38",
+              "under": "0.59"
+            }
+          ],
+          "moneyline": {
+            "home": "3.5",
+            "draw": "2.71",
+            "away": "2.36"
+          },
+          "handicap": {
+            "line": "-0.25",
+            "home": "0.86",
+            "away": "1.02"
+          },
+          "ou": {
+            "line": "1.5",
+            "over": "0.89",
+            "under": "0.97"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0",
+              "home": "1.14",
+              "away": "0.75"
+            },
+            {
+              "line": "-0.25",
+              "home": "0.33",
+              "away": "2.22"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "0.5",
+              "over": "1.85",
+              "under": "0.40"
+            },
+            {
+              "line": "0.75",
+              "over": "2.77",
+              "under": "0.22"
+            }
+          ],
+          "handicap": {
+            "line": "0",
+            "home": "1.14",
+            "away": "0.75"
+          },
+          "ou": {
+            "line": "0.5",
+            "over": "1.85",
+            "under": "0.40"
+          }
+        },
+        "moneyline": {
+          "home": "3.5",
+          "draw": "2.71",
+          "away": "2.36"
+        },
+        "handicap": {
+          "line": "-0.25",
+          "home": "0.86",
+          "away": "1.02"
+        },
+        "ou": {
+          "line": "1.5",
+          "over": "0.89",
+          "under": "0.97"
+        }
+      }
+    },
+    {
+      "gid": "494749722",
+      "league": "Czech Republic Gambrinus Liga",
+      "league_short_name": "Czech Republic Gambrinus Liga",
+      "team_h": "Sigma Olomouc",
+      "team_c": "Pardubice",
+      "home": "Sigma Olomouc",
+      "away": "Pardubice",
+      "timer": "2025-11-09T14:30:00.000Z",
+      "time": "2025-11-09T14:30:00.000Z",
+      "match_time": "2025-11-09T14:30:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "0.5",
+      "IOR_REH": "0.92",
+      "IOR_REC": "0.96",
+      "IOR_RMH": "1.92",
+      "IOR_RMN": "2.75",
+      "IOR_RMC": "4.65",
+      "RATIO_ROUO": "1.5",
+      "IOR_ROUC": "0.90",
+      "IOR_ROUH": "0.96",
+      "RATIO_HRE": "0.25",
+      "IOR_HREH": "1.69",
+      "IOR_HREC": "0.47",
+      "RATIO_HROUO": "0.5",
+      "IOR_HROUC": "1.58",
+      "IOR_HROUH": "0.49",
+      "more": 1,
+      "strong": "H",
+      "RATIO_RO": "0.75",
+      "IOR_ROH": "1.23",
+      "IOR_ROC": "0.69",
+      "RATIO_ROUHO": "1.75",
+      "IOR_ROUHOC": "1.14",
+      "IOR_ROUHOH": "0.73",
+      "RATIO_HRO": "0",
+      "IOR_HROH": "0.40",
+      "IOR_HROC": "1.92",
+      "RATIO_HROUHO": "0.75",
+      "IOR_HROUHOC": "2.27",
+      "IOR_HROUHOH": "0.30",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "0.5",
+              "home": "0.92",
+              "away": "0.96"
+            },
+            {
+              "line": "0.75",
+              "home": "1.23",
+              "away": "0.69"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1.5",
+              "over": "0.90",
+              "under": "0.96"
+            },
+            {
+              "line": "1.75",
+              "over": "1.14",
+              "under": "0.73"
+            }
+          ],
+          "moneyline": {
+            "home": "1.92",
+            "draw": "2.75",
+            "away": "4.65"
+          },
+          "handicap": {
+            "line": "0.5",
+            "home": "0.92",
+            "away": "0.96"
+          },
+          "ou": {
+            "line": "1.5",
+            "over": "0.90",
+            "under": "0.96"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.25",
+              "home": "1.69",
+              "away": "0.47"
+            },
+            {
+              "line": "0",
+              "home": "0.40",
+              "away": "1.92"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "0.5",
+              "over": "1.58",
+              "under": "0.49"
+            },
+            {
+              "line": "0.75",
+              "over": "2.27",
+              "under": "0.30"
+            }
+          ],
+          "handicap": {
+            "line": "0.25",
+            "home": "1.69",
+            "away": "0.47"
+          },
+          "ou": {
+            "line": "0.5",
+            "over": "1.58",
+            "under": "0.49"
+          }
+        },
+        "moneyline": {
+          "home": "1.92",
+          "draw": "2.75",
+          "away": "4.65"
+        },
+        "handicap": {
+          "line": "0.5",
+          "home": "0.92",
+          "away": "0.96"
+        },
+        "ou": {
+          "line": "1.5",
+          "over": "0.90",
+          "under": "0.96"
+        }
+      }
+    },
+    {
+      "gid": "305749724",
+      "league": "Czech Republic Gambrinus Liga",
+      "league_short_name": "Czech Republic Gambrinus Liga",
+      "team_h": "AC Sparta Prague",
+      "team_c": "Teplice",
+      "home": "AC Sparta Prague",
+      "away": "Teplice",
+      "timer": "2025-11-09T14:30:00.000Z",
+      "time": "2025-11-09T14:30:00.000Z",
+      "match_time": "2025-11-09T14:30:00.000Z",
+      "score": "1-1",
+      "current_score": "1-1",
+      "homeScore": 1,
+      "awayScore": 1,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "1.25",
+      "IOR_REH": "0.98",
+      "IOR_REC": "0.90",
+      "IOR_RMH": "1.34",
+      "IOR_RMN": "4.10",
+      "IOR_RMC": "8.80",
+      "RATIO_ROUO": "4",
+      "IOR_ROUC": "0.84",
+      "IOR_ROUH": "1.02",
+      "RATIO_HRE": "0.25",
+      "IOR_HREH": "0.93",
+      "IOR_HREC": "0.95",
+      "RATIO_HROUO": "2.5",
+      "IOR_HROUC": "1.04",
+      "IOR_HROUH": "0.82",
+      "more": 1,
+      "strong": "H",
+      "RATIO_RO": "1.5",
+      "IOR_ROH": "1.25",
+      "IOR_ROC": "0.68",
+      "RATIO_ROUHO": "4.25",
+      "IOR_ROUHOC": "1.13",
+      "IOR_ROUHOH": "0.74",
+      "RATIO_HRO": "0.5",
+      "IOR_HROH": "1.56",
+      "IOR_HROC": "0.52",
+      "RATIO_HROUHO": "2.75",
+      "IOR_HROUHOC": "1.51",
+      "IOR_HROUHOH": "0.52",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "1.25",
+              "home": "0.98",
+              "away": "0.90"
+            },
+            {
+              "line": "1.5",
+              "home": "1.25",
+              "away": "0.68"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "4",
+              "over": "0.84",
+              "under": "1.02"
+            },
+            {
+              "line": "4.25",
+              "over": "1.13",
+              "under": "0.74"
+            }
+          ],
+          "moneyline": {
+            "home": "1.34",
+            "draw": "4.10",
+            "away": "8.80"
+          },
+          "handicap": {
+            "line": "1.25",
+            "home": "0.98",
+            "away": "0.90"
+          },
+          "ou": {
+            "line": "4",
+            "over": "0.84",
+            "under": "1.02"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.25",
+              "home": "0.93",
+              "away": "0.95"
+            },
+            {
+              "line": "0.5",
+              "home": "1.56",
+              "away": "0.52"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.5",
+              "over": "1.04",
+              "under": "0.82"
+            },
+            {
+              "line": "2.75",
+              "over": "1.51",
+              "under": "0.52"
+            }
+          ],
+          "handicap": {
+            "line": "0.25",
+            "home": "0.93",
+            "away": "0.95"
+          },
+          "ou": {
+            "line": "2.5",
+            "over": "1.04",
+            "under": "0.82"
+          }
+        },
+        "moneyline": {
+          "home": "1.34",
+          "draw": "4.10",
+          "away": "8.80"
+        },
+        "handicap": {
+          "line": "1.25",
+          "home": "0.98",
+          "away": "0.90"
+        },
+        "ou": {
+          "line": "4",
+          "over": "0.84",
+          "under": "1.02"
+        }
+      }
+    },
+    {
+      "gid": "364049722",
+      "league": "Slovak Super Liga",
+      "league_short_name": "Slovak Super Liga",
+      "team_h": "Slovan Bratislava",
+      "team_c": "KFC Komarno",
+      "home": "Slovan Bratislava",
+      "away": "KFC Komarno",
+      "timer": "2025-11-09T14:30:00.000Z",
+      "time": "2025-11-09T14:30:00.000Z",
+      "match_time": "2025-11-09T14:30:00.000Z",
+      "score": "2-0",
+      "current_score": "2-0",
+      "homeScore": 2,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "1",
+      "IOR_REH": "0.99",
+      "IOR_REC": "0.83",
+      "IOR_RMH": "1.01",
+      "IOR_RMN": "12.50",
+      "IOR_RMC": "18.50",
+      "RATIO_ROUO": "4.25",
+      "IOR_ROUC": "0.93",
+      "IOR_ROUH": "0.87",
+      "RATIO_HRE": "0.25",
+      "IOR_HREH": "1.29",
+      "IOR_HREC": "0.59",
+      "RATIO_HROUO": "2.5",
+      "IOR_HROUC": "1.25",
+      "IOR_HROUH": "0.60",
+      "more": 1,
+      "strong": "H",
+      "RATIO_RO": "0.75",
+      "IOR_ROH": "0.73",
+      "IOR_ROC": "1.09",
+      "RATIO_ROUHO": "4.5",
+      "IOR_ROUHOC": "1.12",
+      "IOR_ROUHOH": "0.69",
+      "RATIO_HRO": "0.5",
+      "IOR_HROH": "1.96",
+      "IOR_HROC": "0.33",
+      "RATIO_HROUHO": "2.75",
+      "IOR_HROUHOC": "1.69",
+      "IOR_HROUHOH": "0.39",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "1",
+              "home": "0.99",
+              "away": "0.83"
+            },
+            {
+              "line": "0.75",
+              "home": "0.73",
+              "away": "1.09"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "4.25",
+              "over": "0.93",
+              "under": "0.87"
+            },
+            {
+              "line": "4.5",
+              "over": "1.12",
+              "under": "0.69"
+            }
+          ],
+          "moneyline": {
+            "home": "1.01",
+            "draw": "12.50",
+            "away": "18.50"
+          },
+          "handicap": {
+            "line": "1",
+            "home": "0.99",
+            "away": "0.83"
+          },
+          "ou": {
+            "line": "4.25",
+            "over": "0.93",
+            "under": "0.87"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.25",
+              "home": "1.29",
+              "away": "0.59"
+            },
+            {
+              "line": "0.5",
+              "home": "1.96",
+              "away": "0.33"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.5",
+              "over": "1.25",
+              "under": "0.60"
+            },
+            {
+              "line": "2.75",
+              "over": "1.69",
+              "under": "0.39"
+            }
+          ],
+          "handicap": {
+            "line": "0.25",
+            "home": "1.29",
+            "away": "0.59"
+          },
+          "ou": {
+            "line": "2.5",
+            "over": "1.25",
+            "under": "0.60"
+          }
+        },
+        "moneyline": {
+          "home": "1.01",
+          "draw": "12.50",
+          "away": "18.50"
+        },
+        "handicap": {
+          "line": "1",
+          "home": "0.99",
+          "away": "0.83"
+        },
+        "ou": {
+          "line": "4.25",
+          "over": "0.93",
+          "under": "0.87"
+        }
+      }
+    },
+    {
+      "gid": "243160824",
+      "league": "Qatar League",
+      "league_short_name": "Qatar League",
+      "team_h": "Al Shahaniya",
+      "team_c": "Al Rayyan",
+      "home": "Al Shahaniya",
+      "away": "Al Rayyan",
+      "timer": "2025-11-09T14:30:00.000Z",
+      "time": "2025-11-09T14:30:00.000Z",
+      "match_time": "2025-11-09T14:30:00.000Z",
+      "score": "0-1",
+      "current_score": "0-1",
+      "homeScore": 0,
+      "awayScore": 1,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-0.25",
+      "IOR_REH": "0.92",
+      "IOR_REC": "0.96",
+      "IOR_RMH": "7.40",
+      "IOR_RMN": "4.65",
+      "IOR_RMC": "1.33",
+      "RATIO_ROUO": "3",
+      "IOR_ROUC": "0.81",
+      "IOR_ROUH": "1.05",
+      "RATIO_HRE": "0",
+      "IOR_HREH": "1.20",
+      "IOR_HREC": "0.71",
+      "RATIO_HROUO": "1.5",
+      "IOR_HROUC": "1.31",
+      "IOR_HROUH": "0.62",
+      "more": 1,
+      "strong": "C",
+      "RATIO_RO": "-0.5",
+      "IOR_ROH": "0.69",
+      "IOR_ROC": "1.23",
+      "RATIO_ROUHO": "3.25",
+      "IOR_ROUHOC": "1.12",
+      "IOR_ROUHOH": "0.75",
+      "RATIO_HRO": "-0.25",
+      "IOR_HROH": "0.39",
+      "IOR_HROC": "1.96",
+      "RATIO_HROUHO": "1.75",
+      "IOR_HROUHOC": "1.96",
+      "IOR_HROUHOH": "0.37",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "0.92",
+              "away": "0.96"
+            },
+            {
+              "line": "-0.5",
+              "home": "0.69",
+              "away": "1.23"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "3",
+              "over": "0.81",
+              "under": "1.05"
+            },
+            {
+              "line": "3.25",
+              "over": "1.12",
+              "under": "0.75"
+            }
+          ],
+          "moneyline": {
+            "home": "7.40",
+            "draw": "4.65",
+            "away": "1.33"
+          },
+          "handicap": {
+            "line": "-0.25",
+            "home": "0.92",
+            "away": "0.96"
+          },
+          "ou": {
+            "line": "3",
+            "over": "0.81",
+            "under": "1.05"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0",
+              "home": "1.20",
+              "away": "0.71"
+            },
+            {
+              "line": "-0.25",
+              "home": "0.39",
+              "away": "1.96"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1.5",
+              "over": "1.31",
+              "under": "0.62"
+            },
+            {
+              "line": "1.75",
+              "over": "1.96",
+              "under": "0.37"
+            }
+          ],
+          "handicap": {
+            "line": "0",
+            "home": "1.20",
+            "away": "0.71"
+          },
+          "ou": {
+            "line": "1.5",
+            "over": "1.31",
+            "under": "0.62"
+          }
+        },
+        "moneyline": {
+          "home": "7.40",
+          "draw": "4.65",
+          "away": "1.33"
+        },
+        "handicap": {
+          "line": "-0.25",
+          "home": "0.92",
+          "away": "0.96"
+        },
+        "ou": {
+          "line": "3",
+          "over": "0.81",
+          "under": "1.05"
+        }
+      }
+    },
+    {
+      "gid": "386843829",
+      "league": "England FA Women Super League",
+      "league_short_name": "England FA Women Super League",
+      "team_h": "Everton FC (W)",
+      "team_c": "Manchester City (W)",
+      "home": "Everton FC (W)",
+      "away": "Manchester City (W)",
+      "timer": "2025-11-09T14:30:00.000Z",
+      "time": "2025-11-09T14:30:00.000Z",
+      "match_time": "2025-11-09T14:30:00.000Z",
+      "score": "0-1",
+      "current_score": "0-1",
+      "homeScore": 0,
+      "awayScore": 1,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-1.25",
+      "IOR_REH": "0.76",
+      "IOR_REC": "0.94",
+      "IOR_RMH": "15",
+      "IOR_RMN": "7.80",
+      "IOR_RMC": "1.05",
+      "RATIO_ROUO": "3.25",
+      "IOR_ROUC": "0.77",
+      "IOR_ROUH": "0.93",
+      "RATIO_HRE": "-0.25",
+      "IOR_HREH": "0.69",
+      "IOR_HREC": "1.01",
+      "RATIO_HROUO": "1.5",
+      "IOR_HROUC": "1.03",
+      "IOR_HROUH": "0.67",
+      "more": 1,
+      "strong": "C",
+      "RATIO_RO": "-1",
+      "IOR_ROH": "1.07",
+      "IOR_ROC": "0.63",
+      "RATIO_ROUHO": "3.5",
+      "IOR_ROUHOC": "0.97",
+      "IOR_ROUHOH": "0.73",
+      "RATIO_HRO": "-0.5",
+      "IOR_HROH": "0.39",
+      "IOR_HROC": "1.44",
+      "RATIO_HROUHO": "1.75",
+      "IOR_HROUHOC": "1.35",
+      "IOR_HROUHOH": "0.44",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-1.25",
+              "home": "0.76",
+              "away": "0.94"
+            },
+            {
+              "line": "-1",
+              "home": "1.07",
+              "away": "0.63"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "3.25",
+              "over": "0.77",
+              "under": "0.93"
+            },
+            {
+              "line": "3.5",
+              "over": "0.97",
+              "under": "0.73"
+            }
+          ],
+          "moneyline": {
+            "home": "15",
+            "draw": "7.80",
+            "away": "1.05"
+          },
+          "handicap": {
+            "line": "-1.25",
+            "home": "0.76",
+            "away": "0.94"
+          },
+          "ou": {
+            "line": "3.25",
+            "over": "0.77",
+            "under": "0.93"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "0.69",
+              "away": "1.01"
+            },
+            {
+              "line": "-0.5",
+              "home": "0.39",
+              "away": "1.44"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1.5",
+              "over": "1.03",
+              "under": "0.67"
+            },
+            {
+              "line": "1.75",
+              "over": "1.35",
+              "under": "0.44"
+            }
+          ],
+          "handicap": {
+            "line": "-0.25",
+            "home": "0.69",
+            "away": "1.01"
+          },
+          "ou": {
+            "line": "1.5",
+            "over": "1.03",
+            "under": "0.67"
+          }
+        },
+        "moneyline": {
+          "home": "15",
+          "draw": "7.80",
+          "away": "1.05"
+        },
+        "handicap": {
+          "line": "-1.25",
+          "home": "0.76",
+          "away": "0.94"
+        },
+        "ou": {
+          "line": "3.25",
+          "over": "0.77",
+          "under": "0.93"
+        }
+      }
+    },
+    {
+      "gid": "492786822",
+      "league": "Azerbaijan Premier League",
+      "league_short_name": "Azerbaijan Premier League",
+      "team_h": "Qarabag",
+      "team_c": "FC Neftci Baku",
+      "home": "Qarabag",
+      "away": "FC Neftci Baku",
+      "timer": "2025-11-09T14:40:00.000Z",
+      "time": "2025-11-09T14:40:00.000Z",
+      "match_time": "2025-11-09T14:40:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "0.75",
+      "IOR_REH": "0.87",
+      "IOR_REC": "0.97",
+      "IOR_RMH": "1.63",
+      "IOR_RMN": "3.90",
+      "IOR_RMC": "4.30",
+      "RATIO_ROUO": "2.75",
+      "IOR_ROUC": "0.80",
+      "IOR_ROUH": "1.02",
+      "RATIO_HRE": "0.25",
+      "IOR_HREH": "0.85",
+      "IOR_HREC": "0.99",
+      "RATIO_HROUO": "1.25",
+      "IOR_HROUC": "1.05",
+      "IOR_HROUH": "0.77",
+      "more": 0,
+      "strong": "H",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "0.75",
+              "home": "0.87",
+              "away": "0.97"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.75",
+              "over": "0.80",
+              "under": "1.02"
+            }
+          ],
+          "moneyline": {
+            "home": "1.63",
+            "draw": "3.90",
+            "away": "4.30"
+          },
+          "handicap": {
+            "line": "0.75",
+            "home": "0.87",
+            "away": "0.97"
+          },
+          "ou": {
+            "line": "2.75",
+            "over": "0.80",
+            "under": "1.02"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.25",
+              "home": "0.85",
+              "away": "0.99"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1.25",
+              "over": "1.05",
+              "under": "0.77"
+            }
+          ],
+          "handicap": {
+            "line": "0.25",
+            "home": "0.85",
+            "away": "0.99"
+          },
+          "ou": {
+            "line": "1.25",
+            "over": "1.05",
+            "under": "0.77"
+          }
+        },
+        "moneyline": {
+          "home": "1.63",
+          "draw": "3.90",
+          "away": "4.30"
+        },
+        "handicap": {
+          "line": "0.75",
+          "home": "0.87",
+          "away": "0.97"
+        },
+        "ou": {
+          "line": "2.75",
+          "over": "0.80",
+          "under": "1.02"
+        }
+      }
+    },
+    {
+      "gid": "392819728",
+      "league": "Belgian Pro League",
+      "league_short_name": "Belgian Pro League",
+      "team_h": "Sint-Truidense",
+      "team_c": "Standard Liege",
+      "home": "Sint-Truidense",
+      "away": "Standard Liege",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "0.5",
+      "IOR_REH": "1.05",
+      "IOR_REC": "0.83",
+      "IOR_RMH": "2.05",
+      "IOR_RMN": "3.60",
+      "IOR_RMC": "3.20",
+      "RATIO_ROUO": "2.75",
+      "IOR_ROUC": "1.03",
+      "IOR_ROUH": "0.83",
+      "RATIO_HRE": "0.25",
+      "IOR_HREH": "1.14",
+      "IOR_HREC": "0.75",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "0.78",
+      "IOR_HROUH": "1.08",
+      "more": 1,
+      "strong": "H",
+      "RATIO_RO": "0.25",
+      "IOR_ROH": "0.78",
+      "IOR_ROC": "1.11",
+      "RATIO_ROUHO": "2.5",
+      "IOR_ROUHOC": "0.82",
+      "IOR_ROUHOH": "1.04",
+      "RATIO_HRO": "0",
+      "IOR_HROH": "0.62",
+      "IOR_HROC": "1.35",
+      "RATIO_HROUHO": "1.25",
+      "IOR_HROUHOC": "1.23",
+      "IOR_HROUHOH": "0.67",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "0.5",
+              "home": "1.05",
+              "away": "0.83"
+            },
+            {
+              "line": "0.25",
+              "home": "0.78",
+              "away": "1.11"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.75",
+              "over": "1.03",
+              "under": "0.83"
+            },
+            {
+              "line": "2.5",
+              "over": "0.82",
+              "under": "1.04"
+            }
+          ],
+          "moneyline": {
+            "home": "2.05",
+            "draw": "3.60",
+            "away": "3.20"
+          },
+          "handicap": {
+            "line": "0.5",
+            "home": "1.05",
+            "away": "0.83"
+          },
+          "ou": {
+            "line": "2.75",
+            "over": "1.03",
+            "under": "0.83"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.25",
+              "home": "1.14",
+              "away": "0.75"
+            },
+            {
+              "line": "0",
+              "home": "0.62",
+              "away": "1.35"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "0.78",
+              "under": "1.08"
+            },
+            {
+              "line": "1.25",
+              "over": "1.23",
+              "under": "0.67"
+            }
+          ],
+          "handicap": {
+            "line": "0.25",
+            "home": "1.14",
+            "away": "0.75"
+          },
+          "ou": {
+            "line": "1",
+            "over": "0.78",
+            "under": "1.08"
+          }
+        },
+        "moneyline": {
+          "home": "2.05",
+          "draw": "3.60",
+          "away": "3.20"
+        },
+        "handicap": {
+          "line": "0.5",
+          "home": "1.05",
+          "away": "0.83"
+        },
+        "ou": {
+          "line": "2.75",
+          "over": "1.03",
+          "under": "0.83"
+        }
+      }
+    },
+    {
+      "gid": "336519723",
+      "league": "Scottish Premier League",
+      "league_short_name": "Scottish Premier League",
+      "team_h": "Aberdeen",
+      "team_c": "Motherwell",
+      "home": "Aberdeen",
+      "away": "Motherwell",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "0",
+      "IOR_REH": "0.87",
+      "IOR_REC": "1.01",
+      "IOR_RMH": "2.42",
+      "IOR_RMN": "3.55",
+      "IOR_RMC": "2.59",
+      "RATIO_ROUO": "2.5",
+      "IOR_ROUC": "0.86",
+      "IOR_ROUH": "1.00",
+      "RATIO_HRE": "0",
+      "IOR_HREH": "0.89",
+      "IOR_HREC": "0.99",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "0.85",
+      "IOR_HROUH": "1.01",
+      "more": 1,
+      "strong": "C",
+      "RATIO_RO": "0.25",
+      "IOR_ROH": "1.16",
+      "IOR_ROC": "0.74",
+      "RATIO_ROUHO": "2.75",
+      "IOR_ROUHOC": "1.08",
+      "IOR_ROUHOH": "0.78",
+      "RATIO_HRO": "0.25",
+      "IOR_HROH": "1.47",
+      "IOR_HROC": "0.56",
+      "RATIO_HROUHO": "1.25",
+      "IOR_HROUHOC": "1.29",
+      "IOR_HROUHOH": "0.63",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "0",
+              "home": "0.87",
+              "away": "1.01"
+            },
+            {
+              "line": "0.25",
+              "home": "1.16",
+              "away": "0.74"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.5",
+              "over": "0.86",
+              "under": "1.00"
+            },
+            {
+              "line": "2.75",
+              "over": "1.08",
+              "under": "0.78"
+            }
+          ],
+          "moneyline": {
+            "home": "2.42",
+            "draw": "3.55",
+            "away": "2.59"
+          },
+          "handicap": {
+            "line": "0",
+            "home": "0.87",
+            "away": "1.01"
+          },
+          "ou": {
+            "line": "2.5",
+            "over": "0.86",
+            "under": "1.00"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0",
+              "home": "0.89",
+              "away": "0.99"
+            },
+            {
+              "line": "0.25",
+              "home": "1.47",
+              "away": "0.56"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "0.85",
+              "under": "1.01"
+            },
+            {
+              "line": "1.25",
+              "over": "1.29",
+              "under": "0.63"
+            }
+          ],
+          "handicap": {
+            "line": "0",
+            "home": "0.89",
+            "away": "0.99"
+          },
+          "ou": {
+            "line": "1",
+            "over": "0.85",
+            "under": "1.01"
+          }
+        },
+        "moneyline": {
+          "home": "2.42",
+          "draw": "3.55",
+          "away": "2.59"
+        },
+        "handicap": {
+          "line": "0",
+          "home": "0.87",
+          "away": "1.01"
+        },
+        "ou": {
+          "line": "2.5",
+          "over": "0.86",
+          "under": "1.00"
+        }
+      }
+    },
+    {
+      "gid": "237122825",
+      "league": "Greece Super League A",
+      "league_short_name": "Greece Super League A",
+      "team_h": "Levadiakos",
+      "team_c": "Panserraikos",
+      "home": "Levadiakos",
+      "away": "Panserraikos",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "1.5",
+      "IOR_REH": "0.98",
+      "IOR_REC": "0.90",
+      "IOR_RMH": "1.29",
+      "IOR_RMN": "4.85",
+      "IOR_RMC": "8.50",
+      "RATIO_ROUO": "2.5",
+      "IOR_ROUC": "0.84",
+      "IOR_ROUH": "1.02",
+      "RATIO_HRE": "0.5",
+      "IOR_HREH": "0.87",
+      "IOR_HREC": "1.01",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "0.83",
+      "IOR_HROUH": "1.03",
+      "more": 1,
+      "strong": "H",
+      "RATIO_RO": "1.75",
+      "IOR_ROH": "1.20",
+      "IOR_ROC": "0.71",
+      "RATIO_ROUHO": "2.5",
+      "IOR_ROUHOC": "0.82",
+      "IOR_ROUHOH": "1.04",
+      "RATIO_HRO": "0.75",
+      "IOR_HROH": "1.19",
+      "IOR_HROC": "0.72",
+      "RATIO_HROUHO": "1.25",
+      "IOR_HROUHOC": "1.25",
+      "IOR_HROUHOH": "0.66",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "1.5",
+              "home": "0.98",
+              "away": "0.90"
+            },
+            {
+              "line": "1.75",
+              "home": "1.20",
+              "away": "0.71"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.5",
+              "over": "0.84",
+              "under": "1.02"
+            },
+            {
+              "line": "2.5",
+              "over": "0.82",
+              "under": "1.04"
+            }
+          ],
+          "moneyline": {
+            "home": "1.29",
+            "draw": "4.85",
+            "away": "8.50"
+          },
+          "handicap": {
+            "line": "1.5",
+            "home": "0.98",
+            "away": "0.90"
+          },
+          "ou": {
+            "line": "2.5",
+            "over": "0.84",
+            "under": "1.02"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.5",
+              "home": "0.87",
+              "away": "1.01"
+            },
+            {
+              "line": "0.75",
+              "home": "1.19",
+              "away": "0.72"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "0.83",
+              "under": "1.03"
+            },
+            {
+              "line": "1.25",
+              "over": "1.25",
+              "under": "0.66"
+            }
+          ],
+          "handicap": {
+            "line": "0.5",
+            "home": "0.87",
+            "away": "1.01"
+          },
+          "ou": {
+            "line": "1",
+            "over": "0.83",
+            "under": "1.03"
+          }
+        },
+        "moneyline": {
+          "home": "1.29",
+          "draw": "4.85",
+          "away": "8.50"
+        },
+        "handicap": {
+          "line": "1.5",
+          "home": "0.98",
+          "away": "0.90"
+        },
+        "ou": {
+          "line": "2.5",
+          "over": "0.84",
+          "under": "1.02"
+        }
+      }
+    },
+    {
+      "gid": "336960824",
+      "league": "Spain Primera Division RFEF",
+      "league_short_name": "Spain Primera Division RFEF",
+      "team_h": "Cacereno",
+      "team_c": "Real Aviles",
+      "home": "Cacereno",
+      "away": "Real Aviles",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "0.5",
+      "IOR_REH": "1.00",
+      "IOR_REC": "0.82",
+      "IOR_RMH": "2.00",
+      "IOR_RMN": "2.91",
+      "IOR_RMC": "3.60",
+      "RATIO_ROUO": "1.75",
+      "IOR_ROUC": "0.71",
+      "IOR_ROUH": "1.09",
+      "RATIO_HRE": "0.25",
+      "IOR_HREH": "1.16",
+      "IOR_HREC": "0.68",
+      "RATIO_HROUO": "0.75",
+      "IOR_HROUC": "0.92",
+      "IOR_HROUH": "0.88",
+      "more": 0,
+      "strong": "H",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "0.5",
+              "home": "1.00",
+              "away": "0.82"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1.75",
+              "over": "0.71",
+              "under": "1.09"
+            }
+          ],
+          "moneyline": {
+            "home": "2.00",
+            "draw": "2.91",
+            "away": "3.60"
+          },
+          "handicap": {
+            "line": "0.5",
+            "home": "1.00",
+            "away": "0.82"
+          },
+          "ou": {
+            "line": "1.75",
+            "over": "0.71",
+            "under": "1.09"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.25",
+              "home": "1.16",
+              "away": "0.68"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "0.75",
+              "over": "0.92",
+              "under": "0.88"
+            }
+          ],
+          "handicap": {
+            "line": "0.25",
+            "home": "1.16",
+            "away": "0.68"
+          },
+          "ou": {
+            "line": "0.75",
+            "over": "0.92",
+            "under": "0.88"
+          }
+        },
+        "moneyline": {
+          "home": "2.00",
+          "draw": "2.91",
+          "away": "3.60"
+        },
+        "handicap": {
+          "line": "0.5",
+          "home": "1.00",
+          "away": "0.82"
+        },
+        "ou": {
+          "line": "1.75",
+          "over": "0.71",
+          "under": "1.09"
+        }
+      }
+    },
+    {
+      "gid": "599869821",
+      "league": "Portugal Liga 3",
+      "league_short_name": "Portugal Liga 3",
+      "team_h": "SC Covilha",
+      "team_c": "FC Caldas",
+      "home": "SC Covilha",
+      "away": "FC Caldas",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-0.25",
+      "IOR_REH": "0.85",
+      "IOR_REC": "0.97",
+      "IOR_RMH": "2.89",
+      "IOR_RMN": "3.20",
+      "IOR_RMC": "2.17",
+      "RATIO_ROUO": "2.25",
+      "IOR_ROUC": "0.97",
+      "IOR_ROUH": "0.83",
+      "RATIO_HRE": "0",
+      "IOR_HREH": "1.13",
+      "IOR_HREC": "0.70",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "1.09",
+      "IOR_HROUH": "0.71",
+      "more": 0,
+      "strong": "C",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "0.85",
+              "away": "0.97"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.25",
+              "over": "0.97",
+              "under": "0.83"
+            }
+          ],
+          "moneyline": {
+            "home": "2.89",
+            "draw": "3.20",
+            "away": "2.17"
+          },
+          "handicap": {
+            "line": "-0.25",
+            "home": "0.85",
+            "away": "0.97"
+          },
+          "ou": {
+            "line": "2.25",
+            "over": "0.97",
+            "under": "0.83"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0",
+              "home": "1.13",
+              "away": "0.70"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "1.09",
+              "under": "0.71"
+            }
+          ],
+          "handicap": {
+            "line": "0",
+            "home": "1.13",
+            "away": "0.70"
+          },
+          "ou": {
+            "line": "1",
+            "over": "1.09",
+            "under": "0.71"
+          }
+        },
+        "moneyline": {
+          "home": "2.89",
+          "draw": "3.20",
+          "away": "2.17"
+        },
+        "handicap": {
+          "line": "-0.25",
+          "home": "0.85",
+          "away": "0.97"
+        },
+        "ou": {
+          "line": "2.25",
+          "over": "0.97",
+          "under": "0.83"
+        }
+      }
+    },
+    {
+      "gid": "300969824",
+      "league": "Portugal Liga 3",
+      "league_short_name": "Portugal Liga 3",
+      "team_h": "Sanjoanense",
+      "team_c": "Fafe",
+      "home": "Sanjoanense",
+      "away": "Fafe",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-0.25",
+      "IOR_REH": "1.05",
+      "IOR_REC": "0.77",
+      "IOR_RMH": "3.15",
+      "IOR_RMN": "3.20",
+      "IOR_RMC": "2.03",
+      "RATIO_ROUO": "2.25",
+      "IOR_ROUC": "0.82",
+      "IOR_ROUH": "0.98",
+      "RATIO_HRE": "-0.25",
+      "IOR_HREH": "0.69",
+      "IOR_HREC": "1.14",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "1.01",
+      "IOR_HROUH": "0.79",
+      "more": 0,
+      "strong": "C",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "1.05",
+              "away": "0.77"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.25",
+              "over": "0.82",
+              "under": "0.98"
+            }
+          ],
+          "moneyline": {
+            "home": "3.15",
+            "draw": "3.20",
+            "away": "2.03"
+          },
+          "handicap": {
+            "line": "-0.25",
+            "home": "1.05",
+            "away": "0.77"
+          },
+          "ou": {
+            "line": "2.25",
+            "over": "0.82",
+            "under": "0.98"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "0.69",
+              "away": "1.14"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "1.01",
+              "under": "0.79"
+            }
+          ],
+          "handicap": {
+            "line": "-0.25",
+            "home": "0.69",
+            "away": "1.14"
+          },
+          "ou": {
+            "line": "1",
+            "over": "1.01",
+            "under": "0.79"
+          }
+        },
+        "moneyline": {
+          "home": "3.15",
+          "draw": "3.20",
+          "away": "2.03"
+        },
+        "handicap": {
+          "line": "-0.25",
+          "home": "1.05",
+          "away": "0.77"
+        },
+        "ou": {
+          "line": "2.25",
+          "over": "0.82",
+          "under": "0.98"
+        }
+      }
+    },
+    {
+      "gid": "307079823",
+      "league": "Portugal Liga 3",
+      "league_short_name": "Portugal Liga 3",
+      "team_h": "Lusitano Evora",
+      "team_c": "UD Santarem",
+      "home": "Lusitano Evora",
+      "away": "UD Santarem",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "0.5",
+      "IOR_REH": "0.93",
+      "IOR_REC": "0.89",
+      "IOR_RMH": "1.93",
+      "IOR_RMN": "3.15",
+      "IOR_RMC": "3.50",
+      "RATIO_ROUO": "2.25",
+      "IOR_ROUC": "0.99",
+      "IOR_ROUH": "0.81",
+      "RATIO_HRE": "0.25",
+      "IOR_HREH": "1.08",
+      "IOR_HREC": "0.74",
+      "RATIO_HROUO": "0.75",
+      "IOR_HROUC": "0.71",
+      "IOR_HROUH": "1.09",
+      "more": 0,
+      "strong": "H",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "0.5",
+              "home": "0.93",
+              "away": "0.89"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.25",
+              "over": "0.99",
+              "under": "0.81"
+            }
+          ],
+          "moneyline": {
+            "home": "1.93",
+            "draw": "3.15",
+            "away": "3.50"
+          },
+          "handicap": {
+            "line": "0.5",
+            "home": "0.93",
+            "away": "0.89"
+          },
+          "ou": {
+            "line": "2.25",
+            "over": "0.99",
+            "under": "0.81"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.25",
+              "home": "1.08",
+              "away": "0.74"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "0.75",
+              "over": "0.71",
+              "under": "1.09"
+            }
+          ],
+          "handicap": {
+            "line": "0.25",
+            "home": "1.08",
+            "away": "0.74"
+          },
+          "ou": {
+            "line": "0.75",
+            "over": "0.71",
+            "under": "1.09"
+          }
+        },
+        "moneyline": {
+          "home": "1.93",
+          "draw": "3.15",
+          "away": "3.50"
+        },
+        "handicap": {
+          "line": "0.5",
+          "home": "0.93",
+          "away": "0.89"
+        },
+        "ou": {
+          "line": "2.25",
+          "over": "0.99",
+          "under": "0.81"
+        }
+      }
+    },
+    {
+      "gid": "329180820",
+      "league": "Spain Segunda Division RFEF",
+      "league_short_name": "Spain Segunda Division RFEF",
+      "team_h": "Burgos Promesas",
+      "team_c": "Samanod",
+      "home": "Burgos Promesas",
+      "away": "Samanod",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "0.25",
+      "IOR_REH": "0.91",
+      "IOR_REC": "0.79",
+      "IOR_RMH": "2.13",
+      "IOR_RMN": "3.05",
+      "IOR_RMC": "2.83",
+      "RATIO_ROUO": "2.25",
+      "IOR_ROUC": "0.94",
+      "IOR_ROUH": "0.76",
+      "RATIO_HRE": "0",
+      "IOR_HREH": "0.65",
+      "IOR_HREC": "1.05",
+      "RATIO_HROUO": "0.75",
+      "IOR_HROUC": "0.66",
+      "IOR_HROUH": "1.04",
+      "more": 0,
+      "strong": "H",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "0.25",
+              "home": "0.91",
+              "away": "0.79"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.25",
+              "over": "0.94",
+              "under": "0.76"
+            }
+          ],
+          "moneyline": {
+            "home": "2.13",
+            "draw": "3.05",
+            "away": "2.83"
+          },
+          "handicap": {
+            "line": "0.25",
+            "home": "0.91",
+            "away": "0.79"
+          },
+          "ou": {
+            "line": "2.25",
+            "over": "0.94",
+            "under": "0.76"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0",
+              "home": "0.65",
+              "away": "1.05"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "0.75",
+              "over": "0.66",
+              "under": "1.04"
+            }
+          ],
+          "handicap": {
+            "line": "0",
+            "home": "0.65",
+            "away": "1.05"
+          },
+          "ou": {
+            "line": "0.75",
+            "over": "0.66",
+            "under": "1.04"
+          }
+        },
+        "moneyline": {
+          "home": "2.13",
+          "draw": "3.05",
+          "away": "2.83"
+        },
+        "handicap": {
+          "line": "0.25",
+          "home": "0.91",
+          "away": "0.79"
+        },
+        "ou": {
+          "line": "2.25",
+          "over": "0.94",
+          "under": "0.76"
+        }
+      }
+    },
+    {
+      "gid": "271341826",
+      "league": "Belgian Second Division",
+      "league_short_name": "Belgian Second Division",
+      "team_h": "Jeunesse Molenbeek",
+      "team_c": "Beerschot Wilrijk",
+      "home": "Jeunesse Molenbeek",
+      "away": "Beerschot Wilrijk",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-0.5",
+      "IOR_REH": "0.93",
+      "IOR_REC": "0.93",
+      "IOR_RMH": "3.15",
+      "IOR_RMN": "3.40",
+      "IOR_RMC": "1.97",
+      "RATIO_ROUO": "2.75",
+      "IOR_ROUC": "1.01",
+      "IOR_ROUH": "0.83",
+      "RATIO_HRE": "-0.25",
+      "IOR_HREH": "0.77",
+      "IOR_HREC": "1.09",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "0.78",
+      "IOR_HROUH": "1.06",
+      "more": 1,
+      "strong": "C",
+      "RATIO_RO": "-0.25",
+      "IOR_ROH": "1.14",
+      "IOR_ROC": "0.73",
+      "RATIO_ROUHO": "2.75",
+      "IOR_ROUHOC": "1.04",
+      "IOR_ROUHOH": "0.80",
+      "RATIO_HRO": "0",
+      "IOR_HROH": "1.42",
+      "IOR_HROC": "0.56",
+      "RATIO_HROUHO": "1.25",
+      "IOR_HROUHOC": "1.25",
+      "IOR_HROUHOH": "0.64",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-0.5",
+              "home": "0.93",
+              "away": "0.93"
+            },
+            {
+              "line": "-0.25",
+              "home": "1.14",
+              "away": "0.73"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.75",
+              "over": "1.01",
+              "under": "0.83"
+            },
+            {
+              "line": "2.75",
+              "over": "1.04",
+              "under": "0.80"
+            }
+          ],
+          "moneyline": {
+            "home": "3.15",
+            "draw": "3.40",
+            "away": "1.97"
+          },
+          "handicap": {
+            "line": "-0.5",
+            "home": "0.93",
+            "away": "0.93"
+          },
+          "ou": {
+            "line": "2.75",
+            "over": "1.01",
+            "under": "0.83"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "0.77",
+              "away": "1.09"
+            },
+            {
+              "line": "0",
+              "home": "1.42",
+              "away": "0.56"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "0.78",
+              "under": "1.06"
+            },
+            {
+              "line": "1.25",
+              "over": "1.25",
+              "under": "0.64"
+            }
+          ],
+          "handicap": {
+            "line": "-0.25",
+            "home": "0.77",
+            "away": "1.09"
+          },
+          "ou": {
+            "line": "1",
+            "over": "0.78",
+            "under": "1.06"
+          }
+        },
+        "moneyline": {
+          "home": "3.15",
+          "draw": "3.40",
+          "away": "1.97"
+        },
+        "handicap": {
+          "line": "-0.5",
+          "home": "0.93",
+          "away": "0.93"
+        },
+        "ou": {
+          "line": "2.75",
+          "over": "1.01",
+          "under": "0.83"
+        }
+      }
+    },
+    {
+      "gid": "281341827",
+      "league": "Belgian Second Division",
+      "league_short_name": "Belgian Second Division",
+      "team_h": "Francs Borains",
+      "team_c": "Olympic Charleroi",
+      "home": "Francs Borains",
+      "away": "Olympic Charleroi",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "0.25",
+      "IOR_REH": "0.81",
+      "IOR_REC": "1.05",
+      "IOR_RMH": "2.05",
+      "IOR_RMN": "3.35",
+      "IOR_RMC": "2.98",
+      "RATIO_ROUO": "2.5",
+      "IOR_ROUC": "0.84",
+      "IOR_ROUH": "1.00",
+      "RATIO_HRE": "0.25",
+      "IOR_HREH": "1.16",
+      "IOR_HREC": "0.72",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "0.79",
+      "IOR_HROUH": "1.05",
+      "more": 1,
+      "strong": "H",
+      "RATIO_RO": "0.5",
+      "IOR_ROH": "1.05",
+      "IOR_ROC": "0.81",
+      "RATIO_ROUHO": "2.75",
+      "IOR_ROUHOC": "1.06",
+      "IOR_ROUHOH": "0.78",
+      "RATIO_HRO": "0",
+      "IOR_HROH": "0.62",
+      "IOR_HROC": "1.31",
+      "RATIO_HROUHO": "1.25",
+      "IOR_HROUHOC": "1.23",
+      "IOR_HROUHOH": "0.65",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "0.25",
+              "home": "0.81",
+              "away": "1.05"
+            },
+            {
+              "line": "0.5",
+              "home": "1.05",
+              "away": "0.81"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.5",
+              "over": "0.84",
+              "under": "1.00"
+            },
+            {
+              "line": "2.75",
+              "over": "1.06",
+              "under": "0.78"
+            }
+          ],
+          "moneyline": {
+            "home": "2.05",
+            "draw": "3.35",
+            "away": "2.98"
+          },
+          "handicap": {
+            "line": "0.25",
+            "home": "0.81",
+            "away": "1.05"
+          },
+          "ou": {
+            "line": "2.5",
+            "over": "0.84",
+            "under": "1.00"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.25",
+              "home": "1.16",
+              "away": "0.72"
+            },
+            {
+              "line": "0",
+              "home": "0.62",
+              "away": "1.31"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "0.79",
+              "under": "1.05"
+            },
+            {
+              "line": "1.25",
+              "over": "1.23",
+              "under": "0.65"
+            }
+          ],
+          "handicap": {
+            "line": "0.25",
+            "home": "1.16",
+            "away": "0.72"
+          },
+          "ou": {
+            "line": "1",
+            "over": "0.79",
+            "under": "1.05"
+          }
+        },
+        "moneyline": {
+          "home": "2.05",
+          "draw": "3.35",
+          "away": "2.98"
+        },
+        "handicap": {
+          "line": "0.25",
+          "home": "0.81",
+          "away": "1.05"
+        },
+        "ou": {
+          "line": "2.5",
+          "over": "0.84",
+          "under": "1.00"
+        }
+      }
+    },
+    {
+      "gid": "372258723",
+      "league": "Denmark Superligaen",
+      "league_short_name": "Denmark Superligaen",
+      "team_h": "Randers FC",
+      "team_c": "Midtjylland",
+      "home": "Randers FC",
+      "away": "Midtjylland",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-0.75",
+      "IOR_REH": "1.06",
+      "IOR_REC": "0.82",
+      "IOR_RMH": "4.40",
+      "IOR_RMN": "4.05",
+      "IOR_RMC": "1.65",
+      "RATIO_ROUO": "2.75",
+      "IOR_ROUC": "0.85",
+      "IOR_ROUH": "1.01",
+      "RATIO_HRE": "-0.25",
+      "IOR_HREH": "1.06",
+      "IOR_HREC": "0.82",
+      "RATIO_HROUO": "1.25",
+      "IOR_HROUC": "1.11",
+      "IOR_HROUH": "0.76",
+      "more": 1,
+      "strong": "C",
+      "RATIO_RO": "-1",
+      "IOR_ROH": "0.78",
+      "IOR_ROC": "1.11",
+      "RATIO_RCO": "-0.5",
+      "IOR_RCOH": "1.33",
+      "IOR_RCOC": "0.64",
+      "RATIO_ROUHO": "3",
+      "IOR_ROUHOC": "1.14",
+      "IOR_ROUHOH": "0.73",
+      "RATIO_ROUCO": "2.5",
+      "IOR_ROUCOC": "0.64",
+      "IOR_ROUCOH": "1.29",
+      "RATIO_HRO": "-0.5",
+      "IOR_HROH": "0.71",
+      "IOR_HROC": "1.20",
+      "RATIO_HROUHO": "1",
+      "IOR_HROUHOC": "0.67",
+      "IOR_HROUHOH": "1.23",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-0.75",
+              "home": "1.06",
+              "away": "0.82"
+            },
+            {
+              "line": "-1",
+              "home": "0.78",
+              "away": "1.11"
+            },
+            {
+              "line": "-0.5",
+              "home": "1.33",
+              "away": "0.64"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.75",
+              "over": "0.85",
+              "under": "1.01"
+            },
+            {
+              "line": "3",
+              "over": "1.14",
+              "under": "0.73"
+            },
+            {
+              "line": "2.5",
+              "over": "0.64",
+              "under": "1.29"
+            }
+          ],
+          "moneyline": {
+            "home": "4.40",
+            "draw": "4.05",
+            "away": "1.65"
+          },
+          "handicap": {
+            "line": "-0.75",
+            "home": "1.06",
+            "away": "0.82"
+          },
+          "ou": {
+            "line": "2.75",
+            "over": "0.85",
+            "under": "1.01"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "1.06",
+              "away": "0.82"
+            },
+            {
+              "line": "-0.5",
+              "home": "0.71",
+              "away": "1.20"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1.25",
+              "over": "1.11",
+              "under": "0.76"
+            },
+            {
+              "line": "1",
+              "over": "0.67",
+              "under": "1.23"
+            }
+          ],
+          "handicap": {
+            "line": "-0.25",
+            "home": "1.06",
+            "away": "0.82"
+          },
+          "ou": {
+            "line": "1.25",
+            "over": "1.11",
+            "under": "0.76"
+          }
+        },
+        "moneyline": {
+          "home": "4.40",
+          "draw": "4.05",
+          "away": "1.65"
+        },
+        "handicap": {
+          "line": "-0.75",
+          "home": "1.06",
+          "away": "0.82"
+        },
+        "ou": {
+          "line": "2.75",
+          "over": "0.85",
+          "under": "1.01"
+        }
+      }
+    },
+    {
+      "gid": "352759727",
+      "league": "Serbian Superliga",
+      "league_short_name": "Serbian Superliga",
+      "team_h": "FK Spartak Zlatibor Voda",
+      "team_c": "Crvena Zvezda",
+      "home": "FK Spartak Zlatibor Voda",
+      "away": "Crvena Zvezda",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-2",
+      "IOR_REH": "1.04",
+      "IOR_REC": "0.78",
+      "IOR_RMH": "11.50",
+      "IOR_RMN": "6.70",
+      "IOR_RMC": "1.13",
+      "RATIO_ROUO": "3.25",
+      "IOR_ROUC": "0.80",
+      "IOR_ROUH": "1.00",
+      "RATIO_HRE": "-0.75",
+      "IOR_HREH": "1.08",
+      "IOR_HREC": "0.74",
+      "RATIO_HROUO": "1.5",
+      "IOR_HROUC": "1.02",
+      "IOR_HROUH": "0.78",
+      "more": 0,
+      "strong": "C",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-2",
+              "home": "1.04",
+              "away": "0.78"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "3.25",
+              "over": "0.80",
+              "under": "1.00"
+            }
+          ],
+          "moneyline": {
+            "home": "11.50",
+            "draw": "6.70",
+            "away": "1.13"
+          },
+          "handicap": {
+            "line": "-2",
+            "home": "1.04",
+            "away": "0.78"
+          },
+          "ou": {
+            "line": "3.25",
+            "over": "0.80",
+            "under": "1.00"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "-0.75",
+              "home": "1.08",
+              "away": "0.74"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1.5",
+              "over": "1.02",
+              "under": "0.78"
+            }
+          ],
+          "handicap": {
+            "line": "-0.75",
+            "home": "1.08",
+            "away": "0.74"
+          },
+          "ou": {
+            "line": "1.5",
+            "over": "1.02",
+            "under": "0.78"
+          }
+        },
+        "moneyline": {
+          "home": "11.50",
+          "draw": "6.70",
+          "away": "1.13"
+        },
+        "handicap": {
+          "line": "-2",
+          "home": "1.04",
+          "away": "0.78"
+        },
+        "ou": {
+          "line": "3.25",
+          "over": "0.80",
+          "under": "1.00"
+        }
+      }
+    },
+    {
+      "gid": "271172828",
+      "league": "Cyprus 1 Division",
+      "league_short_name": "Cyprus 1 Division",
+      "team_h": "AEK Larnaca",
+      "team_c": "Omonia Aradippou",
+      "home": "AEK Larnaca",
+      "away": "Omonia Aradippou",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "1.25",
+      "IOR_REH": "0.91",
+      "IOR_REC": "0.95",
+      "IOR_RMH": "1.34",
+      "IOR_RMN": "4.30",
+      "IOR_RMC": "7.10",
+      "RATIO_ROUO": "2.5",
+      "IOR_ROUC": "0.94",
+      "IOR_ROUH": "0.90",
+      "RATIO_HRE": "0.5",
+      "IOR_HREH": "0.96",
+      "IOR_HREC": "0.90",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "0.91",
+      "IOR_HROUH": "0.93",
+      "more": 1,
+      "strong": "H",
+      "RATIO_RO": "1.5",
+      "IOR_ROH": "1.16",
+      "IOR_ROC": "0.72",
+      "RATIO_ROUHO": "2.25",
+      "IOR_ROUHOC": "0.74",
+      "IOR_ROUHOH": "1.11",
+      "RATIO_HRO": "0.75",
+      "IOR_HROH": "1.35",
+      "IOR_HROC": "0.60",
+      "RATIO_HROUHO": "1.25",
+      "IOR_HROUHOC": "1.35",
+      "IOR_HROUHOH": "0.58",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "1.25",
+              "home": "0.91",
+              "away": "0.95"
+            },
+            {
+              "line": "1.5",
+              "home": "1.16",
+              "away": "0.72"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.5",
+              "over": "0.94",
+              "under": "0.90"
+            },
+            {
+              "line": "2.25",
+              "over": "0.74",
+              "under": "1.11"
+            }
+          ],
+          "moneyline": {
+            "home": "1.34",
+            "draw": "4.30",
+            "away": "7.10"
+          },
+          "handicap": {
+            "line": "1.25",
+            "home": "0.91",
+            "away": "0.95"
+          },
+          "ou": {
+            "line": "2.5",
+            "over": "0.94",
+            "under": "0.90"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.5",
+              "home": "0.96",
+              "away": "0.90"
+            },
+            {
+              "line": "0.75",
+              "home": "1.35",
+              "away": "0.60"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "0.91",
+              "under": "0.93"
+            },
+            {
+              "line": "1.25",
+              "over": "1.35",
+              "under": "0.58"
+            }
+          ],
+          "handicap": {
+            "line": "0.5",
+            "home": "0.96",
+            "away": "0.90"
+          },
+          "ou": {
+            "line": "1",
+            "over": "0.91",
+            "under": "0.93"
+          }
+        },
+        "moneyline": {
+          "home": "1.34",
+          "draw": "4.30",
+          "away": "7.10"
+        },
+        "handicap": {
+          "line": "1.25",
+          "home": "0.91",
+          "away": "0.95"
+        },
+        "ou": {
+          "line": "2.5",
+          "over": "0.94",
+          "under": "0.90"
+        }
+      }
+    },
+    {
+      "gid": "337159724",
+      "league": "Croatia 1.Division",
+      "league_short_name": "Croatia 1.Division",
+      "team_h": "Istra 1961 Pula",
+      "team_c": "Dinamo Zagreb",
+      "home": "Istra 1961 Pula",
+      "away": "Dinamo Zagreb",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-1",
+      "IOR_REH": "0.86",
+      "IOR_REC": "0.96",
+      "IOR_RMH": "5.1",
+      "IOR_RMN": "3.85",
+      "IOR_RMC": "1.50",
+      "RATIO_ROUO": "2.5",
+      "IOR_ROUC": "0.90",
+      "IOR_ROUH": "0.90",
+      "RATIO_HRE": "-0.25",
+      "IOR_HREH": "1.07",
+      "IOR_HREC": "0.75",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "0.92",
+      "IOR_HROUH": "0.88",
+      "more": 1,
+      "strong": "C",
+      "RATIO_RO": "-0.75",
+      "IOR_ROH": "1.13",
+      "IOR_ROC": "0.70",
+      "RATIO_ROUHO": "2.75",
+      "IOR_ROUHOC": "1.12",
+      "IOR_ROUHOH": "0.69",
+      "RATIO_HRO": "-0.5",
+      "IOR_HROH": "0.68",
+      "IOR_HROC": "1.16",
+      "RATIO_HROUHO": "0.75",
+      "IOR_HROUHOC": "0.57",
+      "IOR_HROUHOH": "1.29",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-1",
+              "home": "0.86",
+              "away": "0.96"
+            },
+            {
+              "line": "-0.75",
+              "home": "1.13",
+              "away": "0.70"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.5",
+              "over": "0.90",
+              "under": "0.90"
+            },
+            {
+              "line": "2.75",
+              "over": "1.12",
+              "under": "0.69"
+            }
+          ],
+          "moneyline": {
+            "home": "5.1",
+            "draw": "3.85",
+            "away": "1.50"
+          },
+          "handicap": {
+            "line": "-1",
+            "home": "0.86",
+            "away": "0.96"
+          },
+          "ou": {
+            "line": "2.5",
+            "over": "0.90",
+            "under": "0.90"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "1.07",
+              "away": "0.75"
+            },
+            {
+              "line": "-0.5",
+              "home": "0.68",
+              "away": "1.16"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "0.92",
+              "under": "0.88"
+            },
+            {
+              "line": "0.75",
+              "over": "0.57",
+              "under": "1.29"
+            }
+          ],
+          "handicap": {
+            "line": "-0.25",
+            "home": "1.07",
+            "away": "0.75"
+          },
+          "ou": {
+            "line": "1",
+            "over": "0.92",
+            "under": "0.88"
+          }
+        },
+        "moneyline": {
+          "home": "5.1",
+          "draw": "3.85",
+          "away": "1.50"
+        },
+        "handicap": {
+          "line": "-1",
+          "home": "0.86",
+          "away": "0.96"
+        },
+        "ou": {
+          "line": "2.5",
+          "over": "0.90",
+          "under": "0.90"
+        }
+      }
+    },
+    {
+      "gid": "439469821",
+      "league": "Botola Pro 1",
+      "league_short_name": "Botola Pro 1",
+      "team_h": "DHJ Difaa Hassani Jadidi",
+      "team_c": "Union Touarga Sport Rabat",
+      "home": "DHJ Difaa Hassani Jadidi",
+      "away": "Union Touarga Sport Rabat",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-0.5",
+      "IOR_REH": "0.83",
+      "IOR_REC": "0.99",
+      "IOR_RMH": "3.75",
+      "IOR_RMN": "3.15",
+      "IOR_RMC": "1.87",
+      "RATIO_ROUO": "2",
+      "IOR_ROUC": "0.84",
+      "IOR_ROUH": "0.96",
+      "RATIO_HRE": "-0.25",
+      "IOR_HREH": "0.73",
+      "IOR_HREC": "1.09",
+      "RATIO_HROUO": "0.75",
+      "IOR_HROUC": "0.79",
+      "IOR_HROUH": "1.01",
+      "more": 0,
+      "strong": "C",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-0.5",
+              "home": "0.83",
+              "away": "0.99"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2",
+              "over": "0.84",
+              "under": "0.96"
+            }
+          ],
+          "moneyline": {
+            "home": "3.75",
+            "draw": "3.15",
+            "away": "1.87"
+          },
+          "handicap": {
+            "line": "-0.5",
+            "home": "0.83",
+            "away": "0.99"
+          },
+          "ou": {
+            "line": "2",
+            "over": "0.84",
+            "under": "0.96"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "0.73",
+              "away": "1.09"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "0.75",
+              "over": "0.79",
+              "under": "1.01"
+            }
+          ],
+          "handicap": {
+            "line": "-0.25",
+            "home": "0.73",
+            "away": "1.09"
+          },
+          "ou": {
+            "line": "0.75",
+            "over": "0.79",
+            "under": "1.01"
+          }
+        },
+        "moneyline": {
+          "home": "3.75",
+          "draw": "3.15",
+          "away": "1.87"
+        },
+        "handicap": {
+          "line": "-0.5",
+          "home": "0.83",
+          "away": "0.99"
+        },
+        "ou": {
+          "line": "2",
+          "over": "0.84",
+          "under": "0.96"
+        }
+      }
+    },
+    {
+      "gid": "449469822",
+      "league": "Botola Pro 1",
+      "league_short_name": "Botola Pro 1",
+      "team_h": "Olympique de Safi",
+      "team_c": "Wydad Casablanca",
+      "home": "Olympique de Safi",
+      "away": "Wydad Casablanca",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-0.75",
+      "IOR_REH": "0.79",
+      "IOR_REC": "1.03",
+      "IOR_RMH": "4.25",
+      "IOR_RMN": "3.10",
+      "IOR_RMC": "1.78",
+      "RATIO_ROUO": "2",
+      "IOR_ROUC": "0.92",
+      "IOR_ROUH": "0.88",
+      "RATIO_HRE": "-0.25",
+      "IOR_HREH": "0.84",
+      "IOR_HREC": "0.98",
+      "RATIO_HROUO": "0.75",
+      "IOR_HROUC": "0.84",
+      "IOR_HROUH": "0.96",
+      "more": 0,
+      "strong": "C",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-0.75",
+              "home": "0.79",
+              "away": "1.03"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2",
+              "over": "0.92",
+              "under": "0.88"
+            }
+          ],
+          "moneyline": {
+            "home": "4.25",
+            "draw": "3.10",
+            "away": "1.78"
+          },
+          "handicap": {
+            "line": "-0.75",
+            "home": "0.79",
+            "away": "1.03"
+          },
+          "ou": {
+            "line": "2",
+            "over": "0.92",
+            "under": "0.88"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "0.84",
+              "away": "0.98"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "0.75",
+              "over": "0.84",
+              "under": "0.96"
+            }
+          ],
+          "handicap": {
+            "line": "-0.25",
+            "home": "0.84",
+            "away": "0.98"
+          },
+          "ou": {
+            "line": "0.75",
+            "over": "0.84",
+            "under": "0.96"
+          }
+        },
+        "moneyline": {
+          "home": "4.25",
+          "draw": "3.10",
+          "away": "1.78"
+        },
+        "handicap": {
+          "line": "-0.75",
+          "home": "0.79",
+          "away": "1.03"
+        },
+        "ou": {
+          "line": "2",
+          "over": "0.92",
+          "under": "0.88"
+        }
+      }
+    },
+    {
+      "gid": "344179825",
+      "league": "Ireland FAI Cup",
+      "league_short_name": "Ireland FAI Cup",
+      "team_h": "Shamrock Rovers",
+      "team_c": "Cork City",
+      "home": "Shamrock Rovers",
+      "away": "Cork City",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "1.25",
+      "IOR_REH": "0.90",
+      "IOR_REC": "0.98",
+      "IOR_RMH": "1.34",
+      "IOR_RMN": "4.40",
+      "IOR_RMC": "9.20",
+      "RATIO_ROUO": "2.25",
+      "IOR_ROUC": "0.82",
+      "IOR_ROUH": "1.04",
+      "RATIO_HRE": "0.5",
+      "IOR_HREH": "0.93",
+      "IOR_HREC": "0.95",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "1.01",
+      "IOR_HROUH": "0.85",
+      "more": 1,
+      "strong": "H",
+      "RATIO_RO": "1.5",
+      "IOR_ROH": "1.19",
+      "IOR_ROC": "0.72",
+      "RATIO_ROUHO": "2.5",
+      "IOR_ROUHOC": "1.05",
+      "IOR_ROUHOH": "0.81",
+      "RATIO_HRO": "0.75",
+      "IOR_HROH": "1.33",
+      "IOR_HROC": "0.63",
+      "RATIO_HROUHO": "0.75",
+      "IOR_HROUHOC": "0.60",
+      "IOR_HROUHOH": "1.35",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "1.25",
+              "home": "0.90",
+              "away": "0.98"
+            },
+            {
+              "line": "1.5",
+              "home": "1.19",
+              "away": "0.72"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.25",
+              "over": "0.82",
+              "under": "1.04"
+            },
+            {
+              "line": "2.5",
+              "over": "1.05",
+              "under": "0.81"
+            }
+          ],
+          "moneyline": {
+            "home": "1.34",
+            "draw": "4.40",
+            "away": "9.20"
+          },
+          "handicap": {
+            "line": "1.25",
+            "home": "0.90",
+            "away": "0.98"
+          },
+          "ou": {
+            "line": "2.25",
+            "over": "0.82",
+            "under": "1.04"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0.5",
+              "home": "0.93",
+              "away": "0.95"
+            },
+            {
+              "line": "0.75",
+              "home": "1.33",
+              "away": "0.63"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "1.01",
+              "under": "0.85"
+            },
+            {
+              "line": "0.75",
+              "over": "0.60",
+              "under": "1.35"
+            }
+          ],
+          "handicap": {
+            "line": "0.5",
+            "home": "0.93",
+            "away": "0.95"
+          },
+          "ou": {
+            "line": "1",
+            "over": "1.01",
+            "under": "0.85"
+          }
+        },
+        "moneyline": {
+          "home": "1.34",
+          "draw": "4.40",
+          "away": "9.20"
+        },
+        "handicap": {
+          "line": "1.25",
+          "home": "0.90",
+          "away": "0.98"
+        },
+        "ou": {
+          "line": "2.25",
+          "over": "0.82",
+          "under": "1.04"
+        }
+      }
+    },
+    {
+      "gid": "355732822",
+      "league": "German Frauen Bundesliga",
+      "league_short_name": "German Frauen Bundesliga",
+      "team_h": "Koln (W)",
+      "team_c": "Hoffenheim (W)",
+      "home": "Koln (W)",
+      "away": "Hoffenheim (W)",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-0.25",
+      "IOR_REH": "0.77",
+      "IOR_REC": "0.93",
+      "IOR_RMH": "2.57",
+      "IOR_RMN": "3.45",
+      "IOR_RMC": "2.12",
+      "RATIO_ROUO": "2.75",
+      "IOR_ROUC": "0.78",
+      "IOR_ROUH": "0.92",
+      "RATIO_HRE": "0",
+      "IOR_HREH": "0.99",
+      "IOR_HREC": "0.71",
+      "RATIO_HROUO": "1.25",
+      "IOR_HROUC": "1.01",
+      "IOR_HROUH": "0.69",
+      "more": 0,
+      "strong": "C",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "0.77",
+              "away": "0.93"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.75",
+              "over": "0.78",
+              "under": "0.92"
+            }
+          ],
+          "moneyline": {
+            "home": "2.57",
+            "draw": "3.45",
+            "away": "2.12"
+          },
+          "handicap": {
+            "line": "-0.25",
+            "home": "0.77",
+            "away": "0.93"
+          },
+          "ou": {
+            "line": "2.75",
+            "over": "0.78",
+            "under": "0.92"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0",
+              "home": "0.99",
+              "away": "0.71"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1.25",
+              "over": "1.01",
+              "under": "0.69"
+            }
+          ],
+          "handicap": {
+            "line": "0",
+            "home": "0.99",
+            "away": "0.71"
+          },
+          "ou": {
+            "line": "1.25",
+            "over": "1.01",
+            "under": "0.69"
+          }
+        },
+        "moneyline": {
+          "home": "2.57",
+          "draw": "3.45",
+          "away": "2.12"
+        },
+        "handicap": {
+          "line": "-0.25",
+          "home": "0.77",
+          "away": "0.93"
+        },
+        "ou": {
+          "line": "2.75",
+          "over": "0.78",
+          "under": "0.92"
+        }
+      }
+    },
+    {
+      "gid": "212790829",
+      "league": "Spanish Ladies Premier League",
+      "league_short_name": "Spanish Ladies Premier League",
+      "team_h": "RCD Espanyol (W)",
+      "team_c": "Real Sociedad (W)",
+      "home": "RCD Espanyol (W)",
+      "away": "Real Sociedad (W)",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-1",
+      "current_score": "0-1",
+      "homeScore": 0,
+      "awayScore": 1,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "-1",
+      "IOR_REH": "0.73",
+      "IOR_REC": "1.03",
+      "IOR_RMH": "5.30",
+      "IOR_RMN": "3.70",
+      "IOR_RMC": "1.51",
+      "RATIO_ROUO": "2.25",
+      "IOR_ROUC": "0.94",
+      "IOR_ROUH": "0.82",
+      "RATIO_HRE": "-0.25",
+      "IOR_HREH": "1.04",
+      "IOR_HREC": "0.72",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "1.01",
+      "IOR_HROUH": "0.75",
+      "more": 0,
+      "strong": "C",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "-1",
+              "home": "0.73",
+              "away": "1.03"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.25",
+              "over": "0.94",
+              "under": "0.82"
+            }
+          ],
+          "moneyline": {
+            "home": "5.30",
+            "draw": "3.70",
+            "away": "1.51"
+          },
+          "handicap": {
+            "line": "-1",
+            "home": "0.73",
+            "away": "1.03"
+          },
+          "ou": {
+            "line": "2.25",
+            "over": "0.94",
+            "under": "0.82"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "-0.25",
+              "home": "1.04",
+              "away": "0.72"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "1.01",
+              "under": "0.75"
+            }
+          ],
+          "handicap": {
+            "line": "-0.25",
+            "home": "1.04",
+            "away": "0.72"
+          },
+          "ou": {
+            "line": "1",
+            "over": "1.01",
+            "under": "0.75"
+          }
+        },
+        "moneyline": {
+          "home": "5.30",
+          "draw": "3.70",
+          "away": "1.51"
+        },
+        "handicap": {
+          "line": "-1",
+          "home": "0.73",
+          "away": "1.03"
+        },
+        "ou": {
+          "line": "2.25",
+          "over": "0.94",
+          "under": "0.82"
+        }
+      }
+    },
+    {
+      "gid": "332790821",
+      "league": "Spanish Ladies Premier League",
+      "league_short_name": "Spanish Ladies Premier League",
+      "team_h": "Madrid CFF (W)",
+      "team_c": "UD Granadilla Tenerife Sur (W)",
+      "home": "Madrid CFF (W)",
+      "away": "UD Granadilla Tenerife Sur (W)",
+      "timer": "2025-11-09T15:00:00.000Z",
+      "time": "2025-11-09T15:00:00.000Z",
+      "match_time": "2025-11-09T15:00:00.000Z",
+      "score": "0-0",
+      "current_score": "0-0",
+      "homeScore": 0,
+      "awayScore": 0,
+      "homeHalfScore": 0,
+      "awayHalfScore": 0,
+      "period": "1H",
+      "clock": "",
+      "state": 1,
+      "source": "isports",
+      "RATIO_RE": "0",
+      "IOR_REH": "0.91",
+      "IOR_REC": "0.85",
+      "IOR_RMH": "2.47",
+      "IOR_RMN": "3.40",
+      "IOR_RMC": "2.39",
+      "RATIO_ROUO": "2.5",
+      "IOR_ROUC": "0.86",
+      "IOR_ROUH": "0.90",
+      "RATIO_HRE": "0",
+      "IOR_HREH": "0.91",
+      "IOR_HREC": "0.85",
+      "RATIO_HROUO": "1",
+      "IOR_HROUC": "0.82",
+      "IOR_HROUH": "0.94",
+      "more": 0,
+      "strong": "C",
+      "markets": {
+        "full": {
+          "handicapLines": [
+            {
+              "line": "0",
+              "home": "0.91",
+              "away": "0.85"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "2.5",
+              "over": "0.86",
+              "under": "0.90"
+            }
+          ],
+          "moneyline": {
+            "home": "2.47",
+            "draw": "3.40",
+            "away": "2.39"
+          },
+          "handicap": {
+            "line": "0",
+            "home": "0.91",
+            "away": "0.85"
+          },
+          "ou": {
+            "line": "2.5",
+            "over": "0.86",
+            "under": "0.90"
+          }
+        },
+        "half": {
+          "handicapLines": [
+            {
+              "line": "0",
+              "home": "0.91",
+              "away": "0.85"
+            }
+          ],
+          "overUnderLines": [
+            {
+              "line": "1",
+              "over": "0.82",
+              "under": "0.94"
+            }
+          ],
+          "handicap": {
+            "line": "0",
+            "home": "0.91",
+            "away": "0.85"
+          },
+          "ou": {
+            "line": "1",
+            "over": "0.82",
+            "under": "0.94"
+          }
+        },
+        "moneyline": {
+          "home": "2.47",
+          "draw": "3.40",
+          "away": "2.39"
+        },
+        "handicap": {
+          "line": "0",
+          "home": "0.91",
+          "away": "0.85"
+        },
+        "ou": {
+          "line": "2.5",
+          "over": "0.86",
+          "under": "0.90"
+        }
+      }
+    }
+  ]
+}

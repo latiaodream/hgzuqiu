@@ -1,0 +1,198 @@
+[
+  {
+    "home": "SC Freiburg",
+    "away": "St. Pauli",
+    "league": "German Bundesliga",
+    "match_time": "2025-11-09T14:30:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Terek Grozny",
+    "away": "Spartak Moscow",
+    "league": "Russia Premier League",
+    "match_time": "2025-11-09T14:30:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Sigma Olomouc",
+    "away": "Pardubice",
+    "league": "Czech Republic Gambrinus Liga",
+    "match_time": "2025-11-09T14:30:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "AC Sparta Prague",
+    "away": "Teplice",
+    "league": "Czech Republic Gambrinus Liga",
+    "match_time": "2025-11-09T14:30:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Slovan Bratislava",
+    "away": "KFC Komarno",
+    "league": "Slovak Super Liga",
+    "match_time": "2025-11-09T14:30:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Al Shahaniya",
+    "away": "Al Rayyan",
+    "league": "Qatar League",
+    "match_time": "2025-11-09T14:30:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Everton FC (W)",
+    "away": "Manchester City (W)",
+    "league": "England FA Women Super League",
+    "match_time": "2025-11-09T14:30:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Qarabag",
+    "away": "FC Neftci Baku",
+    "league": "Azerbaijan Premier League",
+    "match_time": "2025-11-09T14:40:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Sint-Truidense",
+    "away": "Standard Liege",
+    "league": "Belgian Pro League",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Aberdeen",
+    "away": "Motherwell",
+    "league": "Scottish Premier League",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Levadiakos",
+    "away": "Panserraikos",
+    "league": "Greece Super League A",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Cacereno",
+    "away": "Real Aviles",
+    "league": "Spain Primera Division RFEF",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "SC Covilha",
+    "away": "FC Caldas",
+    "league": "Portugal Liga 3",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Sanjoanense",
+    "away": "Fafe",
+    "league": "Portugal Liga 3",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Lusitano Evora",
+    "away": "UD Santarem",
+    "league": "Portugal Liga 3",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Burgos Promesas",
+    "away": "Samanod",
+    "league": "Spain Segunda Division RFEF",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Jeunesse Molenbeek",
+    "away": "Beerschot Wilrijk",
+    "league": "Belgian Second Division",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Francs Borains",
+    "away": "Olympic Charleroi",
+    "league": "Belgian Second Division",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Randers FC",
+    "away": "Midtjylland",
+    "league": "Denmark Superligaen",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "FK Spartak Zlatibor Voda",
+    "away": "Crvena Zvezda",
+    "league": "Serbian Superliga",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "AEK Larnaca",
+    "away": "Omonia Aradippou",
+    "league": "Cyprus 1 Division",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Istra 1961 Pula",
+    "away": "Dinamo Zagreb",
+    "league": "Croatia 1.Division",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "DHJ Difaa Hassani Jadidi",
+    "away": "Union Touarga Sport Rabat",
+    "league": "Botola Pro 1",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Olympique de Safi",
+    "away": "Wydad Casablanca",
+    "league": "Botola Pro 1",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Shamrock Rovers",
+    "away": "Cork City",
+    "league": "Ireland FAI Cup",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Koln (W)",
+    "away": "Hoffenheim (W)",
+    "league": "German Frauen Bundesliga",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "RCD Espanyol (W)",
+    "away": "Real Sociedad (W)",
+    "league": "Spanish Ladies Premier League",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  },
+  {
+    "home": "Madrid CFF (W)",
+    "away": "UD Granadilla Tenerife Sur (W)",
+    "league": "Spanish Ladies Premier League",
+    "match_time": "2025-11-09T15:00:00.000Z",
+    "score": "0-0"
+  }
+]

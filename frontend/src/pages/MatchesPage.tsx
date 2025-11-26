@@ -312,9 +312,11 @@ const MatchesPage: React.FC = () => {
       // 读缓存失败忽略
     }
 
+    // WSS 作为主数据源，API 只在首次加载时调用一次作为初始数据
     loadMatches();
-    const interval = setInterval(loadMatches, 10000);
-    return () => clearInterval(interval);
+    // 不再轮询 API，完全依赖 WSS 推送
+    // const interval = setInterval(loadMatches, 10000);
+    // return () => clearInterval(interval);
   }, [showtype, gtype]);
 
   // 每次获得新的非空赛事列表时，写入 localStorage，做简单持久化
