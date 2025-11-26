@@ -931,6 +931,10 @@ export class CrownApiClient {
       throw new Error('未登录，无法获取赔率');
     }
 
+    // 确保版本号是最新的（避免使用硬编码的默认版本导致 555 错误）
+    await this.getVersion();
+    console.log('📌 当前版本号:', this.version);
+
     const requestParams = new URLSearchParams({
       p: `${params.gtype}_order_view`,
       uid: this.uid,
