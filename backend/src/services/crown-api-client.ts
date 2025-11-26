@@ -931,15 +931,11 @@ export class CrownApiClient {
       throw new Error('未登录，无法获取赔率');
     }
 
-    // 确保版本号是最新的（避免使用硬编码的默认版本导致 555 错误）
-    await this.getVersion();
-    console.log('📌 当前版本号:', this.version);
-
     const requestParams = new URLSearchParams({
       p: `${params.gtype}_order_view`,
       uid: this.uid,
       ver: this.version,
-	      langx: 'zh-cn',  // 使用简体中文版本（与抓包示例一致）
+      langx: 'zh-tw',
       odd_f_type: 'H',
       gid: params.gid,
       gtype: params.gtype,
@@ -1221,7 +1217,7 @@ export class CrownApiClient {
       p: `${params.gtype}_bet`,  // 操作类型：FT_bet, BK_bet 等
       uid: this.uid,
       ver: this.version,
-	      langx: 'zh-cn',  // 使用简体中文版本（与抓包示例一致）
+      langx: 'zh-tw',
       odd_f_type: 'H',           // 赔率格式类型（香港盘）
       golds: params.gold,        // 注意：是 golds 不是 gold
       gid: params.gid,
