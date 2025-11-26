@@ -575,6 +575,15 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         ? latestOddsValue
         : oddsValue;
 
+      // 调试日志：检查 selectionMeta 的值
+      console.log('🔍 下注参数 selectionMeta:', {
+        market_category: selectionMeta?.market_category,
+        market_scope: selectionMeta?.market_scope,
+        market_side: selectionMeta?.market_side,
+        market_line: selectionMeta?.market_line,
+        market_index: selectionMeta?.market_index,
+      });
+
       const requestData: BetCreateRequest = {
         account_ids: selectedAccounts,
         match_id: match.id,
