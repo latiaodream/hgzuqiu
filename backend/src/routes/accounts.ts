@@ -449,6 +449,13 @@ router.delete('/:id', async (req: any, res) => {
             });
         }
 
+        // 先删除关联的下注记录（或者将 account_id 设为 NULL）
+        await query(
+            'UPDATE bets SET account_id = NULL WHERE account_id = $1',
+            [accountId]
+        );
+
+        // 再删除账号
         await query(
             'DELETE FROM crown_accounts WHERE id = $1 AND user_id = $2',
             [accountId, userId]
