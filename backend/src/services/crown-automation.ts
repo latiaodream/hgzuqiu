@@ -6514,14 +6514,15 @@ export class CrownAutomationService {
     console.log('📊 盘口线:', spreadValue || '未指定');
 
     for (const variant of variants) {
-      console.log('🎯 尝试获取赔率组合:', variant);
+      console.log('🎯 尝试获取赔率组合:', variant, '盘口线:', spreadValue || '(主盘口)');
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        console.log(`🔄 获取赔率 [${variant.wtype}/${variant.rtype}] 尝试 ${attempt}/${maxRetries}`);
+        console.log(`🔄 获取赔率 [${variant.wtype}/${variant.rtype}] spread=${spreadValue || '主盘口'} 尝试 ${attempt}/${maxRetries}`);
         oddsResult = await apiClient.getLatestOdds({
           gid: crownMatchId,
           gtype: 'FT',
           wtype: variant.wtype,
           chose_team: variant.chose_team,
+          spread: spreadValue || undefined,  // 传递盘口线参数
         });
 
         if (oddsResult.success) {
