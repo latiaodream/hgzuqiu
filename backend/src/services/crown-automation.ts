@@ -5910,6 +5910,9 @@ export class CrownAutomationService {
         console.error('⚠️ 持久化会话信息失败:', dbError);
       }
 
+      // 等待 1 秒让皇冠服务器同步会话后再获取余额
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // 获取余额和信用额度
       if (uid) {
         try {
@@ -6619,7 +6622,9 @@ export class CrownAutomationService {
             // 使用 API 登录而不是浏览器登录
             const loginResult = await this.loginAccountWithApi(account);
             if (loginResult.success) {
-              console.log('✅ 自动重新登录成功，重新获取赔率...');
+              console.log('✅ 自动重新登录成功，等待 2 秒后重新获取赔率...');
+              // 等待 2 秒让皇冠服务器同步会话
+              await new Promise((resolve) => setTimeout(resolve, 2000));
               // 重新准备 API 客户端
               const newPrepared = await this.prepareApiClient(accountId);
               if (newPrepared.success && newPrepared.client) {
