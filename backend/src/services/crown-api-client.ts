@@ -215,10 +215,13 @@ export class CrownApiClient {
   }
 
   /**
-   * 获取版本号
+   * 获取版本号，并确保设置必要的 Cookie
    */
   private async getVersion(): Promise<string> {
     try {
+      // 先设置 loadBB Cookie（皇冠服务器需要这个）
+      this.cookies = 'loadBB=1';
+
       const response = await this.httpClient.get('/');
       const html = response.data;
       const match = html.match(/top\.ver\s*=\s*'([^']+)'/);
@@ -226,6 +229,12 @@ export class CrownApiClient {
         this.version = match[1];
         console.log('✅ 版本号获取成功:', this.version);
       }
+
+      // 确保 loadBB=deleted 存在（如果服务器没有返回，手动添加）
+      if (!this.cookies.includes('loadBB=')) {
+        this.cookies = 'loadBB=deleted; ' + this.cookies;
+      }
+
       return this.version;
     } catch (error) {
       console.warn('⚠️ 获取版本号失败，使用默认版本:', this.version);
