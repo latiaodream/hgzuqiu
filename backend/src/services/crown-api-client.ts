@@ -106,8 +106,8 @@ export class CrownApiClient {
             if (idx > 0) {
               const name = nameValue.substring(0, idx);
               const value = nameValue.substring(idx + 1);
-              // 如果是 deleted，则删除该 Cookie
-              if (value === 'deleted' || value === '') {
+              // 只有当值为空时才删除，保留 "deleted" 值的 Cookie（如 loadBB=deleted）
+              if (value === '') {
                 cookieMap.delete(name);
               } else {
                 cookieMap.set(name, value);
