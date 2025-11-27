@@ -338,12 +338,8 @@ export const coinApi = {
 
 // 皇冠自动化API
 export const crownApi = {
-  // 登录账号（Playwright 方式，旧方法）
+  // 登录账号（纯 API 方式）
   loginAccount: (accountId: number): Promise<ApiResponse> =>
-    apiClient.post(`/crown-automation/login/${accountId}`, undefined, { timeout: 120000 }).then(res => res.data),
-
-  // 登录账号（纯 API 方式，推荐）
-  loginAccountWithApi: (accountId: number): Promise<ApiResponse> =>
     apiClient.post(`/crown-automation/login-api/${accountId}`, undefined, { timeout: 30000 }).then(res => res.data),
 
   // 登出账号

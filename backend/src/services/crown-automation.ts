@@ -6669,6 +6669,27 @@ export class CrownAutomationService {
       console.log('💰 执行下注...');
       console.log(`   使用赔率: ${latestOdds} (原始赔率: ${betRequest.odds})`);
 
+      // 判断是否是滚球：
+      // 1. wtype 包含 'E' (如 RE, ROU, HRE, HROU) 表示滚球
+      // 2. 或者 match_status === 'live' 表示滚球
+      const wtypeUpper = chosenVariant.wtype.toUpperCase();
+      const isRunningBall = wtypeUpper.includes('E') ||
+                           betRequest.match_status === 'live' ||
+                           betRequest.matchStatus === 'live';
+
+      console.log('📊 下注参数详情:', {
+        gid: crownMatchId,
+        wtype: chosenVariant.wtype,
+        rtype: chosenVariant.rtype,
+        chose_team: chosenVariant.chose_team,
+        ioratio: latestOdds,
+        gold: betRequest.amount.toString(),
+        con: oddsResult.con,
+        ratio: oddsResult.ratio,
+        isRB: isRunningBall ? 'Y' : 'N',
+        match_status: betRequest.match_status || betRequest.matchStatus,
+      });
+
       const betResult = await apiClient.placeBet({
         gid: crownMatchId,
         gtype: 'FT',
@@ -6679,7 +6700,7 @@ export class CrownAutomationService {
         gold: betRequest.amount.toString(),
         con: oddsResult.con,
         ratio: oddsResult.ratio,
-        isRB: chosenVariant.wtype.startsWith('R') ? 'Y' : 'N',
+        isRB: isRunningBall ? 'Y' : 'N',
       });
 
       console.log('📥 下注响应:', betResult);

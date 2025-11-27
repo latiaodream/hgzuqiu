@@ -206,7 +206,7 @@ const AccountsPage: React.FC = () => {
     }
   };
 
-  // 单个账号登录（API 方式）
+  // 单个账号登录（纯 API 方式）
   const handleLoginAccount = async (account: CrownAccount) => {
     const key = `login-${account.id}`;
     try {
