@@ -682,22 +682,16 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
 
   const sortedAccounts = useMemo(() => {
     // 只显示符合下注条件的账号（在线、未达止盈、无线路冲突）
-    // 使用后端返回的 eligible_accounts 和 excluded_accounts 来判断
-    const eligibleAccountIds = new Set<number>();
-
-    if (autoSelection) {
-      // 如果有优选数据，使用优选结果
-      autoSelection.eligible_accounts.forEach(entry => {
-        eligibleAccountIds.add(entry.account.id);
-      });
-    } else {
-      // 如果没有优选数据，只显示在线的账号
-      accounts.forEach(account => {
-        if (isAccountOnline(account.id)) {
-          eligibleAccountIds.add(account.id);
-        }
-      });
+    // 必须等待后端返回的优选结果，不再使用备用逻辑
+    if (!autoSelection) {
+      // 如果还没有优选数据，返回空数组（等待加载）
+      return [];
     }
+
+    const eligibleAccountIds = new Set<number>();
+    autoSelection.eligible_accounts.forEach(entry => {
+      eligibleAccountIds.add(entry.account.id);
+    });
 
     const eligibleAccounts = accounts.filter(account =>
       eligibleAccountIds.has(account.id)
@@ -716,7 +710,7 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
       }
       return a.username.localeCompare(b.username);
     });
-  }, [accounts, recommendedOrder, autoSelection, isAccountOnline]);
+  }, [accounts, recommendedOrder, autoSelection]);
 
   const formatAmount = (value: number) => {
     if (!Number.isFinite(value)) {
@@ -881,26 +875,36 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
               </Space>
             </div>
             <div className="accounts-list">
-              {sortedAccounts.map(account => {
-                const selected = selectedAccounts.includes(account.id);
-                const online = isAccountOnline(account.id);
-                return (
-                  <div
-                    key={account.id}
-                    className={`account-item ${selected ? 'selected' : ''} ${online ? '' : 'offline'}`}
-                    onClick={() => {
-                      if (!online) return;
-                      const newSelected = selected
-                        ? selectedAccounts.filter(id => id !== account.id)
-                        : [...selectedAccounts, account.id];
-                      handleAccountsChange(newSelected);
-                    }}
-                  >
-                    <span className="name">{account.username}</span>
-                    <span className={`status ${online ? 'on' : 'off'}`}>{online ? '✓' : '✗'}</span>
-                  </div>
-                );
-              })}
+              {autoLoading && !autoSelection ? (
+                <div style={{ padding: '12px', textAlign: 'center', color: '#999', fontSize: 12 }}>
+                  <Spin size="small" /> 加载中...
+                </div>
+              ) : sortedAccounts.length === 0 ? (
+                <div style={{ padding: '12px', textAlign: 'center', color: '#999', fontSize: 12 }}>
+                  暂无可下注的账号
+                </div>
+              ) : (
+                sortedAccounts.map(account => {
+                  const selected = selectedAccounts.includes(account.id);
+                  const online = isAccountOnline(account.id);
+                  return (
+                    <div
+                      key={account.id}
+                      className={`account-item ${selected ? 'selected' : ''} ${online ? '' : 'offline'}`}
+                      onClick={() => {
+                        if (!online) return;
+                        const newSelected = selected
+                          ? selectedAccounts.filter(id => id !== account.id)
+                          : [...selectedAccounts, account.id];
+                        handleAccountsChange(newSelected);
+                      }}
+                    >
+                      <span className="name">{account.username}</span>
+                      <span className={`status ${online ? 'on' : 'off'}`}>{online ? '✓' : '✗'}</span>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
