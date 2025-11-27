@@ -1771,7 +1771,13 @@ router.post('/odds/preview', async (req: any, res) => {
                     ? Number(marketIndexRaw)
                     : undefined;
 
-        const payload = {
+	    // 标准化盘口线为字符串（可能来自前端的数字或字符串）
+	    const marketLineStr =
+	        marketLine === undefined || marketLine === null
+	            ? undefined
+	            : String(marketLine).trim();
+
+	    const payload = {
             betType,
             betOption,
             amount: Number(body.bet_amount ?? 0),
@@ -1790,10 +1796,10 @@ router.post('/odds/preview', async (req: any, res) => {
             marketCategory: body.market_category || body.marketCategory,
             market_scope: body.market_scope || body.marketScope,
             marketScope: body.market_scope || body.marketScope,
-            market_side: body.market_side || body.marketSide,
-            marketSide: body.market_side || body.marketSide,
-            market_line: typeof marketLine === 'string' ? marketLine : undefined,
-            marketLine: typeof marketLine === 'string' ? marketLine : undefined,
+	        market_side: body.market_side || body.marketSide,
+	        marketSide: body.market_side || body.marketSide,
+	        market_line: marketLineStr,
+	        marketLine: marketLineStr,
             market_index: marketIndex,
             marketIndex: marketIndex,
             market_wtype: body.market_wtype || body.marketWtype,
@@ -1804,18 +1810,20 @@ router.post('/odds/preview', async (req: any, res) => {
             marketChoseTeam: body.market_chose_team || body.marketChoseTeam,
         };
 
-        // 调试日志：打印前端传来的市场参数
-        console.log('📊 [odds/preview] 收到前端参数:', {
-            bet_type: betType,
-            bet_option: betOption,
-            market_category: payload.market_category,
-            market_scope: payload.market_scope,
-            market_side: payload.market_side,
-            market_line: payload.market_line,
-            market_wtype: payload.market_wtype,
-            market_rtype: payload.market_rtype,
-            market_chose_team: payload.market_chose_team,
-        });
+	    // 调试日志：打印前端传来的市场参数
+	    console.log('📊 [odds/preview] 收到前端参数:', {
+	        bet_type: betType,
+	        bet_option: betOption,
+	        market_category: payload.market_category,
+	        market_scope: payload.market_scope,
+	        market_side: payload.market_side,
+	        market_line_raw: marketLine,
+	        market_line: payload.market_line,
+	        market_index: payload.market_index,
+	        market_wtype: payload.market_wtype,
+	        market_rtype: payload.market_rtype,
+	        market_chose_team: payload.market_chose_team,
+	    });
 
         const preview = await getCrownAutomation().fetchLatestOdds(accountId, payload as any);
         if (!preview.success) {
