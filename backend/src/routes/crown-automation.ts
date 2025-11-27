@@ -1804,6 +1804,19 @@ router.post('/odds/preview', async (req: any, res) => {
             marketChoseTeam: body.market_chose_team || body.marketChoseTeam,
         };
 
+        // 调试日志：打印前端传来的市场参数
+        console.log('📊 [odds/preview] 收到前端参数:', {
+            bet_type: betType,
+            bet_option: betOption,
+            market_category: payload.market_category,
+            market_scope: payload.market_scope,
+            market_side: payload.market_side,
+            market_line: payload.market_line,
+            market_wtype: payload.market_wtype,
+            market_rtype: payload.market_rtype,
+            market_chose_team: payload.market_chose_team,
+        });
+
         const preview = await getCrownAutomation().fetchLatestOdds(accountId, payload as any);
         if (!preview.success) {
             res.json({
