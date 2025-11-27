@@ -765,6 +765,8 @@ router.post('/', async (req: any, res) => {
 
                 // 创建数据库记录
                 const initialStatus = betResult.success ? 'confirmed' : 'cancelled';
+                // 下注失败时保存失败原因
+                const errorMessage = betResult.success ? null : (betResult.message || '下注失败');
 
                 const finalOddsValue = betResult.actualOdds || betData.odds;
 
@@ -772,8 +774,8 @@ router.post('/', async (req: any, res) => {
                     INSERT INTO bets (
                         user_id, account_id, match_id, bet_type, bet_option, bet_amount, virtual_bet_amount, odds,
                         market_category, market_scope, market_side, market_line, market_index,
-                        single_limit, interval_seconds, quantity, status, official_bet_id, official_odds, score
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+                        single_limit, interval_seconds, quantity, status, official_bet_id, official_odds, score, error_message
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
                     RETURNING *
                 `, [
                     userId,
@@ -795,7 +797,8 @@ router.post('/', async (req: any, res) => {
                     initialStatus,
                     betResult.betId || null,
                     finalOddsValue,
-                    betData.current_score || matchRecord.current_score || null
+                    betData.current_score || matchRecord.current_score || null,
+                    errorMessage
                 ]);
 
                 const createdRecord = insertResult.rows[0];

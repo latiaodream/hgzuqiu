@@ -14,6 +14,7 @@ import {
   Statistic,
   Progress,
   Badge,
+  Tooltip,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -64,6 +65,7 @@ interface BetDetail {
   input_amount: number;
   input_limit: number;
   time: string;
+  error_message?: string;  // 失败原因
 }
 
 const formatOdds = (value?: number | null | string) => {
@@ -474,12 +476,20 @@ const BettingPage: React.FC = () => {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 100,
-      render: (status: string) => {
+      width: 120,
+      render: (status: string, record: BetDetail) => {
         if (status === 'settled') {
           return <Tag color="success" icon={<CheckCircleOutlined />}>已结算</Tag>;
         } else if (status === 'confirmed') {
           return <Tag color="processing" icon={<CloseCircleOutlined />}>已下单</Tag>;
+        } else if (status === 'cancelled') {
+          // 已取消/失败的注单，显示失败原因
+          const errorMsg = record.error_message || '下注失败';
+          return (
+            <Tooltip title={errorMsg}>
+              <Tag color="error" icon={<CloseCircleOutlined />}>失败</Tag>
+            </Tooltip>
+          );
         }
         return <Tag color="default">待处理</Tag>;
       },
@@ -616,6 +626,7 @@ const BettingPage: React.FC = () => {
       result_text: bet.result_text,
       input_limit: realLimit,
       time: dayjs(bet.created_at).format('HH:mm:ss'),
+      error_message: (bet as any).error_message || undefined,
     };
   });
 
