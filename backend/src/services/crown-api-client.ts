@@ -80,18 +80,50 @@ export class CrownApiClient {
 
     this.httpClient = axios.create(axiosConfig);
 
-    // 添加响应拦截器来自动保存 Cookie
+    // 添加响应拦截器来自动保存 Cookie（合并而不是覆盖）
     this.httpClient.interceptors.response.use(
       (response) => {
         const setCookieHeader = response.headers['set-cookie'];
         if (setCookieHeader && Array.isArray(setCookieHeader)) {
-          // 提取 Cookie 值（去掉 Path、Domain 等属性）
-          const cookieValues = setCookieHeader.map(cookie => {
+          // 解析现有 Cookie 为 Map
+          const cookieMap = new Map<string, string>();
+          if (this.cookies) {
+            this.cookies.split('; ').forEach(pair => {
+              const idx = pair.indexOf('=');
+              if (idx > 0) {
+                const name = pair.substring(0, idx);
+                const value = pair.substring(idx + 1);
+                cookieMap.set(name, value);
+              }
+            });
+          }
+
+          // 合并新的 Cookie（只更新/添加，不删除）
+          setCookieHeader.forEach(cookie => {
             const parts = cookie.split(';');
-            return parts[0]; // 只保留 name=value 部分
+            const nameValue = parts[0]; // 只保留 name=value 部分
+            const idx = nameValue.indexOf('=');
+            if (idx > 0) {
+              const name = nameValue.substring(0, idx);
+              const value = nameValue.substring(idx + 1);
+              // 如果是 deleted，则删除该 Cookie
+              if (value === 'deleted' || value === '') {
+                cookieMap.delete(name);
+              } else {
+                cookieMap.set(name, value);
+              }
+            }
           });
-          this.cookies = cookieValues.join('; ');
-          console.log('🍪 已保存 Cookie:', this.cookies);
+
+          // 重建 Cookie 字符串
+          const newCookies = Array.from(cookieMap.entries())
+            .map(([name, value]) => `${name}=${value}`)
+            .join('; ');
+
+          if (newCookies !== this.cookies) {
+            this.cookies = newCookies;
+            console.log('🍪 已合并 Cookie:', this.cookies);
+          }
         }
         return response;
       },
