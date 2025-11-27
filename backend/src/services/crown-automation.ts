@@ -6608,14 +6608,16 @@ export class CrownAutomationService {
         );
         
         if (accountCheck.rows.length > 0 && accountCheck.rows[0].is_enabled) {
-          console.log('🔄 账号已启用，尝试自动重新登录...');
+          console.log('🔄 账号已启用，尝试自动重新登录（使用 API 登录）...');
           try {
             // 获取完整账号信息用于登录
             const fullAccountResult = await query('SELECT * FROM crown_accounts WHERE id = $1', [accountId]);
             if (fullAccountResult.rows.length === 0) {
               throw new Error('账号不存在');
             }
-            const loginResult = await this.loginAccount(fullAccountResult.rows[0] as CrownAccount);
+            const account = fullAccountResult.rows[0] as CrownAccount;
+            // 使用 API 登录而不是浏览器登录
+            const loginResult = await this.loginAccountWithApi(account);
             if (loginResult.success) {
               console.log('✅ 自动重新登录成功，重新获取赔率...');
               // 重新准备 API 客户端
