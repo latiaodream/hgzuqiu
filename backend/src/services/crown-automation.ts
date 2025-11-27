@@ -6325,6 +6325,14 @@ export class CrownAutomationService {
   }
 
   private async prepareApiClient(accountId: number): Promise<{ success: boolean; client?: CrownApiClient; message: string }> {
+    // 【重要】如果该账号正在登录中，等待登录完成
+    const existingLock = this.loginLocks.get(accountId);
+    if (existingLock) {
+      console.log(`🔒 账号 ${accountId} 正在登录中，等待登录完成后再准备客户端...`);
+      await existingLock;
+      console.log(`🔓 账号 ${accountId} 登录完成，继续准备客户端`);
+    }
+
     let apiLoginTime = this.apiLoginSessions.get(accountId);
     let uid = this.apiUids.get(accountId);
 
@@ -6627,16 +6635,24 @@ export class CrownAutomationService {
       const sessionExpiredCodes = ['DOUBLE_LOGIN', 'SESSION_EXPIRED'];
       if (!lookup.success && sessionExpiredCodes.includes(lookup.reasonCode || '')) {
         console.log('⚠️ 会话已失效 (accountId=' + accountId + ', reason=' + lookup.reasonCode + ')，尝试自动重新登录...');
+
+        // 【重要】立即清除内存和数据库中的旧会话，防止其他请求恢复到已失效的会话
         this.apiLoginSessions.delete(accountId);
         this.apiUids.delete(accountId);
+        await query(
+          `UPDATE crown_accounts SET api_uid = NULL, api_login_time = NULL, api_cookies = NULL, is_online = false WHERE id = $1`,
+          [accountId]
+        );
+        console.log('🗑️ 已清除旧会话信息（内存+数据库）');
+
         await apiClient.close();
-        
+
         // 检查账号是否启用，如果启用则尝试自动重新登录
         const accountCheck = await query(
           'SELECT is_enabled, username, password FROM crown_accounts WHERE id = $1',
           [accountId]
         );
-        
+
         if (accountCheck.rows.length > 0 && accountCheck.rows[0].is_enabled) {
           console.log('🔄 账号已启用，尝试自动重新登录（使用 API 登录）...');
           try {
