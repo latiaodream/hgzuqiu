@@ -944,6 +944,20 @@ export class CrownApiClient {
       } else {
         console.log('❌ 获取赔率失败');
         console.log('   错误代码:', data.code);
+
+        // 检查是否是会话失效错误（1X014 = 登入失败，请重新登录）
+        const errormsg = data.errormsg || '';
+        if (errormsg === '1X014' || errormsg.includes('1X014')) {
+          console.log('⚠️ 检测到会话失效 (1X014)，需要重新登录');
+          this.uid = null; // 清除 UID
+          return {
+            success: false,
+            code: 'SESSION_EXPIRED',
+            message: '会话已失效，请重新登录账号',
+            ...data,
+          };
+        }
+
         return {
           success: false,
           code: data.code,

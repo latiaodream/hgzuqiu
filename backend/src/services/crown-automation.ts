@@ -6480,7 +6480,7 @@ export class CrownAutomationService {
         lastErrorMessage = oddsResult.message || oddsResult.code || '未知错误';
         lastErrorCode = oddsResult.code || oddsResult.errormsg;
 
-        // 处理 doubleLogin 错误：直接返回错误（会话清除在上层处理）
+        // 处理会话失效错误：直接返回错误（会话清除和重新登录在上层处理）
         if (oddsResult.code === 'DOUBLE_LOGIN') {
           console.log('⚠️ 检测到重复登录，会话已失效');
           return {
@@ -6488,6 +6488,16 @@ export class CrownAutomationService {
             message: '账号在其他地方登录，当前会话已失效。请重新登录账号。',
             crownMatchId,
             reasonCode: 'DOUBLE_LOGIN',
+          };
+        }
+
+        if (oddsResult.code === 'SESSION_EXPIRED') {
+          console.log('⚠️ 检测到会话失效 (1X014)');
+          return {
+            success: false,
+            message: '会话已失效，请重新登录账号。',
+            crownMatchId,
+            reasonCode: 'SESSION_EXPIRED',
           };
         }
 
