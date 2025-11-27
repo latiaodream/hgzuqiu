@@ -5937,8 +5937,23 @@ export class CrownAutomationService {
         console.error('⚠️ 持久化会话信息失败:', dbError);
       }
 
-      // 等待 1 秒让皇冠服务器同步会话后再获取余额
+      // 等待 1 秒让皇冠服务器同步会话后再进行后续操作
       await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // 登录后先预热一次赛事列表，使会话行为尽量与网页一致
+      try {
+        console.log('📋 登录后预热赛事列表 (FT/live/RB)...');
+        await apiClient.getGameList({
+          gtype: 'ft',
+          showtype: 'live',
+          rtype: 'rb',
+          ltype: '3',
+          sorttype: 'L',
+          langx: 'zh-cn',
+        });
+      } catch (warmupError) {
+        console.warn('⚠️ 登录后预热赛事列表失败（忽略）:', warmupError instanceof Error ? warmupError.message : warmupError);
+      }
 
       // 获取余额和信用额度
       if (uid) {

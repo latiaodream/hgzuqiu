@@ -275,10 +275,10 @@ export class CrownApiClient {
     const userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1';
     const encodedUA = Buffer.from(userAgent).toString('base64');
 
-    // 构建请求参数
+    // 构建请求参数（与抓包保持一致，使用简体中文 zh-cn）
     const params = new URLSearchParams({
       p: 'chk_login',
-      langx: 'zh-tw',  // 使用繁体中文版本
+      langx: 'zh-cn',  // 使用简体中文版本
       ver: this.version,
       username,
       password,
@@ -687,7 +687,8 @@ export class CrownApiClient {
     const requestParams = new URLSearchParams({
       uid: this.uid,
       ver: this.version,
-      langx: params.langx || 'zh-tw',  // 默认繁体，可传入 zh-cn 使用简体
+      // 默认使用简体中文，与实际网页登录和抓包保持一致
+      langx: params.langx || 'zh-cn',
       p: 'get_game_list',
       p3type: '',
       date: '',
@@ -774,7 +775,8 @@ export class CrownApiClient {
     const requestParams = new URLSearchParams({
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-tw',  // 使用繁体中文版本
+      // 与实际网页登录保持一致，使用简体中文
+      langx: 'zh-cn',
       p: 'get_game_more',
       gtype: params.gtype || 'ft',
       showtype: params.showtype || 'live',
@@ -901,7 +903,8 @@ export class CrownApiClient {
       p: `${params.gtype}_order_view`,
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-tw',  // 使用繁体中文版本
+      // 与官方示例保持一致，使用简体中文
+      langx: 'zh-cn',
       odd_f_type: 'H',
       gid: params.gid,
       gtype: params.gtype,
@@ -1166,7 +1169,8 @@ export class CrownApiClient {
       p: `${params.gtype}_bet`,  // 操作类型：FT_bet, BK_bet 等
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-tw',  // 使用繁体中文版本
+      // 与最新抓包保持一致，使用简体中文
+      langx: 'zh-cn',
       odd_f_type: 'H',           // 赔率格式类型（香港盘）
       golds: params.gold,        // 注意：是 golds 不是 gold
       gid: params.gid,
@@ -1301,7 +1305,8 @@ export class CrownApiClient {
     const params = new URLSearchParams({
       uid: this.uid,
       ver: this.version,
-      langx: 'zh-tw',  // 使用繁体中文版本
+      // 与官网保持一致，使用简体中文
+      langx: 'zh-cn',
       p: 'get_account_set',
       gtype: gtype,
     });
