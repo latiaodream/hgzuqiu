@@ -6295,8 +6295,36 @@ export class CrownAutomationService {
   }
 
   private async prepareApiClient(accountId: number): Promise<{ success: boolean; client?: CrownApiClient; message: string }> {
-    const apiLoginTime = this.apiLoginSessions.get(accountId);
-    const uid = this.apiUids.get(accountId);
+    let apiLoginTime = this.apiLoginSessions.get(accountId);
+    let uid = this.apiUids.get(accountId);
+
+    // 如果内存中没有会话信息，尝试从数据库恢复
+    if (!apiLoginTime || !uid) {
+      console.log(`🔄 内存中没有会话信息，尝试从数据库恢复 (accountId=${accountId})`);
+      const dbResult = await query(
+        `SELECT api_uid, api_login_time FROM crown_accounts WHERE id = $1 AND is_online = true`,
+        [accountId]
+      );
+
+      if (dbResult.rows.length > 0 && dbResult.rows[0].api_uid && dbResult.rows[0].api_login_time) {
+        const dbUid = dbResult.rows[0].api_uid;
+        const dbLoginTime = Number(dbResult.rows[0].api_login_time);
+
+        // 检查数据库中的会话是否过期
+        const now = Date.now();
+        const apiSessionTtl = 2 * 60 * 60 * 1000; // 2 小时
+        if (now - dbLoginTime < apiSessionTtl) {
+          // 恢复到内存
+          this.apiLoginSessions.set(accountId, dbLoginTime);
+          this.apiUids.set(accountId, dbUid);
+          apiLoginTime = dbLoginTime;
+          uid = dbUid;
+          console.log(`✅ 已从数据库恢复会话: accountId=${accountId}, uid=${dbUid}`);
+        } else {
+          console.log(`⚠️ 数据库中的会话已过期 (age=${Math.round((now - dbLoginTime) / 1000 / 60)}分钟)`);
+        }
+      }
+    }
 
     if (!apiLoginTime || !uid) {
       return {
@@ -6350,6 +6378,8 @@ export class CrownAutomationService {
     } else {
       console.warn('⚠️ 数据库中没有保存 Cookie，可能无法获取赔率');
     }
+
+    console.log(`✅ API 客户端准备完成: accountId=${accountId}, uid=${uid}, 代理=${row.proxy_enabled ? `${row.proxy_type}://${row.proxy_host}:${row.proxy_port}` : '未启用'}`);
 
     return { success: true, client: apiClient, message: '准备完成' };
   }
