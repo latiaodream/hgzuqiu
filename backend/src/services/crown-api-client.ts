@@ -892,7 +892,7 @@ export class CrownApiClient {
     gtype: string;        // 比赛类型 (FT=足球, BK=篮球等)
     wtype: string;        // 玩法类型 (RM=独赢, R=让球, OU=大小球等)
     chose_team: string;   // 选择的队伍 (H=主队, C=客队, N=和局)
-    spread?: string;      // 盘口线（如 -0.5, 2.5 等），多盘口时必须传
+    spread?: string;      // ⚠️ 当前仅用于日志/本地校验，不再传给 API，避免 VariableStandard 错误
   }): Promise<any> {
     console.log('🔄 获取最新赔率...');
 
@@ -913,17 +913,12 @@ export class CrownApiClient {
       chose_team: params.chose_team,
     });
 
-    // 如果有盘口线参数，添加到请求中（多盘口时必须传）
-    if (params.spread !== undefined && params.spread !== null && params.spread !== '') {
-      requestParams.set('spread', params.spread);
-    }
-
     try {
       console.log('📤 发送获取赔率请求...');
       console.log('   比赛ID:', params.gid);
       console.log('   玩法:', params.wtype);
       console.log('   选择:', params.chose_team);
-      console.log('   盘口线:', params.spread || '(主盘口)');
+      // 盘口线目前仅用于本地校验，不再直接传给 API，避免 VariableStandard 等错误
 
       const response = await this.httpClient.post(`/transform.php?ver=${this.version}`, requestParams.toString());
 
