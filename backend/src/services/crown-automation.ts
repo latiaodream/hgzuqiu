@@ -240,6 +240,7 @@ export class CrownAutomationService {
   private lastHeartbeats: Map<number, number> = new Map();
   private apiLoginSessions: Map<number, number> = new Map(); // 纯 API 登录会话，value 是登录时间戳
   private apiUids: Map<number, string> = new Map(); // 纯 API 登录的 UID，key 是 accountId，value 是 uid
+  private loginLocks: Map<number, Promise<{ success: boolean; message: string }>> = new Map(); // 登录锁，防止同一账号同时登录
   // 系统默认账号（仅用于抓取赛事，不落库）
   private systemLastBeat: number = 0;
   private systemLastLogin: number = 0;
@@ -5836,6 +5837,32 @@ export class CrownAutomationService {
    * 使用纯 API 方式登录账号（替代 Playwright 自动化）
    */
   async loginAccountWithApi(
+    account: CrownAccount,
+  ): Promise<{ success: boolean; message: string }> {
+    // 检查是否有正在进行的登录
+    const existingLock = this.loginLocks.get(account.id);
+    if (existingLock) {
+      console.log(`🔒 账号 ${account.username} 正在登录中，等待现有登录完成...`);
+      return existingLock;
+    }
+
+    // 创建登录锁
+    const loginPromise = this.doLoginAccountWithApi(account);
+    this.loginLocks.set(account.id, loginPromise);
+
+    try {
+      const result = await loginPromise;
+      return result;
+    } finally {
+      // 登录完成后删除锁
+      this.loginLocks.delete(account.id);
+    }
+  }
+
+  /**
+   * 实际执行 API 登录的内部方法
+   */
+  private async doLoginAccountWithApi(
     account: CrownAccount,
   ): Promise<{ success: boolean; message: string }> {
     console.log(`🚀 使用纯 API 方式登录账号: ${account.username}`);
