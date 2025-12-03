@@ -598,11 +598,20 @@ const BetFormModal: React.FC<BetFormModalProps> = ({
         market_chose_team: selectionMeta?.market_chose_team,
       };
 
-      const response = await betApi.createBet(requestData);
-      if (response.success) {
-        message.success(`成功为 ${selectedAccounts.length} 个账号创建下注`);
-        onSubmit();
-      } else {
+	      const response = await betApi.createBet(requestData);
+	      if (response.success) {
+	        const data: any = response.data || {};
+	        const totalRequested = typeof data.total === 'number' ? data.total : selectedAccounts.length;
+	        const queuedCount = typeof data.queued === 'number' ? data.queued : undefined;
+	        const successMessage =
+	          response.message ||
+	          (queuedCount !== undefined
+	            ? `下注任务已提交，正在后台处理中。本次共选择 ${totalRequested} 个账号，计划拆分 ${queuedCount} 笔下注。`
+	            : `下注任务已提交，正在后台处理中。本次共选择 ${totalRequested} 个账号。`);
+
+	        message.success(successMessage);
+	        onSubmit();
+	      } else {
         // 显示详细的错误信息
         const data = response.data as any;
         if (data?.failed && data.failed.length > 0) {
