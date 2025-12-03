@@ -55,6 +55,10 @@ interface BetRequest {
   marketRtype?: string;
   market_chose_team?: string;
   marketChoseTeam?: string;
+	  spread_gid?: string;  // 
+	  spreadGid?: string;
+	  lid?: string;  // 
+	  league_id?: string;
 }
 
 interface CrownLoginResult {

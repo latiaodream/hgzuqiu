@@ -228,33 +228,35 @@ export interface Bet {
 }
 
 export interface BetCreateRequest {
-    account_ids: number[]; // 支持多账号下注
-    match_id?: number;
-    bet_type: string;
-    bet_option: string;
-    total_amount: number;  // 总金额（实数）
-    odds: number;
-    min_odds?: number;
-    single_limit?: string;  // 单笔限额（虚数），格式如 "10000-14000" 或留空
-    interval_range?: string;  // 间隔时间范围（秒），格式如 "3-15"
-    quantity?: number;  // 参与下注的账号数量
-    crown_match_id?: string;
-    league_name?: string;
-    home_team?: string;
-    away_team?: string;
-    match_time?: string;
-    match_status?: string;
-    current_score?: string;
-    match_period?: string;
-    market_category?: 'moneyline' | 'handicap' | 'overunder';
-    market_scope?: 'full' | 'half';
-    market_side?: 'home' | 'away' | 'draw' | 'over' | 'under';
-    market_line?: string;
-    market_index?: number;
-    market_wtype?: string;
-    market_rtype?: string;
-    market_chose_team?: 'H' | 'C' | 'N';
-}
+	    account_ids: number[]; // 支持多账号下注
+	    match_id?: number;
+	    bet_type: string;
+	    bet_option: string;
+	    total_amount: number;  // 总金额（实数）
+	    odds: number;
+	    min_odds?: number;
+	    single_limit?: string;  // 单笔限额（虚数），格式如 "10000-14000" 或留空
+	    interval_range?: string;  // 间隔时间范围（秒），格式如 "3-15"
+	    quantity?: number;  // 参与下注的账号数量
+	    max_bet_count?: number;  // 单号最大注单数，本次最多拆出多少笔注单
+	    crown_match_id?: string;
+	    league_name?: string;
+	    home_team?: string;
+	    away_team?: string;
+	    match_time?: string;
+	    match_status?: string;
+	    current_score?: string;
+	    match_period?: string;
+	    market_category?: 'moneyline' | 'handicap' | 'overunder';
+	    market_scope?: 'full' | 'half';
+	    market_side?: 'home' | 'away' | 'draw' | 'over' | 'under';
+	    market_line?: string;
+	    market_index?: number;
+	    market_wtype?: string;
+	    market_rtype?: string;
+	    market_chose_team?: 'H' | 'C' | 'N';
+	    spread_gid?: string;  // 盘口专属 gid（用于副盘口）
+	}
 
 // 金币流水相关类型
 export interface CoinTransaction {
