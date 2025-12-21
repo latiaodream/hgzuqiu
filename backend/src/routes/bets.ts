@@ -275,6 +275,22 @@ router.post('/', async (req: any, res) => {
             });
         }
 
+        // 账号ID 去重/规范化，避免重复账号导致“部分账号不存在”的误判
+        const normalizedAccountIds = Array.from(
+            new Set(
+                (betData.account_ids as any[])
+                    .map((value) => Number(value))
+                    .filter((value) => Number.isFinite(value))
+            )
+        );
+        if (normalizedAccountIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: '请选择下注账号',
+            });
+        }
+        betData.account_ids = normalizedAccountIds as any;
+
         const hasMatchIdentifier = (
             (typeof betData.match_id === 'number' && Number.isFinite(betData.match_id)) ||
             (typeof betData.crown_match_id === 'string' && betData.crown_match_id.trim().length > 0)
@@ -512,18 +528,27 @@ router.post('/', async (req: any, res) => {
         if (userRole === 'admin') {
             // 管理员：允许操作任意启用账号
         } else if (userRole === 'agent') {
-            ownershipSql += ` AND (user_id = $2 OR user_id IN (SELECT id FROM users WHERE agent_id = $2))`;
+            // 代理：允许操作自己代理池内的账号
+            ownershipSql += ` AND agent_id = $2`;
             ownershipParams.push(userId);
         } else {
-            ownershipSql += ` AND user_id = $2`;
-            ownershipParams.push(userId);
+            // 员工：允许操作同一代理池内的账号
+            if (agentId) {
+                ownershipSql += ` AND agent_id = $2`;
+                ownershipParams.push(agentId);
+            } else {
+                ownershipSql += ` AND user_id = $2`;
+                ownershipParams.push(userId);
+            }
         }
         const ownershipResult = await query(ownershipSql, ownershipParams);
 
         if (ownershipResult.rows.length !== betData.account_ids.length) {
+            const found = new Set<number>(ownershipResult.rows.map((row: any) => Number(row.id)));
+            const missing = (betData.account_ids as any[]).filter((id) => !found.has(Number(id)));
             return res.status(400).json({
                 success: false,
-                error: '部分账号不存在或已禁用'
+                error: missing.length > 0 ? `部分账号不存在或已禁用：${missing.join(',')}` : '部分账号不存在或已禁用'
             });
         }
 
@@ -625,8 +650,22 @@ router.post('/', async (req: any, res) => {
 		    }
 		}
 
-        // 解析单笔限额范围
-        const singleLimitRange = parseLimitRange(betData.single_limit);
+        // 解析单笔限额范围（前端允许输入 10000-14000 或 10000）
+        const singleLimitText = betData.single_limit === undefined || betData.single_limit === null
+            ? ''
+            : String(betData.single_limit).trim();
+        const singleLimitRange = parseLimitRange(singleLimitText);
+        if (singleLimitText && !singleLimitRange) {
+            return res.status(400).json({
+                success: false,
+                error: '单笔限额格式错误，示例：10000-14000 或 10000',
+            });
+        }
+        const singleLimitForRecord = singleLimitRange ? singleLimitRange.max : null;
+
+        const minOddsRaw = (betData as any).min_odds;
+        const minOddsParsed = minOddsRaw === undefined || minOddsRaw === null ? NaN : Number(minOddsRaw);
+        const minOddsForRecord = Number.isFinite(minOddsParsed) && minOddsParsed > 0 ? minOddsParsed : null;
 
         console.log('🔍 拆分参数:', {
             total_amount: betData.total_amount,
@@ -700,36 +739,149 @@ router.post('/', async (req: any, res) => {
 		// 解析间隔时间范围
 		const intervalRange = parseIntervalRange(betData.interval_range);
 
+		const intervalSecondsForRecord = intervalRange ? Math.round((intervalRange.min + intervalRange.max) / 2) : 3;
+		const quantityValue = betData.quantity || actualAccountIds.length;
+		const marketLineValue =
+			betData.market_line === undefined || betData.market_line === null ? null : String(betData.market_line);
+		const marketIndexValue = Number.isFinite(betData.market_index as any) ? Number(betData.market_index) : null;
+		const scoreValue = betData.current_score || matchRecord.current_score || null;
+
+		// 预先创建下注记录（pending/cancelled），避免用户提交后短时间看不到下注记录
+		let createdBetRows: Array<{ id: number; account_id: number; status: string }> = [];
+		try {
+			const insertParams: any[] = [];
+			const insertValues: string[] = [];
+			let paramIndex = 1;
+
+			for (const split of betQueue) {
+				const accountId = split.accountId;
+				const platformAmount = split.realAmount;
+				const crownAmount = split.virtualAmount;
+
+				const creditInfo = insufficientCreditAccounts.get(accountId);
+				const preErrorMessage = creditInfo
+					? `账号信用额度不足：本次下注总虚数 ${creditInfo.required.toFixed(2)} 大于信用额度 ${creditInfo.credit.toFixed(2)}`
+					: null;
+				const preStatus = creditInfo ? 'cancelled' : 'pending';
+
+				const placeholders: string[] = [];
+				for (let p = 0; p < 22; p++) {
+					placeholders.push(`$${paramIndex++}`);
+				}
+				insertValues.push(`(${placeholders.join(', ')})`);
+
+				insertParams.push(
+					userId,
+					accountId,
+					betData.match_id,
+					betData.bet_type,
+					betData.bet_option,
+					platformAmount,
+					crownAmount,
+					betData.odds,
+					minOddsForRecord,
+					betData.market_category || null,
+					betData.market_scope || null,
+					betData.market_side || null,
+					marketLineValue,
+					marketIndexValue,
+					singleLimitForRecord,
+					intervalSecondsForRecord,
+					quantityValue,
+					preStatus,
+					null, // official_bet_id
+					null, // official_odds
+					scoreValue,
+					preErrorMessage,
+				);
+			}
+
+			const insertSql =
+				`INSERT INTO bets (` +
+				`user_id, account_id, match_id, bet_type, bet_option, bet_amount, virtual_bet_amount, odds, min_odds, ` +
+				`market_category, market_scope, market_side, market_line, market_index, ` +
+				`single_limit, interval_seconds, quantity, status, official_bet_id, official_odds, score, error_message` +
+				`) VALUES ${insertValues.join(', ')} RETURNING id, account_id, status`;
+
+			const insertResult = await query(insertSql, insertParams);
+			createdBetRows = insertResult.rows.map((row: any) => ({
+				id: Number(row.id),
+				account_id: Number(row.account_id),
+				status: String(row.status || ''),
+			}));
+		} catch (insertError: any) {
+			console.error('预创建下注记录失败:', insertError);
+			return res.status(500).json({
+				success: false,
+				error: '创建下注记录失败（预创建注单失败）',
+				details: insertError?.message,
+			});
+		}
+
+		const betQueueWithIds: BetQueueItem[] = betQueue.map((split, idx) => ({
+			betId: createdBetRows[idx].id,
+			accountId: split.accountId,
+			virtualAmount: split.virtualAmount,
+			realAmount: split.realAmount,
+			discount: split.discount,
+		}));
+
+		// 仅将 pending 的注单交给后台执行（已因信用额度不足标记 cancelled 的不再重复尝试）
+		const processingQueue = betQueueWithIds.filter((item, idx) => createdBetRows[idx].status === 'pending');
+		const cancelledCount = betQueueWithIds.length - processingQueue.length;
+
+		// 预取账号信息，避免后台任务里重复查询
+		const accountRowsResult = await query('SELECT * FROM crown_accounts WHERE id = ANY($1)', [actualAccountIds]);
+		const accountsById = new Map<number, CrownAccount>();
+		for (const row of accountRowsResult.rows) {
+			accountsById.set(Number((row as any).id), row as CrownAccount);
+		}
+
 		// 构建后台任务参数，交由异步任务处理
 		const jobParams: BetJobParams = {
-		    userId,
-		    userRole,
-		    agentId,
-		    username: req.user?.username,
-		    betData,
-		    matchRecord,
-		    resolvedCrownMatchId,
-		    betQueue,
-		    intervalRange,
-		    insufficientCreditAccounts,
-		    validatedAccountIds,
-		    actualAccountIds,
+			userId,
+			userRole,
+			agentId,
+			username: req.user?.username,
+			betData,
+			matchRecord,
+			resolvedCrownMatchId,
+			betQueue: processingQueue,
+			intervalRange,
+			insufficientCreditAccounts,
+			validatedAccountIds,
+			actualAccountIds,
+			accountsById,
 		};
 
-        // 异步执行下注逻辑，不阻塞当前 HTTP 请求
-        processBetJob(jobParams).catch((err) => {
-            console.error('后台下注任务执行失败:', err);
-        });
+		if (processingQueue.length > 0) {
+			// 异步执行下注逻辑，不阻塞当前 HTTP 请求
+			processBetJob(jobParams).catch((err) => {
+				console.error('后台下注任务执行失败:', err);
+			});
+		}
 
-        const totalRequested = validatedAccountIds.length;
-        return res.status(202).json({
-            success: true,
-            data: {
-                total: totalRequested,
-                queued: betQueue.length,
-            },
-            message: `下注任务已提交，正在后台处理中。本次共选择 ${totalRequested} 个账号，计划拆分 ${betQueue.length} 笔下注。`,
-        } as ApiResponse);
+		const totalRequested = validatedAccountIds.length;
+		const messageParts: string[] = [];
+		messageParts.push(`下注任务已提交，正在后台处理中。本次共选择 ${totalRequested} 个账号，计划拆分 ${betQueueWithIds.length} 笔下注。`);
+		if (cancelledCount > 0) {
+			messageParts.push(`其中 ${cancelledCount} 笔已标记失败（信用额度不足）。`);
+		}
+		if (processingQueue.length === 0) {
+			messageParts.push('本次无可执行的下注任务。');
+		}
+
+		return res.status(202).json({
+			success: true,
+			data: {
+				total: totalRequested,
+				queued: betQueueWithIds.length,
+				processing: processingQueue.length,
+				cancelled: cancelledCount,
+				bet_ids: createdBetRows.map((row) => row.id),
+			},
+			message: messageParts.join(' '),
+		} as ApiResponse);
 	    } catch (error) {
 	        console.error('创建下注记录错误:', error);
 	        res.status(500).json({
@@ -748,11 +900,20 @@ interface BetJobParams {
 	betData: BetCreateRequest;
 	matchRecord: any;
 	resolvedCrownMatchId?: string | null;
-	betQueue: { accountId: number; virtualAmount: number; realAmount: number; discount: number }[];
+	betQueue: BetQueueItem[];
 	intervalRange: { min: number; max: number } | null;
 	insufficientCreditAccounts: Map<number, { required: number; credit: number }>;
 	validatedAccountIds: number[];
 	actualAccountIds: number[];
+	accountsById: Map<number, CrownAccount>;
+}
+
+interface BetQueueItem {
+	betId: number;
+	accountId: number;
+	virtualAmount: number;
+	realAmount: number;
+	discount: number;
 }
 
 // 在后台执行真实下注逻辑（登录、下单、记录流水、匹配官网注单等）
@@ -770,6 +931,7 @@ async function processBetJob(params: BetJobParams): Promise<void> {
 		insufficientCreditAccounts,
 		validatedAccountIds,
 		actualAccountIds,
+		accountsById,
 	} = params;
 
 	if (!betQueue.length) {
@@ -788,8 +950,24 @@ async function processBetJob(params: BetJobParams): Promise<void> {
 	// 记录已经因为信用额度不足而报错过的账号，避免重复提示
 	const creditErrorReported = new Set<number>();
 
+	const markBetCancelled = async (betId: number, errorMessage: string): Promise<void> => {
+		try {
+			await query(
+				`UPDATE bets
+				 SET status = 'cancelled',
+				     error_message = $1,
+				     updated_at = CURRENT_TIMESTAMP
+				 WHERE id = $2`,
+				[errorMessage, betId],
+			);
+		} catch (err) {
+			console.warn('[后台下注任务] 更新 bets 状态失败:', err);
+		}
+	};
+
 	for (let i = 0; i < betQueue.length; i++) {
 		const split = betQueue[i];
+		const betId = split.betId;
 		const accountId = split.accountId;
 		const crownAmount = split.virtualAmount; // 虚数金额
 		const platformAmount = split.realAmount; // 实数金额
@@ -800,6 +978,10 @@ async function processBetJob(params: BetJobParams): Promise<void> {
 		// 如果该账号本次总虚数超过信用额度，则整账号跳过，不再尝试实际下注
 		const creditInfo = insufficientCreditAccounts.get(accountId);
 		if (creditInfo) {
+			await markBetCancelled(
+				betId,
+				`账号信用额度不足：本次下注总虚数 ${creditInfo.required.toFixed(2)} 大于信用额度 ${creditInfo.credit.toFixed(2)}`,
+			);
 			if (!creditErrorReported.has(accountId)) {
 				creditErrorReported.add(accountId);
 				failedBets.push({
@@ -812,19 +994,27 @@ async function processBetJob(params: BetJobParams): Promise<void> {
 
 		try {
 			// 获取账号完整信息（用于自动登录）
-			const accountResult = await query('SELECT * FROM crown_accounts WHERE id = $1', [accountId]);
-			if (accountResult.rows.length === 0) {
+			let accountRow = accountsById.get(accountId);
+			if (!accountRow) {
+				const accountResult = await query('SELECT * FROM crown_accounts WHERE id = $1', [accountId]);
+				if (accountResult.rows.length > 0) {
+					accountRow = accountResult.rows[0] as CrownAccount;
+					accountsById.set(accountId, accountRow);
+				}
+			}
+
+			if (!accountRow) {
+				await markBetCancelled(betId, '账号不存在或已被删除');
 				failedBets.push({ accountId, error: '账号不存在或已被删除' });
 				continue;
 			}
-
-			const accountRow = accountResult.rows[0] as CrownAccount;
 
 			// 确保账号会话可用，必要时自动登录
 			if (!automation.isAccountOnline(accountId)) {
 				console.log(`[后台下注任务] 账号 ${accountId} 未登录，尝试自动登录...`);
 				const loginAttempt = await automation.loginAccountWithApi(accountRow);
 				if (!loginAttempt.success) {
+					await markBetCancelled(betId, loginAttempt.message || '账号登录失败');
 					failedBets.push({
 						accountId,
 						error: loginAttempt.message || '账号登录失败',
@@ -851,6 +1041,10 @@ async function processBetJob(params: BetJobParams): Promise<void> {
 			if (Number.isFinite(minOddsThreshold) && minOddsThreshold > 0) {
 				const compareOdds = Number(betData.odds);
 				if (!Number.isFinite(compareOdds) || compareOdds < minOddsThreshold) {
+					await markBetCancelled(
+						betId,
+						`实时赔率 ${Number.isFinite(compareOdds) ? compareOdds.toFixed(3) : '--'} 低于最低赔率 ${minOddsThreshold}`,
+					);
 					failedBets.push({
 						accountId,
 						error: `实时赔率 ${Number.isFinite(compareOdds) ? compareOdds.toFixed(3) : '--'} 低于最低赔率 ${minOddsThreshold}`,
@@ -905,39 +1099,30 @@ async function processBetJob(params: BetJobParams): Promise<void> {
 			}
 
 			const finalOddsValue = betResult.actualOdds || betData.odds;
-			const insertResult = await query(
-				`INSERT INTO bets (
-				     user_id, account_id, match_id, bet_type, bet_option, bet_amount, virtual_bet_amount, odds,
-				     market_category, market_scope, market_side, market_line, market_index,
-				     single_limit, interval_seconds, quantity, status, official_bet_id, official_odds, score, error_message
-				 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
-				 RETURNING *`,
-				[
-					userId,
-					accountId,
-					betData.match_id,
-					betData.bet_type,
-					betData.bet_option,
-					platformAmount,
-					crownAmount,
-					finalOddsValue,
-					betData.market_category || null,
-					betData.market_scope || null,
-					betData.market_side || null,
-					betData.market_line || null,
-					Number.isFinite(betData.market_index as any) ? Number(betData.market_index) : null,
-					betData.single_limit || null,
-					intervalRange ? Math.round((intervalRange.min + intervalRange.max) / 2) : 3,
-					betData.quantity || actualAccountIds.length,
+				const updateResult = await query(
+					`UPDATE bets SET
+					     status = $1::text,
+					     official_bet_id = $2,
+					     official_odds = $3,
+					     odds = $4,
+					     score = $5,
+					     error_message = $6,
+					     confirmed_at = CASE WHEN $1::text = 'confirmed' THEN COALESCE(confirmed_at, CURRENT_TIMESTAMP) ELSE confirmed_at END,
+					     updated_at = CURRENT_TIMESTAMP
+					 WHERE id = $7
+					 RETURNING *`,
+					[
 					initialStatus,
 					betResult.betId || null,
 					finalOddsValue,
+					finalOddsValue,
 					betData.current_score || matchRecord.current_score || null,
 					errorMessage,
+					betId,
 				],
 			);
 
-			const createdRecord = insertResult.rows[0];
+			const createdRecord = updateResult.rows[0];
 			const payload = { record: createdRecord, crown_result: betResult, accountId, match: matchRecord };
 			createdBets.push(payload);
 			if (betResult.success) {
@@ -950,18 +1135,23 @@ async function processBetJob(params: BetJobParams): Promise<void> {
 			if (betResult.success) {
 				const transactionId = `BET${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
 				const chargeUserId = userRole === 'staff' && agentId ? agentId : userId;
-
-				const balanceResult = await query(
-					'SELECT COALESCE(SUM(amount), 0) as balance FROM coin_transactions WHERE user_id = $1',
-					[chargeUserId],
-				);
-				const currentBalance = parseFloat(balanceResult.rows[0].balance);
-
+				const amount = -platformAmount;
 				await query(
-					`INSERT INTO coin_transactions (
+					`WITH current_balance AS (
+					     SELECT COALESCE(SUM(amount), 0) as balance
+					     FROM coin_transactions
+					     WHERE user_id = $1
+					 )
+					 INSERT INTO coin_transactions (
 					     user_id, account_id, bet_id, transaction_id, transaction_type,
 					     description, amount, balance_before, balance_after
-					 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+					 )
+					 SELECT
+					     $1, $2, $3, $4, $5,
+					     $6, $7,
+					     current_balance.balance,
+					     current_balance.balance + $7
+					 FROM current_balance`,
 					[
 						chargeUserId,
 						accountId,
@@ -971,14 +1161,13 @@ async function processBetJob(params: BetJobParams): Promise<void> {
 						`下注消耗 - ${betData.bet_type} ${betData.bet_option}${
 							userRole === 'staff' && username ? ` (员工: ${username})` : ''
 						}`,
-						-platformAmount,
-						currentBalance,
-						currentBalance - platformAmount,
+						amount,
 					],
 				);
 			}
 		} catch (accountError: any) {
 			console.error(`[后台下注任务] 账号 ${accountId} 下注失败:`, accountError);
+			await markBetCancelled(betId, accountError?.message || '下注失败');
 			failedBets.push({ accountId, error: accountError.message || '下注失败' });
 		}
 
@@ -1211,6 +1400,12 @@ router.post('/sync-settlements', async (req: any, res) => {
 
                 const normalizedText = `${wager.ballActRet || ''} ${wager.resultText || ''}`.toLowerCase();
                 const isCancelled = /取消|void|無效|无效/.test(normalizedText);
+                const resultScoreRaw = typeof wager.score === 'string' ? wager.score.trim() : '';
+                const resultScoreValue = resultScoreRaw ? resultScoreRaw : null;
+                const resultTextParts = [wager.resultText, wager.ballActRet]
+                    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+                    .filter((value) => value.length > 0);
+                const resultTextValue = resultTextParts.length > 0 ? resultTextParts.join(' ') : null;
 
                 const tolerance = 0.01;
                 let payout: number;
@@ -1240,11 +1435,13 @@ router.post('/sync-settlements', async (req: any, res) => {
                         result = $2,
                         payout = $3,
                         profit_loss = $4,
+                        result_score = COALESCE($5, result_score),
+                        result_text = COALESCE($6, result_text),
                         settled_at = CURRENT_TIMESTAMP,
                         updated_at = CURRENT_TIMESTAMP
-                    WHERE id = $5 AND user_id = $6
+                    WHERE id = $7 AND user_id = $8
                     RETURNING id
-                `, [status, result, payout, profitLoss, bet.id, userId]);
+                `, [status, result, payout, profitLoss, resultScoreValue, resultTextValue, bet.id, userId]);
 
                 if (updateResult.rows.length === 0) {
                     skipped.push({ betId: bet.id, reason: '更新注单失败' });
@@ -1342,19 +1539,19 @@ router.put('/:id/status', async (req: any, res) => {
             profitLoss = payout - bet.bet_amount;
         }
 
-        const updateResult = await query(`
-            UPDATE bets SET
-                status = $1,
-                result = $2,
-                payout = $3,
-                profit_loss = $4,
-                official_bet_id = $5,
-                confirmed_at = CASE WHEN $1 = 'confirmed' THEN CURRENT_TIMESTAMP ELSE confirmed_at END,
-                settled_at = CASE WHEN $1 = 'settled' THEN CURRENT_TIMESTAMP ELSE settled_at END,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $6 AND user_id = $7
-            RETURNING *
-        `, [status, result, payout || 0, profitLoss, official_bet_id, betId, userId]);
+	        const updateResult = await query(`
+	            UPDATE bets SET
+	                status = $1::text,
+	                result = $2,
+	                payout = $3,
+	                profit_loss = $4,
+	                official_bet_id = $5,
+	                confirmed_at = CASE WHEN $1::text = 'confirmed' THEN CURRENT_TIMESTAMP ELSE confirmed_at END,
+	                settled_at = CASE WHEN $1::text = 'settled' THEN CURRENT_TIMESTAMP ELSE settled_at END,
+	                updated_at = CURRENT_TIMESTAMP
+	            WHERE id = $6 AND user_id = $7
+	            RETURNING *
+	        `, [status, result, payout || 0, profitLoss, official_bet_id, betId, userId]);
 
         // 如果是结算且有派彩，创建返还流水
         // 派彩返还到代理账户（如果是员工下注）或自己账户（如果是代理下注）

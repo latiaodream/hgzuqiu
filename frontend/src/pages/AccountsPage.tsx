@@ -179,7 +179,9 @@ const AccountsPage: React.FC = () => {
         message.error({ content: `批量登录失败: ${response.error || '未知错误'}`, key: batchKey, duration: 3 });
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : '网络错误';
+      const axiosError = error as AxiosError<{ error?: string; message?: string }>;
+      const serverMessage = axiosError.response?.data?.error || axiosError.response?.data?.message;
+      const errorMsg = serverMessage || (axiosError instanceof Error ? axiosError.message : '网络错误');
       message.error({ content: `批量登录失败: ${errorMsg}`, key: batchKey, duration: 3 });
       console.error('Failed to batch login:', error);
     }

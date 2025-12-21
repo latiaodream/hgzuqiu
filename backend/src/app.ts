@@ -24,6 +24,9 @@ import { getCrownAutomation } from './services/crown-automation';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// API 返回数据不走 ETag 缓存（浏览器可能发起 304，axios 会当成错误导致前端“没数据”）
+app.set('etag', false);
+
 // 中间件
 app.use(cors({
     origin: process.env.NODE_ENV === 'production'

@@ -11,6 +11,7 @@ import type {
   CrownAccountCreateRequest,
   Match,
   Bet,
+  BetCreateResponse,
   BetCreateRequest,
   CoinTransaction,
   ApiResponse,
@@ -24,8 +25,21 @@ import type {
 
 // 创建axios实例
 const resolveBaseURL = (): string => {
-  if (import.meta.env.VITE_API_URL && String(import.meta.env.VITE_API_URL).trim().length > 0) {
-    return import.meta.env.VITE_API_URL;
+  const raw = String((import.meta.env as any).VITE_API_URL ?? '').trim();
+  if (raw) {
+    // 允许配置成：
+    // - "/api"（推荐）
+    // - "http://localhost:3001/api"
+    // 也兼容误配置成 "http://localhost:3001"（自动补 /api，避免 404）
+    const ensureLeadingSlash = (value: string) => {
+      if (/^https?:\/\//i.test(value)) return value;
+      if (value.startsWith('/')) return value;
+      return `/${value}`;
+    };
+
+    const normalized = ensureLeadingSlash(raw).replace(/\/+$/, '');
+    const hasApiPath = /\/api(\/|$)/.test(normalized);
+    return hasApiPath ? normalized : `${normalized}/api`;
   }
 
   // 本地开发时默认走同源代理，避免直接命中前端 dev server 返回 404
@@ -211,7 +225,7 @@ export const accountApi = {
     }).then(res => res.data),
 
   // 账号优选
-  autoSelect: (params?: { match_id?: number; limit?: number }): Promise<ApiResponse<AccountSelectionResponse>> =>
+  autoSelect: (params?: { match_id?: number; limit?: number; group_id?: number }): Promise<ApiResponse<AccountSelectionResponse>> =>
     apiClient.get('/accounts/auto-select', { params }).then(res => res.data),
 
   // 获取账号限额
@@ -263,7 +277,7 @@ export const betApi = {
     apiClient.get('/bets/stats', { params }).then(res => res.data),
 
   // 创建下注
-  createBet: (data: BetCreateRequest): Promise<ApiResponse<Bet[]>> =>
+  createBet: (data: BetCreateRequest): Promise<ApiResponse<BetCreateResponse>> =>
     apiClient.post('/bets', data).then(res => res.data),
 
   // 更新下注状态
@@ -428,6 +442,8 @@ export const crownApi = {
     closed?: boolean;
     message?: string;
     raw?: any;
+    max_bet?: string | number | null;
+    min_bet?: string | number | null;
     spread_mismatch?: boolean;
     requested_line?: string;
     returned_spread?: string;

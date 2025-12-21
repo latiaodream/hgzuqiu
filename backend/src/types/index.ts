@@ -218,6 +218,8 @@ export interface Bet {
     quantity: number;
     status: 'pending' | 'confirmed' | 'cancelled' | 'settled';
     result?: 'win' | 'lose' | 'draw' | 'cancelled';
+    result_score?: string;
+    result_text?: string;
     payout: number;
     profit_loss: number;
     official_bet_id?: string;

@@ -4,7 +4,6 @@
 
 本服务提供 WebSocket 实时数据推送功能，支持：
 - **皇冠赛事数据**：滚球(live)、今日(today)、早盘(early)
-- **第三方赔率数据**：iSportsAPI、Odds-API.io
 
 ## 🔧 连接信息
 
@@ -66,23 +65,7 @@ function subscribeData() {
   ws.send(JSON.stringify({
     type: 'subscribe',
     data: {
-      showTypes: ['live', 'today', 'early'],  // 可选：不传则订阅全部
-      includeThirdparty: false                 // 是否包含第三方数据
-    }
-  }));
-}
-```
-
-### 订阅第三方赔率数据
-
-```javascript
-function subscribeThirdparty() {
-  ws.send(JSON.stringify({
-    type: 'subscribe',
-    data: {
-      showTypes: ['live', 'today', 'early'],
-      includeThirdparty: true,                           // 启用第三方数据
-      thirdpartySources: ['isports', 'oddsapi']          // 订阅的数据源
+      showTypes: ['live', 'today', 'early']  // 可选：不传则订阅全部
     }
   }));
 }
@@ -105,6 +88,14 @@ function unsubscribe() {
 
 ### 消息类型
 
+#### Match 字段补充（红牌）
+
+`match` 对象新增字段：
+- `home_redcard`：主队红牌数量（number，通常为 0 或不返回）
+- `away_redcard`：客队红牌数量（number，通常为 0 或不返回）
+
+说明：红牌变化会通过 `score_update` 推送（即便比分没变）。
+
 #### 1. 全量数据 (full_data)
 
 订阅成功后立即推送，包含当前所有赛事数据：
@@ -121,6 +112,10 @@ function unsubscribe() {
         away: 'Liverpool',
         league: 'English Premier League',
         match_time: '2025-11-12T15:00:00-04:00',
+        home_score: 0,
+        away_score: 0,
+        home_redcard: 0,
+        away_redcard: 0,
         markets: {
           moneyline: { home: 2.10, draw: 3.40, away: 3.20 },
           full: {
@@ -189,7 +184,7 @@ function unsubscribe() {
 }
 ```
 
-#### 6. 比分更新 (score_update)
+#### 6. 比分/红牌更新 (score_update)
 
 ```javascript
 {
@@ -197,59 +192,12 @@ function unsubscribe() {
   data: {
     showType: 'live',
     gid: '3456789',
-    match: { /* 包含最新比分的赛事数据 */ }
+    match: { /* 包含最新比分/红牌的赛事数据 */ }
   },
   timestamp: 1699876543210
 }
 ```
-
-#### 7. 第三方全量数据 (thirdparty_full_data)
-
-```javascript
-{
-  type: 'thirdparty_full_data',
-  data: {
-    source: 'isports',
-    matches: [
-      {
-        match_id: '12345',
-        league_name_cn: '英格兰超级联赛',
-        league_name_en: 'English Premier League',
-        team_home_cn: '曼联',
-        team_home_en: 'Manchester United',
-        team_away_cn: '利物浦',
-        team_away_en: 'Liverpool',
-        match_time: '2025-11-12T15:00:00-04:00',
-        status: 'live',
-        odds: {
-          handicap: [{ home_odds: 1.95, away_odds: 1.95, handicap_line: -0.5 }],
-          totals: [{ over_odds: 1.90, under_odds: 2.00, total_line: 2.5 }],
-          moneyline: { home_odds: 2.10, draw_odds: 3.40, away_odds: 3.20 }
-        }
-      }
-    ],
-    count: 442,
-    last_update: '2025-11-12T13:45:02.000Z'
-  },
-  timestamp: 1699876543210
-}
-```
-
-#### 8. 第三方数据更新 (thirdparty_update)
-
-```javascript
-{
-  type: 'thirdparty_update',
-  data: {
-    source: 'isports',
-    matches: [ /* 更新的赛事列表 */ ],
-    count: 442
-  },
-  timestamp: 1699876543210
-}
-```
-
-#### 9. 心跳 (heartbeat)
+#### 7. 心跳 (heartbeat)
 
 服务器每 30 秒发送一次心跳：
 
@@ -258,6 +206,14 @@ function unsubscribe() {
   type: 'heartbeat',
   data: {
     timestamp: 1699876543210,
+    maintenance: {
+      active: false,            // true=皇冠系统维护中
+      detectedAt: 0,            // 维护检测时间（毫秒）
+      startAt: 0,               // 可选：维护开始时间（毫秒）
+      endAt: 0,                 // 可选：维护结束时间（毫秒）
+      rawPeriod: '',            // 可选：原始时间段字符串
+      message: ''               // 可选：提示文案
+    },
     status: [
       { showType: 'live', isRunning: true, matchCount: 0 },
       { showType: 'today', isRunning: true, matchCount: 64 },
@@ -268,7 +224,11 @@ function unsubscribe() {
 }
 ```
 
-#### 10. 错误 (error)
+说明：
+- 当 `maintenance.active=true` 时，服务会进入“维护冷却”，暂停抓取/登录重试，避免频繁请求导致账号异常；
+- 此时心跳中的 `status[].isRunning` 会被标记为 `false`（用于提示前端数据暂停更新），维护结束后会自动恢复。
+
+#### 8. 错误 (error)
 
 ```javascript
 {
@@ -353,30 +313,24 @@ class CrownWSClient {
 
   handleMessage(message) {
     switch (message.type) {
-      case 'heartbeat':
-        if (message.data.message === '认证成功') {
-          console.log('✅ 认证成功');
-          this.isAuthenticated = true;
-          // 订阅数据
-          this.subscribe({
-            showTypes: ['live', 'today', 'early'],
-            includeThirdparty: true,
-            thirdpartySources: ['isports', 'oddsapi']
-          });
-        }
-        break;
+	      case 'heartbeat':
+	        if (message.data.message === '认证成功') {
+	          console.log('✅ 认证成功');
+	          this.isAuthenticated = true;
+	          // 订阅数据
+	          this.subscribe({
+	            showTypes: ['live', 'today', 'early']
+	          });
+	        }
+	        break;
 
       case 'full_data':
         console.log(`📊 全量数据 (${message.data.showType}): ${message.data.matches.length} 场`);
         break;
 
-      case 'thirdparty_full_data':
-        console.log(`📊 第三方全量数据 (${message.data.source}): ${message.data.count} 场`);
-        break;
-
-      case 'match_add':
-        console.log(`➕ 新增赛事: ${message.data.match.gid}`);
-        break;
+	      case 'match_add':
+	        console.log(`➕ 新增赛事: ${message.data.match.gid}`);
+	        break;
 
       case 'match_update':
         console.log(`🔄 赛事更新: ${message.data.gid}`);
@@ -386,15 +340,11 @@ class CrownWSClient {
         console.log(`💰 赔率更新: ${message.data.gid}`);
         break;
 
-      case 'thirdparty_update':
-        console.log(`🔄 第三方数据更新 (${message.data.source}): ${message.data.count} 场`);
-        break;
-
-      case 'error':
-        console.error(`❌ 错误: ${message.data.error}`);
-        break;
-    }
-  }
+	      case 'error':
+	        console.error(`❌ 错误: ${message.data.error}`);
+	        break;
+	    }
+	  }
 }
 
 // 使用示例
@@ -434,4 +384,3 @@ client.connect();
 - 确认已成功订阅
 - 检查订阅的 showTypes 是否正确
 - 查看服务器日志确认数据抓取是否正常
-

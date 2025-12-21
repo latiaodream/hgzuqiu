@@ -169,6 +169,7 @@ CREATE TABLE bets (
     official_bet_id VARCHAR(100), -- 官网下注单号
     confirmed_at TIMESTAMP, -- 确认时间
     settled_at TIMESTAMP, -- 结算时间
+    error_message TEXT, -- 失败原因/取消原因（用于显示“失败”提示）
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

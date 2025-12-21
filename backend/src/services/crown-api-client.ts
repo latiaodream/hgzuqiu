@@ -50,6 +50,7 @@ export class CrownApiClient {
   private proxyConfig: ProxyConfig;
   private uid: string | null = null;  // 用户登录后的 UID
   private cookies: string = '';  // 保存 Cookie 字符串
+  private lastAccessBlockedReason: string | null = null;
 
   constructor(config: ClientConfig = {}) {
     this.baseUrl = config.baseUrl || 'https://hga038.com';
@@ -224,6 +225,13 @@ export class CrownApiClient {
 
       const response = await this.httpClient.get('/');
       const html = response.data;
+
+      const blockedReason = this.detectAccessBlocked(html);
+      if (blockedReason) {
+        this.lastAccessBlockedReason = blockedReason;
+        throw new Error(blockedReason);
+      }
+
       const match = html.match(/top\.ver\s*=\s*'([^']+)'/);
       if (match) {
         this.version = match[1];
@@ -237,9 +245,41 @@ export class CrownApiClient {
 
       return this.version;
     } catch (error) {
+      if (error instanceof Error && this.isAccessBlockedError(error.message)) {
+        throw error;
+      }
       console.warn('⚠️ 获取版本号失败，使用默认版本:', this.version);
       return this.version;
     }
+  }
+
+  private detectAccessBlocked(html: unknown): string | null {
+    const text = String(html || '');
+    if (!text) {
+      return null;
+    }
+
+    const lower = text.toLowerCase();
+    // 站点在被限制地区通常会返回一个静态 Forbidden 页面（200）
+    const looksForbiddenTitle = /<title>\s*forbidden\s*<\/title>/i.test(text);
+    const containsBlockedEn = lower.includes('access to this site is blocked from your current location');
+    const containsBlockedZh = text.includes('您所在的地区禁止访问本网站') || text.includes('您所在的地區禁止訪問本網站');
+
+    if (looksForbiddenTitle && (containsBlockedEn || containsBlockedZh)) {
+      return '当前网络/地区被皇冠站点限制访问，请配置代理或更换出口 IP 后重试';
+    }
+
+    return null;
+  }
+
+  private isAccessBlockedError(message: string | undefined | null): boolean {
+    const text = String(message || '');
+    if (!text) return false;
+    return (
+      text.includes('被皇冠站点限制访问') ||
+      text.includes('配置代理') ||
+      text.includes('更换出口 IP')
+    );
   }
 
   /**

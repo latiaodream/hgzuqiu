@@ -56,6 +56,32 @@ const normalizeStateValue = (value: any): number | undefined => {
     return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const normalizeYesNoFlag = (value: any): boolean | undefined => {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === 'boolean') return value;
+    const text = String(value).trim().toUpperCase();
+    if (!text) return undefined;
+    if (['Y', 'YES', 'TRUE', '1'].includes(text)) return true;
+    if (['N', 'NO', 'FALSE', '0'].includes(text)) return false;
+    return undefined;
+};
+
+const extractIsRbFlag = (match: any): boolean | undefined => {
+    if (!match) return undefined;
+    const rawValue = pickValue(
+        match.is_rb,
+        match.isRB,
+        match.IS_RB,
+        match?._rawGame?.IS_RB,
+        match?.raw?.IS_RB,
+        match?.raw?.is_rb,
+        match?.raw?.game?.IS_RB,
+        match?.raw_data?.raw?.IS_RB,
+        match?.raw_data?.raw?.game?.IS_RB,
+    );
+    return normalizeYesNoFlag(rawValue);
+};
+
 const isLiveState = (value: any): boolean => {
     const state = normalizeStateValue(value);
     if (state === undefined) {
@@ -72,6 +98,8 @@ const isLiveState = (value: any): boolean => {
 // 更稳健的滚球判定：同时考虑 state/status 的字符串编码以及 period/clock
 const isLiveMatch = (match: any): boolean => {
     if (!match) return false;
+    const isRb = extractIsRbFlag(match);
+    if (isRb === true) return true;
     const rawState = (match.state ?? match.status);
     const stateNum = normalizeStateValue(rawState);
 
@@ -152,10 +180,10 @@ const filterMatchesByShowtype = (matches: any[], showtype: string) => {
     };
 
     // 如果赛事已经标记了 showtype，优先使用标记进行过滤
-    const hasShowtypeTag = matches.some((m) => m.showtype || m.source_showtype);
+    const hasShowtypeTag = matches.some((m) => m.showtype || m.showType || m.show_type || m.source_showtype);
     if (hasShowtypeTag) {
         return matches.filter((m) => {
-            const matchShowtype = m.showtype || m.source_showtype;
+            const matchShowtype = m.showtype || m.showType || m.show_type || m.source_showtype;
             if (matchShowtype === showtype) {
                 return !isFinished(m);
             }
@@ -304,6 +332,64 @@ const normalizeMatchForFrontend = (match: any) => {
         const parsedState = typeof stateRaw === 'string' ? parseInt(stateRaw, 10) : stateRaw;
         normalized.state = Number.isFinite(parsedState) ? parsedState : stateRaw;
     }
+
+    const showtypeRaw = pickValue(
+        match.showtype,
+        match.showType,
+        match.show_type,
+        match.source_showtype,
+    );
+    if (showtypeRaw !== undefined) {
+        normalized.showtype = String(showtypeRaw).trim().toLowerCase();
+    }
+
+    // 红牌：统一输出为 home_redcard / away_redcard（number）
+    const parseRedCard = (value: any): number | undefined => {
+        if (value === undefined || value === null) return undefined;
+        const parsed = typeof value === 'number' ? value : parseInt(String(value), 10);
+        if (!Number.isFinite(parsed) || parsed < 0) return undefined;
+        return parsed;
+    };
+
+    const homeRedRaw = pickValue(
+        match.home_redcard,
+        match.redcard_h,
+        match.REDCARD_H,
+        match?._rawGame?.REDCARD_H,
+        match?.raw?.REDCARD_H,
+        match?.raw?.game?.REDCARD_H,
+        match?.raw_data?.raw?.game?.REDCARD_H,
+        match?.raw_data?.raw?.REDCARD_H,
+    );
+    const awayRedRaw = pickValue(
+        match.away_redcard,
+        match.redcard_c,
+        match.REDCARD_C,
+        match?._rawGame?.REDCARD_C,
+        match?.raw?.REDCARD_C,
+        match?.raw?.game?.REDCARD_C,
+        match?.raw_data?.raw?.game?.REDCARD_C,
+        match?.raw_data?.raw?.REDCARD_C,
+    );
+
+    const homeRed = parseRedCard(homeRedRaw);
+    const awayRed = parseRedCard(awayRedRaw);
+    if (homeRed !== undefined) normalized.home_redcard = homeRed;
+    if (awayRed !== undefined) normalized.away_redcard = awayRed;
+
+    const isRbRaw = pickValue(
+        match.is_rb,
+        match.isRB,
+        match.IS_RB,
+        match?._rawGame?.IS_RB,
+        match?.raw?.IS_RB,
+        match?.raw?.is_rb,
+        match?.raw?.game?.IS_RB,
+        match?.raw_data?.raw?.IS_RB,
+        match?.raw_data?.raw?.game?.IS_RB,
+    );
+    const isRb = normalizeYesNoFlag(isRbRaw);
+    if (isRb !== undefined) normalized.is_rb = isRb ? 'Y' : 'N';
 
     return normalized;
 };
@@ -599,7 +685,23 @@ const enrichMatchesWithMoreMarkets = async (
 };
 
 // 辅助函数：自动获取并保存账号限额
-async function autoFetchAndSaveLimits(accountId: number, account: any): Promise<void> {
+const limitsFetchLocks = new Map<number, Promise<void>>();
+
+function scheduleLimitsFetch(accountId: number): void {
+    if (limitsFetchLocks.has(accountId)) {
+        return;
+    }
+    const promise = autoFetchAndSaveLimits(accountId)
+        .catch((error) => {
+            console.warn(`⚠️ 自动获取账号 ${accountId} 限额失败（后台任务）:`, error);
+        })
+        .finally(() => {
+            limitsFetchLocks.delete(accountId);
+        });
+    limitsFetchLocks.set(accountId, promise);
+}
+
+async function autoFetchAndSaveLimits(accountId: number): Promise<void> {
     try {
         console.log(`🎯 开始自动获取账号 ${accountId} 的限额信息...`);
 
@@ -609,9 +711,40 @@ async function autoFetchAndSaveLimits(accountId: number, account: any): Promise<
             return;
         }
 
+        // 读取最新账号配置（尤其是登录后更新的 api_cookies）
+        const accountResult = await query(
+            `SELECT base_url, device_type, user_agent,
+                    proxy_enabled, proxy_type, proxy_host, proxy_port, proxy_username, proxy_password,
+                    api_cookies, limits_data
+               FROM crown_accounts
+              WHERE id = $1`,
+            [accountId],
+        );
+        if (accountResult.rows.length === 0) {
+            return;
+        }
+        const account = accountResult.rows[0] as any;
+
+        // 若近期已拉取过限额，跳过（避免每次登录都打慢接口）
+        try {
+            const raw = account.limits_data;
+            const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            const updatedAt = obj?.updated_at ? Date.parse(String(obj.updated_at)) : NaN;
+            if (Number.isFinite(updatedAt)) {
+                const ageMs = Date.now() - updatedAt;
+                const maxAgeMs = 12 * 60 * 60 * 1000; // 12 小时
+                if (ageMs >= 0 && ageMs < maxAgeMs) {
+                    console.log(`ℹ️ 限额数据仍然较新（${Math.round(ageMs / 1000 / 60)} 分钟前），跳过刷新`);
+                    return;
+                }
+            }
+        } catch {
+            // ignore
+        }
+
         const { CrownApiClient } = await import('../services/crown-api-client');
         const apiClient = new CrownApiClient({
-            baseUrl: account.base_url || 'https://hga038.com',
+            baseUrl: account.base_url || process.env.CROWN_BASE_URL || 'https://hga038.com',
             deviceType: account.device_type,
             userAgent: account.user_agent,
             proxy: account.proxy_enabled ? {
@@ -802,7 +935,7 @@ router.post('/login-api/:accountId', async (req: any, res) => {
         );
 
         // 登录成功后，自动获取并保存限额信息
-        await autoFetchAndSaveLimits(accountId, account);
+        scheduleLimitsFetch(accountId);
 
         res.json({
             success: true,
@@ -1313,31 +1446,60 @@ router.post('/batch-login', async (req: any, res) => {
             });
         }
 
-        const results = [];
+        const results: any[] = [];
+        const batchDelayMsRaw = Number.parseInt(String(process.env.CROWN_BATCH_LOGIN_DELAY_MS || '3000'), 10);
+        const batchDelayMs = Number.isFinite(batchDelayMsRaw) && batchDelayMsRaw >= 0 ? batchDelayMsRaw : 3000;
+        const batchConcurrencyRaw = Number.parseInt(String(process.env.CROWN_BATCH_LOGIN_CONCURRENCY || '1'), 10);
+        const batchConcurrency = Number.isFinite(batchConcurrencyRaw) && batchConcurrencyRaw > 0 ? batchConcurrencyRaw : 1;
 
-        // 逐个登录账号（避免并发过多导致检测）（使用纯 API 方式）
-        for (const account of accountsResult.rows) {
-            try {
-                const loginResult = await getCrownAutomation().loginAccountWithApi(account);
-                results.push({
-                    accountId: account.id,
-                    username: account.username,
-                    success: loginResult.success,
-                    message: loginResult.message
-                });
+        const queue = [...accountsResult.rows];
+        const workerCount = Math.max(1, Math.min(batchConcurrency, Math.max(queue.length, 1)));
 
-                if (loginResult.success) {
-                    await query(
-                        `UPDATE crown_accounts
-                         SET last_login_at = CURRENT_TIMESTAMP,
-                             is_online = true,
-                             status = 'active',
-                             error_message = NULL,
-                             updated_at = CURRENT_TIMESTAMP
-                         WHERE id = $1`,
-                        [account.id]
-                    );
-                } else {
+        const workers = Array.from({ length: workerCount }).map(async () => {
+            while (queue.length > 0) {
+                const account = queue.shift();
+                if (!account) return;
+
+                try {
+                    const loginResult = await getCrownAutomation().loginAccountWithApi(account);
+                    results.push({
+                        accountId: account.id,
+                        username: account.username,
+                        success: loginResult.success,
+                        message: loginResult.message
+                    });
+
+                    if (loginResult.success) {
+                        await query(
+                            `UPDATE crown_accounts
+                             SET last_login_at = CURRENT_TIMESTAMP,
+                                 is_online = true,
+                                 status = 'active',
+                                 error_message = NULL,
+                                 updated_at = CURRENT_TIMESTAMP
+                             WHERE id = $1`,
+                            [account.id]
+                        );
+                        scheduleLimitsFetch(account.id);
+                    } else {
+                        await query(
+                            `UPDATE crown_accounts
+                             SET is_online = false,
+                                 status = 'error',
+                                 error_message = $2,
+                                 updated_at = CURRENT_TIMESTAMP
+                             WHERE id = $1`,
+                            [account.id, (loginResult.message || '登录失败').slice(0, 255)]
+                        );
+                    }
+                } catch (error) {
+                    results.push({
+                        accountId: account.id,
+                        username: account.username,
+                        success: false,
+                        message: `登录出错: ${error instanceof Error ? error.message : error}`
+                    });
+
                     await query(
                         `UPDATE crown_accounts
                          SET is_online = false,
@@ -1345,31 +1507,17 @@ router.post('/batch-login', async (req: any, res) => {
                              error_message = $2,
                              updated_at = CURRENT_TIMESTAMP
                          WHERE id = $1`,
-                        [account.id, (loginResult.message || '登录失败').slice(0, 255)]
+                        [account.id, error instanceof Error ? error.message.slice(0, 255) : '登录出错']
                     );
+                } finally {
+                    if (batchDelayMs > 0) {
+                        await new Promise(resolve => setTimeout(resolve, batchDelayMs));
+                    }
                 }
-
-                await new Promise(resolve => setTimeout(resolve, 3000));
-
-            } catch (error) {
-                results.push({
-                    accountId: account.id,
-                    username: account.username,
-                    success: false,
-                    message: `登录出错: ${error instanceof Error ? error.message : error}`
-                });
-
-                await query(
-                    `UPDATE crown_accounts
-                     SET is_online = false,
-                         status = 'error',
-                         error_message = $2,
-                         updated_at = CURRENT_TIMESTAMP
-                     WHERE id = $1`,
-                    [account.id, error instanceof Error ? error.message.slice(0, 255) : '登录出错']
-                );
             }
-        }
+        });
+
+        await Promise.all(workers);
 
         const successCount = results.filter(r => r.success).length;
 
@@ -1566,6 +1714,13 @@ router.get('/matches-system', async (req: any, res) => {
                 { file: path.join(__dirname, '../../..', 'fetcher', 'data', 'latest-matches.json'), source: 'legacy-fetcher' },
             ];
 
+            // 数据新鲜度阈值：
+            // - fresh: 5 分钟内直接使用
+            // - stale: 若无更好数据，允许使用 24 小时内的过期数据做兜底（避免页面完全没数据）
+            const FRESH_MAX_AGE_MS = 300000;
+            const STALE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+            let bestExpired: { candidate: any; fetcherData: any; matchCount: number; timestamp: number; age: number } | null = null;
+
             for (const candidate of candidates) {
                 if (!fs.existsSync(candidate.file)) continue;
 
@@ -1579,8 +1734,8 @@ router.get('/matches-system', async (req: any, res) => {
                     console.log(`📂 检查数据文件: ${candidate.file}`);
                     console.log(`   比赛数: ${matchCount}, 数据年龄: ${Math.floor(age / 1000)}秒`);
 
-                    // 放宽时间限制：5分钟内的数据都可以使用
-                    if (age < 300000) {
+                    // 新鲜数据：直接使用
+                    if (age < FRESH_MAX_AGE_MS) {
                         console.log(`✅ 使用独立抓取服务数据 (${matchCount} 场比赛, ${Math.max(0, Math.floor(age / 1000))}秒前)`);
                         const normalizedMatches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
                         console.log(`   归一化后: ${normalizedMatches.length} 场比赛`);
@@ -1621,15 +1776,60 @@ router.get('/matches-system', async (req: any, res) => {
                                 meta: { gtype, showtype, rtype, ltype, sorttype },
                                 source: candidate.source,
                                 lastUpdate: timestamp,
+                                stale: false,
+                                ageSeconds: Math.max(0, Math.floor(age / 1000)),
                             }
                         });
                         return;
+                    }
+
+                    // 过期数据：记录最新的一份，后续若无其他数据源可用则兜底使用
+                    if (age < STALE_MAX_AGE_MS) {
+                        if (!bestExpired || timestamp > bestExpired.timestamp) {
+                            bestExpired = { candidate, fetcherData, matchCount, timestamp, age };
+                        }
                     }
 
                     console.log(`⚠️ 独立抓取服务数据过期 (${Math.max(0, Math.floor(age / 1000))}秒前)，尝试下一数据源`);
                 } catch (error) {
                     console.error(`❌ 读取独立抓取服务数据失败 (${candidate.file}):`, error);
                 }
+            }
+
+            // 没有新鲜数据时，允许用 24 小时内的过期数据兜底（避免前端一直 0 场）
+            if (bestExpired) {
+                const { candidate, fetcherData, matchCount, timestamp, age } = bestExpired;
+                console.log(`⚠️ 使用过期数据兜底 (${candidate.source}, ${matchCount} 场比赛, ${Math.max(0, Math.floor(age / 1000))}秒前)`);
+
+                const normalizedMatches = (fetcherData.matches || []).map((m: any) => normalizeMatchForFrontend(m));
+                const mappedMatches = await mapMatchNamesInRoute(normalizedMatches);
+                let allMatches = filterMatchesByShowtype(mappedMatches, String(showtype));
+
+                // 今日/早盘短期兜底：若为空，尝试使用 <=30s 的上一轮非空数据
+                if (allMatches.length === 0 && String(showtype).toLowerCase() !== 'live') {
+                    const cached = lastNonEmptyCache[cacheKey];
+                    if (cached && Date.now() - cached.ts < 30000) {
+                        allMatches = cached.matches;
+                    }
+                }
+
+                // 过期数据兜底默认不做盘口补充（避免触发额外抓取导致接口卡顿）
+                if (allMatches.length > 0) {
+                    lastNonEmptyCache[cacheKey] = { matches: allMatches, ts: Date.now() };
+                }
+
+                res.json({
+                    success: true,
+                    data: {
+                        matches: allMatches,
+                        meta: { gtype, showtype, rtype, ltype, sorttype },
+                        source: candidate.source,
+                        lastUpdate: timestamp,
+                        stale: true,
+                        ageSeconds: Math.max(0, Math.floor(age / 1000)),
+                    }
+                });
+                return;
             }
 
             console.log('⚠️ 独立抓取服务数据不可用，使用降级方案');
@@ -1659,15 +1859,12 @@ router.get('/matches-system', async (req: any, res) => {
                 }
             }
 
-            //  1 1 1 1 1 1 1  1 1 1 1 1
-            //  1 1 1 1 1  1 1 1 1 1 1 1 
             if (filteredMatches.length === 0 && String(showtype).toLowerCase() !== 'live') {
                 const cached = lastNonEmptyCache[cacheKey];
                 if (cached && Date.now() - cached.ts < 30000) {
                     filteredMatches = cached.matches;
                 }
             }
-            //  1 1 1 1 1 1
             if (filteredMatches.length > 0) {
                 lastNonEmptyCache[cacheKey] = { matches: filteredMatches, ts: Date.now() };
             }
@@ -1861,6 +2058,17 @@ router.post('/odds/preview', async (req: any, res) => {
             }
         }
 
+        const parseLimitValue = (value: any): string | null => {
+            if (value === null || value === undefined) {
+                return null;
+            }
+            const text = String(value).trim();
+            return text ? text : null;
+        };
+
+        const maxBetValue = parseLimitValue(preview.oddsResult?.gold_gmax ?? preview.oddsResult?.goldGmax);
+        const minBetValue = parseLimitValue(preview.oddsResult?.gold_gmin ?? preview.oddsResult?.goldGmin);
+
         // 检查返回的盘口线是否匹配用户选择的盘口线
         const returnedSpread = preview.oddsResult?.spread;
         const requestedLine = marketLine;
@@ -1919,7 +2127,9 @@ router.post('/odds/preview', async (req: any, res) => {
                 raw: preview.oddsResult,
                 crown_match_id: preview.crownMatchId,
                 message: preview.message,
-                spread_mismatch: false,
+                max_bet: maxBetValue,
+                min_bet: minBetValue,
+                spread_mismatch: spreadMismatch,
                 requested_line: requestedLine,
                 returned_spread: returnedSpread,
             },
@@ -2842,6 +3052,7 @@ router.get('/wagers-all', async (req: any, res) => {
                     const ticketId = wager.w_id || wager.ticket_id;
                     if (ticketId) {
                         try {
+                            const scoreValue = wager.result_data || wager.result_score || wager.score;
                             await query(`
                                 INSERT INTO crown_wagers (
                                     account_id, ticket_id, league, team_h, team_c, score,
@@ -2858,7 +3069,7 @@ router.get('/wagers-all', async (req: any, res) => {
                                 wager.league,
                                 wager.team_h_show || wager.team_h,
                                 wager.team_c_show || wager.team_c,
-                                wager.score,
+                                scoreValue,
                                 wager.wtype || wager.bet_type,
                                 wager.result || wager.bet_team,
                                 wager.concede || wager.spread,

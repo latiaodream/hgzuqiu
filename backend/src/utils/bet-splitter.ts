@@ -250,11 +250,24 @@ export function parseIntervalRange(rangeStr?: string): { min: number; max: numbe
     return null;
   }
 
-  // 匹配格式：3-15
-  const match = trimmed.match(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$/);
-  if (!match) {
-    return null;
+  // 支持格式：
+  // - "3-15" / "3 - 15"
+  // - "3~15" / "3～15"
+  // - "3-15s" / "3-15秒"
+  // - "5" / "5s"（等同于 5-5）
+  const normalized = trimmed;
+  const unitSuffix = '(?:\\s*(?:s|sec|secs|秒))?';
+  const sep = '[-–—~～－]';
+
+  const singleMatch = normalized.match(new RegExp(`^(\\d+(?:\\.\\d+)?)${unitSuffix}$`, 'i'));
+  if (singleMatch) {
+    const value = parseFloat(singleMatch[1]);
+    if (!Number.isFinite(value) || value < 0) return null;
+    return { min: value, max: value };
   }
+
+  const match = normalized.match(new RegExp(`^(\\d+(?:\\.\\d+)?)\\s*${sep}\\s*(\\d+(?:\\.\\d+)?)${unitSuffix}$`, 'i'));
+  if (!match) return null;
 
   const min = parseFloat(match[1]);
   const max = parseFloat(match[2]);

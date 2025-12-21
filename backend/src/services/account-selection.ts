@@ -10,6 +10,7 @@ interface SelectAccountsOptions {
     agentId?: number;
     matchId?: number;
     limit?: number;
+    groupId?: number;
 }
 
 interface AccountRow {
@@ -77,7 +78,7 @@ const rowsToMap = (rows: AggregatedRow[], key: keyof AggregatedRow): Map<number,
 };
 
 export async function selectAccounts(options: SelectAccountsOptions): Promise<AccountSelectionResponse> {
-    const { userId, userRole, agentId, matchId, limit } = options;
+    const { userId, userRole, agentId, matchId, limit, groupId } = options;
 
     const dailyBoundary = getDailyBoundary();
     const weeklyBoundary = getWeeklyBoundary(dailyBoundary);
@@ -98,6 +99,11 @@ export async function selectAccounts(options: SelectAccountsOptions): Promise<Ac
         // 员工可以查看同一代理下的所有账号（共享账号池）
         whereClause = 'ca.agent_id = $1 AND ca.is_enabled = true';
         queryParams = [agentId || userId];
+    }
+
+    if (groupId !== undefined) {
+        whereClause += ` AND ca.group_id = $${queryParams.length + 1}`;
+        queryParams.push(groupId);
     }
 
     const accountsResult = await query(
@@ -172,7 +178,8 @@ export async function selectAccounts(options: SelectAccountsOptions): Promise<Ac
                JOIN crown_accounts ca ON ca.id = b.account_id
               WHERE b.user_id = $1
                 AND b.match_id = $2
-                AND (b.status IS NULL OR b.status <> 'cancelled')`,
+                AND (b.status IS NULL OR b.status <> 'cancelled')
+                AND b.error_message IS NULL`,
             [userId, matchId],
         );
 

@@ -28,6 +28,7 @@ router.get('/auto-select', async (req: any, res) => {
         const userId = req.user.id;
         const matchId = parseOptionalNumber(req.query.match_id);
         const limit = parseOptionalNumber(req.query.limit);
+        const groupId = parseOptionalNumber(req.query.group_id);
 
         if (req.query.match_id !== undefined && matchId === undefined) {
             return res.status(400).json({
@@ -43,12 +44,20 @@ router.get('/auto-select', async (req: any, res) => {
             });
         }
 
+        if (req.query.group_id !== undefined && groupId === undefined) {
+            return res.status(400).json({
+                success: false,
+                error: 'group_id 参数无效，应为数字'
+            });
+        }
+
         const selection = await selectAccounts({
             userId,
             userRole: req.user.role,
             agentId: req.user.agent_id,
             matchId,
             limit,
+            groupId,
         });
 
         res.json({

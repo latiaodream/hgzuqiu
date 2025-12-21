@@ -11,8 +11,6 @@ import {
   Col,
   Select,
   DatePicker,
-  Statistic,
-  Progress,
   Badge,
   Tooltip,
 } from 'antd';
@@ -22,8 +20,8 @@ import {
   CloseCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import type { Bet, CrownAccount, User, TablePagination } from '../types';
-import { betApi, accountApi, agentApi } from '../services/api';
+import type { Bet, User, TablePagination } from '../types';
+import { betApi, agentApi } from '../services/api';
 import dayjs, { Dayjs } from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -89,9 +87,19 @@ const resolveOfficialOdds = (bet: Bet): number | undefined => {
   return tryParse(bet.official_odds) ?? tryParse(bet.odds);
 };
 
+const formatBetTime = (bet: Bet): string => {
+  const raw =
+    bet.confirmed_at ||
+    (bet.status !== 'pending' ? bet.updated_at : undefined) ||
+    bet.created_at;
+  if (!raw) return '-';
+  const parsed = dayjs(raw);
+  if (!parsed.isValid()) return '-';
+  return parsed.format('HH:mm:ss');
+};
+
 const BettingPage: React.FC = () => {
   const [betGroups, setBetGroups] = useState<BetGroup[]>([]);
-  const [accounts, setAccounts] = useState<CrownAccount[]>([]);
   const [agents, setAgents] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -110,15 +118,14 @@ const BettingPage: React.FC = () => {
   const [selectedPlatform, setSelectedPlatform] = useState<string>('皇冠');
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
-  const [selectedTimezone, setSelectedTimezone] = useState<string>('UTC+8');
 
   // 统计数据
   const [stats, setStats] = useState({
-    total_tickets: 10,
-    total_bets: 71,
-    pending_bets: 71,
+    total_tickets: 0,
+    total_bets: 0,
+    pending_bets: 0,
     cancelled_bets: 0,
-    total_amount: 173904.99,
+    total_amount: 0,
     total_profit: 0,
     return_rate: 0,
   });
@@ -149,29 +156,26 @@ const BettingPage: React.FC = () => {
 
   const loadInitialData = async () => {
     try {
-      const [accountsRes, agentsPromise] = await Promise.allSettled([
-        accountApi.getAccounts(),
-        agentApi.getAgentList(),
-      ]);
-
-      if (accountsRes.status === 'fulfilled' && accountsRes.value.success && accountsRes.value.data) {
-        setAccounts(accountsRes.value.data);
-      }
-
-      if (agentsPromise.status === 'fulfilled' && agentsPromise.value.success && agentsPromise.value.data) {
-        setAgents(agentsPromise.value.data);
+      const agentsPromise = await agentApi.getAgentList();
+      if (agentsPromise.success && agentsPromise.data) {
+        setAgents(agentsPromise.data);
       }
     } catch (error) {
       console.error('Failed to load initial data:', error);
     }
   };
 
-  const loadBets = async (silent = false) => {
+  const loadBets = async (
+    silent = false,
+    overrides?: { selectedAgent?: string; selectedDate?: Dayjs; selectedPlatform?: string },
+  ) => {
     try {
       if (!silent) setLoading(true);
       const params: any = {};
-      if (selectedAgent) params.agent_id = selectedAgent;
-      if (selectedDate) params.date = selectedDate.format('YYYY-MM-DD');
+      const agentId = overrides?.selectedAgent ?? selectedAgent;
+      const dateValue = overrides?.selectedDate ?? selectedDate;
+      if (agentId) params.agent_id = agentId;
+      if (dateValue) params.date = dateValue.format('YYYY-MM-DD');
 
       const response = await betApi.getBets(params);
       if (response.success && response.data) {
@@ -203,6 +207,15 @@ const BettingPage: React.FC = () => {
     } finally {
       if (!silent) setLoading(false);
     }
+  };
+
+  const handleClearFilters = async () => {
+    const nextDate = dayjs();
+    setSelectedPlatform('皇冠');
+    setSelectedAgent('');
+    setSelectedDate(nextDate);
+    setPagination((prev) => ({ ...prev, current: 1 }));
+    await loadBets(false, { selectedAgent: '', selectedDate: nextDate, selectedPlatform: '皇冠' });
   };
 
   const handleSyncSettlements = async () => {
@@ -265,8 +278,8 @@ const BettingPage: React.FC = () => {
       const totalProfitLoss = groupBets.reduce((sum, b) => sum + Number(b.profit_loss || 0), 0);
 
       // 统计已结算和已取消的注单数
-      const settledCount = groupBets.filter(b => b.status === 'settled' && b.result !== 'cancelled').length;
-      const cancelledCount = groupBets.filter(b => b.result === 'cancelled').length;
+      const settledCount = groupBets.filter(b => b.status === 'settled').length;
+      const cancelledCount = groupBets.filter(b => b.status === 'cancelled').length;
 
       return {
         key: key,
@@ -278,7 +291,7 @@ const BettingPage: React.FC = () => {
         total_profit_loss: totalProfitLoss,
         bet_count: `${completedBets.length}/${groupBets.length}`,
         result_count: `${groupBets.length}/${settledCount}/${cancelledCount}`,
-        time: dayjs(firstBet.created_at).format('HH:mm:ss'),
+        time: formatBetTime(firstBet),
         bets: groupBets,
         status: completedBets.length === groupBets.length ? 'completed' : 'pending',
         user_username: firstBet.user_username,
@@ -625,7 +638,7 @@ const BettingPage: React.FC = () => {
       result_score: bet.result_score,
       result_text: bet.result_text,
       input_limit: realLimit,
-      time: dayjs(bet.created_at).format('HH:mm:ss'),
+      time: formatBetTime(bet),
       error_message: (bet as any).error_message || undefined,
     };
   });
@@ -705,7 +718,7 @@ const BettingPage: React.FC = () => {
               </Button>
               {!isMobile && (
                 <Button
-                  onClick={() => message.info('清理功能待实现')}
+                  onClick={handleClearFilters}
                   icon={<ReloadOutlined />}
                 >
                   清理

@@ -1,0 +1,3 @@
+ALTER TABLE bets
+    ADD COLUMN IF NOT EXISTS error_message TEXT;
+

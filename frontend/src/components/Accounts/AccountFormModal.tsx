@@ -70,6 +70,43 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const [fetchingLimits, setFetchingLimits] = useState(false);
   const [limitsData, setLimitsData] = useState<any>(null); // 存储完整的限额数据
 
+  const parseProxyUrl = (value: string): null | {
+    type: 'HTTP' | 'HTTPS' | 'SOCKS5';
+    host: string;
+    port: number;
+    username?: string;
+    password?: string;
+  } => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    let parsed: URL;
+    try {
+      parsed = new URL(trimmed);
+    } catch {
+      return null;
+    }
+
+    const protocol = parsed.protocol.replace(':', '').toLowerCase();
+    if (!['http', 'https', 'socks5', 'socks5h'].includes(protocol)) return null;
+
+    const port = parsed.port ? Number(parsed.port) : NaN;
+    if (!Number.isFinite(port) || port <= 0 || port > 65535) return null;
+
+    const host = parsed.hostname.trim();
+    if (!host) return null;
+
+    const type = protocol.startsWith('socks') ? 'SOCKS5' : protocol.toUpperCase();
+
+    return {
+      type: type as 'HTTP' | 'HTTPS' | 'SOCKS5',
+      host,
+      port,
+      username: parsed.username ? decodeURIComponent(parsed.username) : undefined,
+      password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+    };
+  };
+
   // 格式化金额，处理 null/undefined
   const formatLimit = useCallback((value: any): string => {
     if (value === null || value === undefined || value === '') {
@@ -302,16 +339,17 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
 
       // 处理代理设置
       if (proxyEnabled && values.proxy_url) {
-        // 解析代理URL: socks5://user:pass@host:port 或 http://host:port
         const proxyUrl = values.proxy_url.trim();
-        const match = proxyUrl.match(/^(https?|socks5):\/\/(?:([^:]+):([^@]+)@)?([^:]+):(\d+)$/i);
-        if (match) {
-          requestData.proxy_type = match[1].toUpperCase();
-          requestData.proxy_username = match[2] || undefined;
-          requestData.proxy_password = match[3] || undefined;
-          requestData.proxy_host = match[4];
-          requestData.proxy_port = parseInt(match[5], 10);
+        const parsedProxy = parseProxyUrl(proxyUrl);
+        if (!parsedProxy) {
+          message.error('代理链接格式不正确，示例: http://user:pass@host:port 或 socks5://user:pass@host:port');
+          return;
         }
+        requestData.proxy_type = parsedProxy.type;
+        requestData.proxy_username = parsedProxy.username;
+        requestData.proxy_password = parsedProxy.password;
+        requestData.proxy_host = parsedProxy.host;
+        requestData.proxy_port = parsedProxy.port;
         delete (requestData as any).proxy_url;
       } else {
         requestData.proxy_type = undefined;

@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs';
+import crypto from 'crypto';
 import { chromium, Browser, BrowserContext, Page, BrowserContextOptions, Frame, Locator } from 'playwright';
 import { CrownAccount } from '../types';
 import { query } from '../models/database';
@@ -55,9 +56,9 @@ interface BetRequest {
   marketRtype?: string;
   market_chose_team?: string;
   marketChoseTeam?: string;
-	  spread_gid?: string;  // 
+	  spread_gid?: string;  // 
 	  spreadGid?: string;
-	  lid?: string;  // 
+	  lid?: string;  // 
 	  league_id?: string;
 }
 
@@ -77,6 +78,8 @@ interface CrownBetResult {
   crownAmount?: number;
   rawSelectionId?: string;
   errorCode?: string;  // 皇冠错误代码
+  balance?: number; // 皇冠账号余额
+  credit?: number;  // 皇冠账号额度
 }
 
 interface CrownWagerItem {
@@ -245,6 +248,15 @@ export class CrownAutomationService {
   private apiLoginSessions: Map<number, number> = new Map(); // 纯 API 登录会话，value 是登录时间戳
   private apiUids: Map<number, string> = new Map(); // 纯 API 登录的 UID，key 是 accountId，value 是 uid
   private loginLocks: Map<number, Promise<{ success: boolean; message: string }>> = new Map(); // 登录锁，防止同一账号同时登录
+  private apiSessionTtlMs = 2 * 60 * 60 * 1000; // 2 小时（可通过 CROWN_API_SESSION_TTL_MS 覆盖）
+  private apiKeepaliveEnabled = true;
+  private apiKeepaliveTimer: NodeJS.Timeout | null = null;
+  private apiKeepaliveRunning = false;
+  private apiKeepaliveIntervalMs = 10 * 60 * 1000; // 10 分钟（可通过 CROWN_API_KEEPALIVE_INTERVAL_MS 覆盖）
+  private apiKeepaliveConcurrency = 2; // 可通过 CROWN_API_KEEPALIVE_CONCURRENCY 覆盖
+  private apiKeepaliveMode: 'online_only' | 'enabled' = 'online_only'; // online_only: 仅维护已在线；enabled: 自动拉起所有启用账号
+  private apiLastActivityAt: Map<number, number> = new Map(); // 最近一次 API 活动时间（避免 keepalive 与业务请求冲突）
+  private apiKeepaliveFailCounts: Map<number, number> = new Map(); // keepalive 连续失败计数
   // 系统默认账号（仅用于抓取赛事，不落库）
   private systemLastBeat: number = 0;
   private systemLastLogin: number = 0;
@@ -300,6 +312,26 @@ export class CrownAutomationService {
       this.ensureBaseUrlHealth(this.activeBaseUrl);
     }
     this.delayScale = this.resolveDelayScale(process.env.CROWN_AUTOMATION_DELAY_SCALE);
+    this.apiSessionTtlMs = this.resolveInterval(
+      process.env.CROWN_API_SESSION_TTL_MS,
+      2 * 60 * 60 * 1000,
+      5 * 60 * 1000,
+    );
+    this.apiKeepaliveEnabled = this.resolveBoolean(process.env.CROWN_API_KEEPALIVE_ENABLED, true);
+    this.apiKeepaliveIntervalMs = this.resolveInterval(
+      process.env.CROWN_API_KEEPALIVE_INTERVAL_MS,
+      10 * 60 * 1000,
+      60 * 1000,
+    );
+    this.apiKeepaliveConcurrency = this.resolvePositiveInteger(
+      process.env.CROWN_API_KEEPALIVE_CONCURRENCY,
+      2,
+      1,
+    );
+    const keepaliveMode = (process.env.CROWN_API_KEEPALIVE_MODE || '').toLowerCase();
+    if (keepaliveMode === 'enabled') {
+      this.apiKeepaliveMode = 'enabled';
+    }
 
     // 🔄 从数据库恢复会话（延迟 3 秒执行，确保数据库连接已建立）
     console.log('⏰ 设置会话恢复定时器，将在 3 秒后执行...');
@@ -311,6 +343,7 @@ export class CrownAutomationService {
     }, 3000);
 
     this.startOnlineMonitor();
+    this.startApiKeepalive();
   }
 
   /**
@@ -330,7 +363,7 @@ export class CrownAutomationService {
       );
 
       const now = Date.now();
-      const apiSessionTtl = 2 * 60 * 60 * 1000; // 2 小时
+      const apiSessionTtl = this.apiSessionTtlMs;
       let restoredCount = 0;
       let expiredCount = 0;
 
@@ -5773,21 +5806,23 @@ export class CrownAutomationService {
   ): Promise<{ success: boolean; message: string; updatedCredentials: { username: string; password: string } }> {
     console.log(`🚀 使用纯 API 方式初始化账号: ${account.username}`);
     console.log(`📱 设备类型: ${account.device_type || 'iPhone 14'}`);
-    console.log(`🌐 代理配置: ${account.proxy_enabled ? '已启用' : '未启用'}`);
+    const proxyResolved = this.resolveApiProxyConfig(account);
+    console.log(
+      `🌐 代理配置: ${
+        proxyResolved.source === 'account'
+          ? '账号代理'
+          : proxyResolved.source === 'default'
+            ? '默认代理'
+            : '未启用'
+      }`,
+    );
 
     // 构建 API 客户端配置
     const apiClient = new CrownApiClient({
       baseUrl: this.activeBaseUrl,
       deviceType: account.device_type || 'iPhone 14',
       userAgent: account.user_agent,
-      proxy: {
-        enabled: account.proxy_enabled || false,
-        type: account.proxy_type,
-        host: account.proxy_host,
-        port: account.proxy_port,
-        username: account.proxy_username,
-        password: account.proxy_password,
-      },
+      proxy: proxyResolved.config,
     });
 
     try {
@@ -5840,6 +5875,159 @@ export class CrownAutomationService {
   /**
    * 使用纯 API 方式登录账号（替代 Playwright 自动化）
    */
+  private async restoreApiSessionFromDatabaseIfNeeded(accountId: number): Promise<boolean> {
+    if (this.isAccountOnline(accountId)) {
+      return true;
+    }
+
+    try {
+      const dbResult = await query(
+        `SELECT api_uid, api_login_time
+           FROM crown_accounts
+          WHERE id = $1
+            AND is_online = true
+            AND api_uid IS NOT NULL
+            AND api_login_time IS NOT NULL`,
+        [accountId],
+      );
+      if (dbResult.rows.length === 0) {
+        return false;
+      }
+
+      const uid = dbResult.rows[0]?.api_uid;
+      const loginTime = Number(dbResult.rows[0]?.api_login_time);
+      if (!uid || !Number.isFinite(loginTime) || loginTime <= 0) {
+        return false;
+      }
+
+      const now = Date.now();
+      if (now - loginTime >= this.apiSessionTtlMs) {
+        return false;
+      }
+
+      this.apiUids.set(accountId, uid);
+      this.apiLoginSessions.set(accountId, loginTime);
+      return true;
+    } catch (error) {
+      console.warn(`⚠️ 恢复账号 ${accountId} 的 API 会话失败（忽略）:`, error);
+      return false;
+    }
+  }
+
+  private normalizeInitType(value: any): 'none' | 'password_only' | 'full' {
+    const raw = String(value || '').trim().toLowerCase();
+    if (raw === 'none') return 'none';
+    if (raw === 'password_only' || raw === 'password-only' || raw === 'password') return 'password_only';
+    if (raw === 'full') return 'full';
+    // 默认：完整初始化
+    return 'full';
+  }
+
+	  private generateInitUsername(): string {
+	    const lower = 'abcdefghijklmnopqrstuvwxyz';
+	    const digits = '0123456789';
+	    const all = `${lower}${digits}`;
+
+	    const length = 8 + crypto.randomInt(0, 5); // 8-12
+	    const head = `${lower[crypto.randomInt(0, lower.length)]}${lower[crypto.randomInt(0, lower.length)]}${digits[crypto.randomInt(0, digits.length)]}`;
+
+	    let rest = '';
+	    while ((head + rest).length < length) {
+	      rest += all[crypto.randomInt(0, all.length)];
+    }
+
+    return (head + rest).slice(0, length);
+  }
+
+	  private generateInitPassword(exclude: string[] = []): string {
+	    const lower = 'abcdefghijklmnopqrstuvwxyz';
+	    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+	    const digits = '0123456789';
+	    const all = `${lower}${upper}${digits}`;
+    const normalizedExcludes = new Set(
+      exclude.map((item) => String(item || '').trim()).filter((item) => item.length > 0),
+    );
+
+	    for (let attempt = 0; attempt < 30; attempt++) {
+	      const length = 8 + crypto.randomInt(0, 5); // 8-12
+	      // 至少包含：大写 + 小写 + 数字
+	      const chars: string[] = [
+	        upper[crypto.randomInt(0, upper.length)],
+	        lower[crypto.randomInt(0, lower.length)],
+	        digits[crypto.randomInt(0, digits.length)],
+	      ];
+	      while (chars.length < length) {
+	        chars.push(all[crypto.randomInt(0, all.length)]);
+	      }
+	      // shuffle
+	      for (let i = chars.length - 1; i > 0; i--) {
+	        const j = crypto.randomInt(0, i + 1);
+	        [chars[i], chars[j]] = [chars[j], chars[i]];
+	      }
+	      const value = chars.join('');
+	      if (normalizedExcludes.has(value)) continue;
+	      if (/^(.)\1+$/.test(value)) continue;
+	      return value;
+	    }
+
+    return `Pw${Date.now().toString(36).slice(-4)}${crypto.randomInt(1000, 9999)}`;
+  }
+
+	  private async autoInitializeAccountOnDemand(
+	    account: CrownAccount,
+	  ): Promise<{ success: boolean; message: string; updatedCredentials?: { username: string; password: string } }> {
+	    const initType = this.normalizeInitType(account.init_type);
+
+    if (initType === 'none') {
+      return {
+        success: false,
+        message: '该账号被设置为“不初始化”，但皇冠要求首次登录初始化，请将初始化设置改为“仅改密码/完整初始化”后重试',
+      };
+    }
+
+    const maxAttempts = initType === 'full' ? 6 : 3;
+    let lastMessage = '初始化失败';
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const nextUsername = initType === 'password_only' ? account.username : this.generateInitUsername();
+      const nextPassword = this.generateInitPassword([nextUsername, account.username, account.password]);
+
+      console.log(`[AUTO-INIT] accountId=${account.id} initType=${initType} attempt=${attempt}/${maxAttempts}`);
+
+      const result = await this.initializeAccountWithApi(account, {
+        username: nextUsername,
+        password: nextPassword,
+      });
+
+      lastMessage = result.message || lastMessage;
+      if (result.success) {
+        return {
+          success: true,
+          message: result.message || '初始化成功',
+          updatedCredentials: result.updatedCredentials,
+        };
+      }
+
+      const msg = (result.message || '').toLowerCase();
+      const shouldRetry =
+        initType === 'password_only' ||
+        msg.includes('存在') ||
+        msg.includes('已被使用') ||
+        msg.includes('已使用') ||
+        msg.includes('重复') ||
+        msg.includes('invalid') ||
+        msg.includes('duplicate') ||
+        msg.includes('used') ||
+        msg.includes('exist');
+
+      if (!shouldRetry) {
+        break;
+      }
+    }
+
+    return { success: false, message: lastMessage };
+  }
+
   async loginAccountWithApi(
     account: CrownAccount,
   ): Promise<{ success: boolean; message: string }> {
@@ -5848,6 +6036,22 @@ export class CrownAutomationService {
     if (existingLock) {
       console.log(`🔒 账号 ${account.username} 正在登录中，等待现有登录完成...`);
       return existingLock;
+    }
+
+    const initType = this.normalizeInitType(account.init_type);
+    const hasInitializedUsername = String(account.initialized_username || '').trim().length > 0;
+    const needsAutoInit = initType !== 'none' && !hasInitializedUsername;
+
+    // 已有有效会话：直接返回（避免重复慢登录）
+    // 但如果账号设置了初始化类型且尚未初始化（initialized_username 为空），需要走一次初始化流程，不能短路
+    if (!needsAutoInit) {
+      const restored = await this.restoreApiSessionFromDatabaseIfNeeded(account.id);
+      if (restored) {
+        console.log(`✅ 账号 ${account.username} 已在线，跳过重复登录`);
+        return { success: true, message: '已在线' };
+      }
+    } else {
+      console.log(`🧩 账号 ${account.id} 需要自动初始化（init_type=${initType}），将跳过已在线短路并执行登录流程`);
     }
 
     // 创建登录锁
@@ -5871,25 +6075,57 @@ export class CrownAutomationService {
   ): Promise<{ success: boolean; message: string }> {
     console.log(`🚀 使用纯 API 方式登录账号: ${account.username}`);
     console.log(`📱 设备类型: ${account.device_type || 'iPhone 14'}`);
-    console.log(`🌐 代理配置: ${account.proxy_enabled ? '已启用' : '未启用'}`);
+    const proxyResolved = this.resolveApiProxyConfig(account);
+    console.log(
+      `🌐 代理配置: ${
+        proxyResolved.source === 'account'
+          ? '账号代理'
+          : proxyResolved.source === 'default'
+            ? '默认代理'
+            : '未启用'
+      }`,
+    );
 
     // 构建 API 客户端配置
     const apiClient = new CrownApiClient({
       baseUrl: this.activeBaseUrl,
       deviceType: account.device_type || 'iPhone 14',
       userAgent: account.user_agent,
-      proxy: {
-        enabled: account.proxy_enabled || false,
-        type: account.proxy_type,
-        host: account.proxy_host,
-        port: account.proxy_port,
-        username: account.proxy_username,
-        password: account.proxy_password,
-      },
+      proxy: proxyResolved.config,
     });
 
-    try {
-      const loginResp = await apiClient.login(account.username, account.password);
+	    try {
+	      const initType = this.normalizeInitType(account.init_type);
+	      const hasInitializedUsername = String(account.initialized_username || '').trim().length > 0;
+	      let initAttempted = false;
+
+	      // ✅ 登录前自动初始化（适配：皇冠有时首次登录直接返回 100/109，不会给 106）
+	      if (initType !== 'none' && !hasInitializedUsername) {
+	        console.log(`🧩 检测到账号 ${account.id} 尚未初始化（init_type=${initType}），先执行自动初始化...`);
+	        const initResult = await this.autoInitializeAccountOnDemand(account);
+	        if (!initResult.success) {
+	          return {
+	            success: false,
+	            message: initResult.message || '账号需要初始化，但自动初始化失败',
+	          };
+	        }
+
+	        const nextCredentials = initResult.updatedCredentials;
+	        if (!nextCredentials?.username || !nextCredentials?.password) {
+	          return {
+	            success: false,
+	            message: '账号初始化返回成功，但未获取到新的账号/密码',
+	          };
+	        }
+
+	        // 更新本地对象（DB 已在 initializeAccountWithApi 内更新）
+	        account.username = nextCredentials.username;
+	        account.password = nextCredentials.password;
+	        account.initialized_username = nextCredentials.username;
+	        initAttempted = true;
+	      }
+
+	      let loginResp = await apiClient.login(account.username, account.password);
 
       if (loginResp.msg === '105') {
         // 登录失败
@@ -5899,13 +6135,54 @@ export class CrownAutomationService {
         };
       }
 
-      if (loginResp.msg === '106') {
-        // 需要初始化（强制改密）
-        return {
-          success: false,
-          message: '账号需要初始化，请先完成初始化操作',
-        };
-      }
+	      if (loginResp.msg === '106') {
+	        // 需要初始化（强制改密）：按 init_type 自动初始化并重试登录
+	        if (initAttempted) {
+	          return {
+	            success: false,
+	            message: '账号已自动初始化，但登录仍返回 msg=106，请稍后重试或检查账号状态',
+	          };
+	        }
+	        console.warn(`⚠️ 账号 ${account.id} 登录返回 msg=106，尝试自动初始化后重登...`);
+
+	        const initResult = await this.autoInitializeAccountOnDemand(account);
+	        if (!initResult.success) {
+	          return {
+	            success: false,
+	            message: initResult.message || '账号需要初始化，但自动初始化失败',
+	          };
+	        }
+
+	        const nextCredentials = initResult.updatedCredentials;
+	        if (!nextCredentials?.username || !nextCredentials?.password) {
+	          return {
+	            success: false,
+	            message: '账号初始化返回成功，但未获取到新的账号/密码',
+	          };
+	        }
+
+	        // 更新本地对象（不影响数据库，DB 已在 initializeAccountWithApi 内更新）
+	        account.username = nextCredentials.username;
+	        account.password = nextCredentials.password;
+	        account.initialized_username = nextCredentials.username;
+
+	        loginResp = await apiClient.login(nextCredentials.username, nextCredentials.password);
+	        if (loginResp.msg === '105') {
+	          return {
+	            success: false,
+	            message: loginResp.code_message || '初始化后重新登录失败（账号或密码错误）',
+	          };
+	        }
+
+	        if (loginResp.msg === '106') {
+	          return {
+	            success: false,
+	            message: '账号已自动初始化，但皇冠仍要求初始化（msg=106），请核对账号状态或稍后重试',
+	          };
+	        }
+
+	        console.log('✅ 自动初始化后重新登录成功');
+	      }
 
       // 登录成功（msg=109 或 msg=100）
       console.log('✅ 纯 API 登录成功');
@@ -5941,45 +6218,8 @@ export class CrownAutomationService {
         console.error('⚠️ 持久化会话信息失败:', dbError);
       }
 
-      // 等待 1 秒让皇冠服务器同步会话后再进行后续操作
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // 登录后先预热一次赛事列表，使会话行为尽量与网页一致
-      try {
-        console.log('📋 登录后预热赛事列表 (FT/live/RB)...');
-        await apiClient.getGameList({
-          gtype: 'ft',
-          showtype: 'live',
-          rtype: 'rb',
-          ltype: '3',
-          sorttype: 'L',
-          langx: 'zh-cn',
-        });
-      } catch (warmupError) {
-        console.warn('⚠️ 登录后预热赛事列表失败（忽略）:', warmupError instanceof Error ? warmupError.message : warmupError);
-      }
-
-      // 获取余额和信用额度
-      if (uid) {
-        try {
-          const balanceData = await apiClient.getBalance(uid);
-          if (balanceData) {
-            const balance = balanceData.balance || 0;
-            const credit = balanceData.credit || 0;
-            console.log(`💰 余额同步成功: 余额=${balance}, 信用额度=${credit}`);
-
-            // 更新数据库余额和信用额度
-            await query(
-              `UPDATE crown_accounts
-               SET balance = $1, credit = $2, updated_at = CURRENT_TIMESTAMP
-               WHERE id = $3`,
-              [balance, credit, account.id]
-            );
-          }
-        } catch (balanceError) {
-          console.warn('⚠️ 获取余额失败，但登录成功:', balanceError);
-        }
-      }
+      // 标记活动时间：避免 keepalive 线程与刚完成的登录冲突
+      this.apiLastActivityAt.set(account.id, Date.now());
 
       return {
         success: true,
@@ -6013,6 +6253,7 @@ export class CrownAutomationService {
         `UPDATE crown_accounts
          SET api_uid = NULL,
              api_login_time = NULL,
+             api_cookies = NULL,
              is_online = false,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1`,
@@ -6246,8 +6487,147 @@ export class CrownAutomationService {
 
   // 公共方法：获取今日注单（占位实现）
   async fetchTodayWagers(accountId: number): Promise<CrownWagerItem[]> {
-    console.warn(`⚠️ fetchTodayWagers 方法尚未完整实现 (accountId=${accountId})`);
-    return [];
+    const restored = await this.restoreApiSessionFromDatabaseIfNeeded(accountId);
+    const uid = this.apiUids.get(accountId);
+
+    if (!uid) {
+      throw new Error(restored ? '账号会话已失效，请重新登录' : '账号未登录，无法获取今日下注');
+    }
+
+    const accountResult = await query(
+      `SELECT device_type, user_agent,
+              proxy_enabled, proxy_type, proxy_host, proxy_port, proxy_username, proxy_password,
+              api_cookies
+         FROM crown_accounts
+        WHERE id = $1`,
+      [accountId],
+    );
+    if (accountResult.rows.length === 0) {
+      throw new Error('账号不存在');
+    }
+
+    const account = accountResult.rows[0];
+    const proxyResolved = this.resolveApiProxyConfig(account);
+
+    const apiClient = new CrownApiClient({
+      baseUrl: this.activeBaseUrl,
+      deviceType: account.device_type || 'iPhone 14',
+      userAgent: account.user_agent,
+      proxy: proxyResolved.config,
+    });
+
+    try {
+      if (account.api_cookies) {
+        apiClient.setCookies(account.api_cookies);
+      }
+      apiClient.setUid(uid);
+
+      const wagersData = await apiClient.getTodayWagers({ gtype: 'ALL' });
+
+      const extractList = (payload: any): any[] => {
+        if (!payload) return [];
+        if (Array.isArray(payload)) return payload;
+
+        if (typeof payload === 'string') {
+          const trimmed = payload.trim();
+          if (!trimmed) return [];
+          try {
+            const parsed = JSON.parse(trimmed);
+            return extractList(parsed);
+          } catch {
+            return [];
+          }
+        }
+
+        if (typeof payload === 'object') {
+          if (Array.isArray((payload as any).wagers)) return (payload as any).wagers;
+          if (Array.isArray((payload as any).data)) return (payload as any).data;
+          if (Array.isArray((payload as any).list)) return (payload as any).list;
+
+          for (const key of Object.keys(payload)) {
+            const value = (payload as any)[key];
+            if (Array.isArray(value) && value.length > 0) {
+              return value;
+            }
+          }
+        }
+
+        return [];
+      };
+
+      const list = extractList(wagersData);
+      const normalizeId = (value: any): string => {
+        if (value === undefined || value === null) return '';
+        return String(value).trim();
+      };
+
+      const mapped: CrownWagerItem[] = [];
+      for (const item of list) {
+        if (!item || typeof item !== 'object') continue;
+
+        const ticketId = normalizeId(
+          (item as any).ticketId ?? (item as any).ticket_id ?? (item as any).w_id ?? (item as any).wid ?? (item as any).id,
+        );
+        if (!ticketId) continue;
+
+        const resultData = normalizeId(
+          (item as any).result_data ??
+            (item as any).resultData ??
+            (item as any).result_score ??
+            (item as any).resultScore
+        );
+        const score = resultData || normalizeId((item as any).score ?? (item as any).result_score ?? '');
+        const resultText = normalizeId(
+          (item as any).resultText ??
+            (item as any).result_text ??
+            (item as any).result_text_show ??
+            (item as any).push ??
+            (item as any).push_text ??
+            (item as any).fore_result
+        );
+
+        const league = normalizeId((item as any).league ?? (item as any).league_name ?? (item as any).leagueName);
+        const teamH = normalizeId(
+          (item as any).teamH
+            ?? (item as any).team_h_show
+            ?? (item as any).team_h
+            ?? (item as any).team_h_team
+            ?? (item as any).team_h_name,
+        );
+        const teamC = normalizeId(
+          (item as any).teamC
+            ?? (item as any).team_c_show
+            ?? (item as any).team_c
+            ?? (item as any).team_c_team
+            ?? (item as any).team_c_name,
+        );
+
+        const wager: CrownWagerItem = {
+          ticketId,
+          gold: normalizeId((item as any).gold ?? (item as any).w_gold ?? (item as any).stake ?? ''),
+          winGold: normalizeId((item as any).winGold ?? (item as any).win_gold ?? (item as any).winGoldStr ?? ''),
+          resultText,
+          score,
+          league: league || undefined,
+          teamH: teamH || undefined,
+          teamC: teamC || undefined,
+          ballActRet: normalizeId((item as any).ballActRet ?? (item as any).ball_act_ret ?? (item as any).status ?? ''),
+          ballActClass: normalizeId((item as any).ballActClass ?? (item as any).ball_act_class ?? ''),
+          wagerDate: normalizeId((item as any).wagerDate ?? (item as any).adddate ?? (item as any).wager_time ?? ''),
+          betWtype: normalizeId((item as any).betWtype ?? (item as any).wtype ?? (item as any).bet_type ?? ''),
+          rawXml: typeof (item as any).rawXml === 'string' ? (item as any).rawXml : undefined,
+          normalizedHome: teamH ? this.normalizeTeamToken(teamH) : undefined,
+          normalizedAway: teamC ? this.normalizeTeamToken(teamC) : undefined,
+          normalizedLeague: league ? this.normalizeTeamToken(league) : undefined,
+        };
+
+        mapped.push(wager);
+      }
+
+      return mapped;
+    } finally {
+      await apiClient.close();
+    }
   }
 
   // 公共方法：获取账号财务摘要
@@ -6265,20 +6645,14 @@ export class CrownAutomationService {
 
         if (accountResult.rows.length > 0) {
           const account = accountResult.rows[0];
+          const proxyResolved = this.resolveApiProxyConfig(account);
 
           // 创建 API 客户端
           const apiClient = new CrownApiClient({
             baseUrl: this.activeBaseUrl,
             deviceType: account.device_type || 'iPhone 14',
             userAgent: account.user_agent,
-            proxy: {
-              enabled: account.proxy_enabled || false,
-              type: account.proxy_type,
-              host: account.proxy_host,
-              port: account.proxy_port,
-              username: account.proxy_username,
-              password: account.proxy_password,
-            },
+            proxy: proxyResolved.config,
           });
 
           // 恢复 Cookie
@@ -6343,13 +6717,20 @@ export class CrownAutomationService {
     return { matches: [] };
   }
 
-  private async prepareApiClient(accountId: number): Promise<{ success: boolean; client?: CrownApiClient; message: string }> {
+  private async prepareApiClient(
+    accountId: number,
+    options?: { markActivity?: boolean },
+  ): Promise<{ success: boolean; client?: CrownApiClient; message: string }> {
     // 【重要】如果该账号正在登录中，等待登录完成
     const existingLock = this.loginLocks.get(accountId);
     if (existingLock) {
       console.log(`🔒 账号 ${accountId} 正在登录中，等待登录完成后再准备客户端...`);
       await existingLock;
       console.log(`🔓 账号 ${accountId} 登录完成，继续准备客户端`);
+    }
+
+    if (options?.markActivity !== false) {
+      this.apiLastActivityAt.set(accountId, Date.now());
     }
 
     let apiLoginTime = this.apiLoginSessions.get(accountId);
@@ -6369,7 +6750,7 @@ export class CrownAutomationService {
 
         // 检查数据库中的会话是否过期
         const now = Date.now();
-        const apiSessionTtl = 2 * 60 * 60 * 1000; // 2 小时
+        const apiSessionTtl = this.apiSessionTtlMs;
         if (now - dbLoginTime < apiSessionTtl) {
           // 恢复到内存
           this.apiLoginSessions.set(accountId, dbLoginTime);
@@ -6391,7 +6772,7 @@ export class CrownAutomationService {
     }
 
     const now = Date.now();
-    const apiSessionTtl = 2 * 60 * 60 * 1000; // 2 小时
+    const apiSessionTtl = this.apiSessionTtlMs;
     if (now - apiLoginTime >= apiSessionTtl) {
       return {
         success: false,
@@ -6413,19 +6794,13 @@ export class CrownAutomationService {
     }
 
     const row = accountResult.rows[0];
+    const proxyResolved = this.resolveApiProxyConfig(row);
 
     const apiClient = new CrownApiClient({
       baseUrl: this.activeBaseUrl,
       deviceType: row.device_type || 'iPhone 14',
       userAgent: row.user_agent,
-      proxy: {
-        enabled: row.proxy_enabled || false,
-        type: row.proxy_type,
-        host: row.proxy_host,
-        port: row.proxy_port,
-        username: row.proxy_username,
-        password: row.proxy_password,
-      },
+      proxy: proxyResolved.config,
     });
 
     apiClient.setUid(uid);
@@ -6436,7 +6811,13 @@ export class CrownAutomationService {
       console.warn('⚠️ 数据库中没有保存 Cookie，可能无法获取赔率');
     }
 
-    console.log(`✅ API 客户端准备完成: accountId=${accountId}, uid=${uid}, 代理=${row.proxy_enabled ? `${row.proxy_type}://${row.proxy_host}:${row.proxy_port}` : '未启用'}`);
+    const proxyLabel =
+      proxyResolved.source === 'account'
+        ? `${row.proxy_type}://${row.proxy_host}:${row.proxy_port}`
+        : proxyResolved.source === 'default'
+          ? `${proxyResolved.config.type}://${proxyResolved.config.host}:${proxyResolved.config.port}`
+          : '未启用';
+    console.log(`✅ API 客户端准备完成: accountId=${accountId}, uid=${uid}, 代理=${proxyLabel}`);
 
     return { success: true, client: apiClient, message: '准备完成' };
   }
@@ -6620,7 +7001,7 @@ export class CrownAutomationService {
       if (accountCheck.rows.length > 0) {
         console.log('🔄 账号已启用，尝试自动登录...');
         try {
-          const loginResult = await this.loginAccount(accountCheck.rows[0] as CrownAccount);
+          const loginResult = await this.loginAccountWithApi(accountCheck.rows[0] as CrownAccount);
           if (loginResult.success) {
             console.log('✅ 自动登录成功');
             // 重新准备 API 客户端
@@ -6816,11 +7197,35 @@ export class CrownAutomationService {
       console.log('📥 下注响应:', betResult);
 
       if (betResult.code === '560' || betResult.ticket_id) {
+        const parseMoney = (value: any): number | null => {
+          if (value === null || value === undefined) return null;
+          const cleaned = String(value).replace(/[^0-9.\-]/g, '');
+          if (!cleaned) return null;
+          const num = parseFloat(cleaned);
+          return Number.isFinite(num) ? num : null;
+        };
+
+        const balanceValue = parseMoney(betResult.nowcredit);
+        const creditValue = parseMoney(betResult.maxcredit);
+
+        if (balanceValue !== null || creditValue !== null) {
+          await query(
+            `UPDATE crown_accounts
+               SET balance = COALESCE($2, balance),
+                   credit = COALESCE($3, credit),
+                   updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1`,
+            [accountId, balanceValue, creditValue],
+          ).catch(() => undefined);
+        }
+
         return {
           success: true,
           message: '下注成功',
           betId: betResult.ticket_id,
           actualOdds: parseFloat(betResult.ioratio || latestOdds),
+          balance: balanceValue ?? undefined,
+          credit: creditValue ?? undefined,
         };
       }
 
@@ -7073,7 +7478,7 @@ export class CrownAutomationService {
     }
 
     const now = Date.now();
-    const apiSessionTtl = 2 * 60 * 60 * 1000; // 2 小时
+    const apiSessionTtl = this.apiSessionTtlMs;
     if (now - apiLoginTime >= apiSessionTtl) {
       return {
         success: false,
@@ -7260,6 +7665,16 @@ export class CrownAutomationService {
     return parsed;
   }
 
+  private resolveBoolean(envValue: string | undefined, defaultValue: boolean): boolean {
+    if (envValue === undefined || envValue === null) {
+      return defaultValue;
+    }
+    const normalized = String(envValue).trim().toLowerCase();
+    if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false;
+    return defaultValue;
+  }
+
   // 辅助方法：解析延迟缩放因子
   private resolveDelayScale(envValue: string | undefined): number {
     if (!envValue) {
@@ -7290,6 +7705,66 @@ export class CrownAutomationService {
     return [DEFAULT_CROWN_BASE_URL];
   }
 
+  private resolveApiProxyConfig(accountLike: {
+    proxy_enabled?: any;
+    proxy_type?: any;
+    proxy_host?: any;
+    proxy_port?: any;
+    proxy_username?: any;
+    proxy_password?: any;
+  }): {
+    config: { enabled: boolean; type?: string; host?: string; port?: number; username?: string; password?: string };
+    source: 'account' | 'default' | 'none';
+  } {
+    const normalizeBoolean = (value: any): boolean => {
+      if (typeof value === 'boolean') return value;
+      const text = String(value ?? '').trim().toLowerCase();
+      return text === 'true' || text === '1' || text === 'yes' || text === 'y';
+    };
+
+    const normalizePort = (value: any): number | undefined => {
+      const num = typeof value === 'number' ? value : Number.parseInt(String(value ?? ''), 10);
+      return Number.isFinite(num) && num > 0 ? num : undefined;
+    };
+
+    const accountProxyEnabled = normalizeBoolean(accountLike.proxy_enabled);
+    const accountProxyHost = String(accountLike.proxy_host ?? '').trim();
+    const accountProxyPort = normalizePort(accountLike.proxy_port);
+    if (accountProxyEnabled && accountProxyHost && accountProxyPort) {
+      return {
+        source: 'account',
+        config: {
+          enabled: true,
+          type: accountLike.proxy_type ? String(accountLike.proxy_type) : undefined,
+          host: accountProxyHost,
+          port: accountProxyPort,
+          username: accountLike.proxy_username ? String(accountLike.proxy_username) : undefined,
+          password: accountLike.proxy_password ? String(accountLike.proxy_password) : undefined,
+        },
+      };
+    }
+
+    const defaultProxyEnabled = normalizeBoolean(process.env.DEFAULT_PROXY_ENABLED);
+    const defaultHost = String(process.env.DEFAULT_PROXY_HOST ?? '').trim();
+    const defaultPort = normalizePort(process.env.DEFAULT_PROXY_PORT);
+    if (defaultProxyEnabled && defaultHost && defaultPort) {
+      const defaultType = String(process.env.DEFAULT_PROXY_TYPE ?? '').trim();
+      return {
+        source: 'default',
+        config: {
+          enabled: true,
+          type: defaultType || 'http',
+          host: defaultHost,
+          port: defaultPort,
+          username: process.env.DEFAULT_PROXY_USERNAME ? String(process.env.DEFAULT_PROXY_USERNAME) : undefined,
+          password: process.env.DEFAULT_PROXY_PASSWORD ? String(process.env.DEFAULT_PROXY_PASSWORD) : undefined,
+        },
+      };
+    }
+
+    return { source: 'none', config: { enabled: false } };
+  }
+
   // 公共方法：检查账号是否在线（纯 API 会话）
   isAccountOnline(accountId: number): boolean {
     const apiLoginTime = this.apiLoginSessions.get(accountId);
@@ -7300,7 +7775,7 @@ export class CrownAutomationService {
     }
 
     const now = Date.now();
-    const apiSessionTtl = 2 * 60 * 60 * 1000; // 2 小时
+    const apiSessionTtl = this.apiSessionTtlMs;
 
     return (now - apiLoginTime) < apiSessionTtl;
   }
@@ -7314,7 +7789,7 @@ export class CrownAutomationService {
   getActiveSessionCount(): number {
     let count = 0;
     const now = Date.now();
-    const apiSessionTtl = 2 * 60 * 60 * 1000; // 2 小时
+    const apiSessionTtl = this.apiSessionTtlMs;
 
     for (const [accountId, loginTime] of this.apiLoginSessions.entries()) {
       const uid = this.apiUids.get(accountId);
@@ -7345,6 +7820,202 @@ export class CrownAutomationService {
         lastSuccess: 0,
       });
     }
+  }
+
+  private startApiKeepalive(): void {
+    if (!this.apiKeepaliveEnabled) {
+      return;
+    }
+    if (this.apiKeepaliveTimer) {
+      return;
+    }
+
+    // 启动后延迟触发一次，避免与启动恢复会话/预热打架
+    setTimeout(() => {
+      this.keepApiSessionsAlive().catch((error) => {
+        console.error('❌ API keepalive 首次执行失败:', error);
+      });
+    }, 8000);
+
+    this.apiKeepaliveTimer = setInterval(() => {
+      if (this.apiKeepaliveRunning) return;
+      this.apiKeepaliveRunning = true;
+      this.keepApiSessionsAlive()
+        .catch((error) => {
+          console.error('❌ API keepalive 执行失败:', error);
+        })
+        .finally(() => {
+          this.apiKeepaliveRunning = false;
+        });
+    }, this.apiKeepaliveIntervalMs);
+  }
+
+  private async runWithConcurrency<T>(
+    items: T[],
+    concurrency: number,
+    handler: (item: T) => Promise<void>,
+  ): Promise<void> {
+    const queue = [...items];
+    const workerCount = Math.max(1, Math.min(concurrency, Math.max(queue.length, 1)));
+
+    const workers = Array.from({ length: workerCount }).map(async () => {
+      while (queue.length > 0) {
+        const item = queue.shift() as T;
+        try {
+          await handler(item);
+        } catch (error) {
+          console.error('❌ 并发任务执行失败:', error);
+        }
+      }
+    });
+
+    await Promise.all(workers);
+  }
+
+  private async keepApiSessionsAlive(): Promise<void> {
+    const whereClause = this.apiKeepaliveMode === 'enabled'
+      ? 'is_enabled = true'
+      : 'is_enabled = true AND is_online = true';
+
+    const result = await query(
+      `SELECT id FROM crown_accounts WHERE ${whereClause} ORDER BY last_login_at DESC NULLS LAST`,
+    );
+    const accountIds = (result.rows || [])
+      .map((row: any) => Number(row.id))
+      .filter((id: number) => Number.isFinite(id) && id > 0);
+
+    if (accountIds.length === 0) {
+      return;
+    }
+
+    await this.runWithConcurrency(accountIds, this.apiKeepaliveConcurrency, async (accountId) => {
+      await this.keepSingleApiSessionAlive(accountId);
+    });
+  }
+
+  private async keepSingleApiSessionAlive(accountId: number): Promise<void> {
+    const now = Date.now();
+
+    // 避免与登录过程冲突
+    if (this.loginLocks.has(accountId)) {
+      return;
+    }
+
+    // 若刚有业务请求，跳过（避免与下注/预览等并发）
+    const lastActivityAt = this.apiLastActivityAt.get(accountId) || 0;
+    if (now - lastActivityAt < 20000) {
+      return;
+    }
+
+    const prepared = await this.prepareApiClient(accountId, { markActivity: false });
+    if (!prepared.success || !prepared.client) {
+      if (this.apiKeepaliveMode !== 'enabled') {
+        return;
+      }
+
+      // enabled 模式：自动拉起离线账号
+      const account = await this.loadAccountById(accountId);
+      if (!account || !(account as any).is_enabled) {
+        return;
+      }
+
+      const loginResult = await this.loginAccountWithApi(account);
+      if (!loginResult.success) {
+        await query(
+          `UPDATE crown_accounts
+             SET is_online = false,
+                 status = 'error',
+                 error_message = $2,
+                 updated_at = CURRENT_TIMESTAMP
+           WHERE id = $1`,
+          [accountId, (loginResult.message || '登录失败').slice(0, 255)],
+        ).catch(() => undefined);
+      }
+      return;
+    }
+
+    const client = prepared.client;
+    try {
+      const uid = this.apiUids.get(accountId);
+      if (!uid) {
+        return;
+      }
+
+      const balanceData = await client.getBalance(uid);
+      if (balanceData) {
+        // keepalive 成功：刷新会话时间（等价于“最近活跃”），并同步余额/额度
+        await this.touchApiSession(accountId, now, balanceData);
+        this.apiKeepaliveFailCounts.delete(accountId);
+        return;
+      }
+
+      const prevFails = this.apiKeepaliveFailCounts.get(accountId) || 0;
+      const nextFails = prevFails + 1;
+      this.apiKeepaliveFailCounts.set(accountId, nextFails);
+
+      // 连续失败 2 次才判定会话失效，避免偶发网络抖动导致误判
+      if (nextFails < 2) {
+        return;
+      }
+
+      await this.clearApiSession(accountId);
+      if (this.apiKeepaliveMode === 'enabled') {
+        const account = await this.loadAccountById(accountId);
+        if (account && (account as any).is_enabled) {
+          await this.loginAccountWithApi(account).catch(() => undefined);
+        }
+      }
+    } finally {
+      await client.close().catch(() => undefined);
+    }
+  }
+
+  private async touchApiSession(
+    accountId: number,
+    now: number,
+    balanceData?: { balance: number; credit: number },
+  ): Promise<void> {
+    const prevLoginTime = this.apiLoginSessions.get(accountId) || 0;
+    this.apiLoginSessions.set(accountId, now);
+
+    // 写库做恢复与“在线”状态来源（每次 keepalive 间隔较大，直接写即可）
+    await query(
+      `UPDATE crown_accounts
+         SET api_login_time = $2,
+             is_online = true,
+             balance = COALESCE($3, balance),
+             credit = COALESCE($4, credit),
+             updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [
+        accountId,
+        now,
+        balanceData ? balanceData.balance : null,
+        balanceData ? balanceData.credit : null,
+      ],
+    ).catch(() => undefined);
+
+    // 标记活动，避免下一轮 keepalive 立即再打
+    if (prevLoginTime !== now) {
+      this.apiLastActivityAt.set(accountId, now);
+    }
+  }
+
+  private async clearApiSession(accountId: number): Promise<void> {
+    this.apiLoginSessions.delete(accountId);
+    this.apiUids.delete(accountId);
+    this.apiKeepaliveFailCounts.delete(accountId);
+
+    await query(
+      `UPDATE crown_accounts
+         SET api_uid = NULL,
+             api_login_time = NULL,
+             api_cookies = NULL,
+             is_online = false,
+             updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [accountId],
+    ).catch(() => undefined);
   }
 
   // 启动在线状态监控
@@ -7621,7 +8292,6 @@ export class CrownAutomationService {
         const game = gameArray[i];
         console.log(`  🎮 Game ${i + 1}:`, JSON.stringify(game, null, 2).substring(0, 300));
 
-        //   wtype                CN   
         const wtype = this.pickString(game, ['WTYPE', 'wtype', 'type']).toUpperCase();
         if (/CN/.test(wtype)) {
           continue;
@@ -8359,7 +9029,13 @@ export class CrownAutomationService {
       console.log(`🔍 开始获取账号 ${account.username} 的限额信息...`);
 
       // 使用 API 客户端登录
-      const apiClient = new CrownApiClient();
+      const proxyResolved = this.resolveApiProxyConfig(account);
+      const apiClient = new CrownApiClient({
+        baseUrl: this.activeBaseUrl,
+        deviceType: account.device_type || 'iPhone 14',
+        userAgent: account.user_agent,
+        proxy: proxyResolved.config,
+      });
       console.log(`🔧 创建 API 客户端成功`);
 
       const loginResult = await apiClient.login(account.username, account.password);

@@ -184,6 +184,8 @@ export interface Match {
   match_time: string;
   status: 'scheduled' | 'live' | 'finished' | 'cancelled';
   current_score?: string;
+  home_redcard?: number;
+  away_redcard?: number;
   match_period?: string;
   markets?: any;
   crown_gid?: string | null;
@@ -231,10 +233,19 @@ export interface Bet {
   virtual_profit_loss?: number;
   score?: string;
   official_bet_id?: string;
+  error_message?: string;
   confirmed_at?: string;
   settled_at?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface BetCreateResponse {
+  total: number;
+  queued: number;
+  processing?: number;
+  cancelled?: number;
+  bet_ids?: number[];
 }
 
 export interface BetCreateRequest {
